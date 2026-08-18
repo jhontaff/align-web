@@ -114,6 +114,53 @@ Decisions already made in discussion with the backend session, before any fronte
 
 ---
 
+# Frontend conventions & standards
+
+Patterns established across the app shell, Auth, and Tasks — treat these as the baseline for any new feature (Finance next, then Chat), not just documentation of what already exists. Consistency across features matters more than a locally "nicer" solution — see [Development philosophy](#development-philosophy).
+
+## Naming
+
+- **Components**: kebab-case filename, no type suffix (`login.ts`, `home.ts`, `task-list.ts`) — class name is the PascalCase equivalent (`Login`, `Home`, `TaskList`). Selector is `app-<kebab-name>`.
+- **Services**: `<name>.service.ts`, class `<Name>Service`, `@Injectable({ providedIn: 'root' })`.
+- **Guards**: `<name>.guard.ts`, camelCase `CanActivateFn` (`authGuard`).
+- **Interceptors**: `<name>.interceptor.ts` going forward (`auth.interceptor.ts`). `unwrap-interceptor.ts` predates this convention — not worth renaming just to match, but new interceptors should use the dot form.
+- **Models**: `<name>.model.ts`, PascalCase interface/type.
+- **Plain utility modules** (no DI, just exported functions): kebab-case, no suffix (`token-storage.ts`, `extract-error-message.ts`).
+
+## Folder placement — `core/` vs `features/`
+
+- `core/` is for things needed **outside a single feature**: auth state/guard/token storage, interceptors, HTTP utilities, and models shared by 2+ features (`ApiResponse<T>`, `Page<T>`). If only one feature touches it, it does not belong in `core/`.
+- `features/<name>/` is self-contained: its own `models/` subfolder for feature-specific DTOs, a service at the feature root, and one subfolder per screen (`task-list/`, `task-form/`). Nothing inside a feature folder should be imported by another feature — if that need shows up, the shared piece moves to `core/`, it doesn't get imported cross-feature.
+
+## Component pattern
+
+- Standalone, explicit `imports: [...]` array, split `.ts`/`.html`. Only add a `.scss` file when there are actual styles to put in it — an empty one just to match the shape is noise (see `home.ts`, which has no `styleUrl` at all).
+- Anything the template reads reactively is a `signal()`, exposed `protected readonly`.
+- Forms: `FormBuilder.nonNullable.group()` + `Validators`, guard `onSubmit()` with `if (form.invalid) { form.markAllAsTouched(); return; }`, track `submitting`/`errorMessage` signals, and on error call `extractErrorMessage(err)` — never hand-parse `err.error.message` inline (see `login.ts`/`register.ts`/`task-form.ts`).
+
+## Service pattern — stateless is the default
+
+- **Default**: a stateless API-client service — `providedIn: 'root'`, injects only `HttpClient`, one method per backend endpoint, returns `Observable<T>` typed as the **already-unwrapped** DTO (`unwrapInterceptor` strips `ApiResponse<T>` before the service ever sees the body — never type a method as `Observable<ApiResponse<T>>`). No signals, no cached state; the calling component owns whatever state it needs (`TaskService` / `TaskList` is the reference example).
+- **Exception**: a stateful global service (`AuthStateService`'s shape — signals for `user`/`isAuthenticated`) is only justified when the state is genuinely needed *outside* the feature that produces it (guards, the shell header, more than one unrelated feature). Don't reach for this by default for a new feature's data — it's the exception, not the starting point.
+
+## Routing checklist
+
+- Every route gets `canActivate: [authGuard]` **except** `login` and `register`.
+- Every route uses `loadComponent: () => import(...)` for lazy loading (confirmed working — `ng build` produces a separate chunk per feature).
+- `{ path: '**', redirectTo: '' }` **must be the last entry in the `routes` array.** The router evaluates top-to-bottom and `**` matches everything — anything after it is unreachable dead code. This isn't theoretical: on 2026-08-18 the Tasks routes were added after the wildcard and were silently unreachable (caught by manual testing, not by the compiler — `ng build` succeeds either way, so this has to be checked by eye or by clicking through the route).
+- If a route should be reachable from the shell, add the link in `app.html`'s header, inside the `@if (authState.isAuthenticated())` block.
+
+## Adding a new feature — recipe (mirrors `features/tasks/`)
+
+1. `features/<name>/models/<name>.model.ts` — Request/Response DTOs matching the [Backend contract](#backend-contract) section.
+2. `features/<name>/<name>.service.ts` — stateless `HttpClient` wrapper, one method per endpoint used so far.
+3. One folder per screen, e.g. `<name>-list/`, `<name>-form/` — standalone component + template.
+4. Register the routes in `app.routes.ts`, guarded and lazy-loaded, inserted **before** the `**` wildcard entry.
+5. Wire a nav link into `app.html` if the feature needs to be reachable from the shell.
+6. Run `ng build` before calling it done — it won't catch the routing-order mistake above, but it does catch unused-import warnings (a good signal a template/component got out of sync) and type errors for free.
+
+---
+
 # Local dev setup
 
 - Backend runs on `http://localhost:1010` (`server.port=1010` in `align`'s `application.properties`). Angular dev server runs on `http://localhost:4200`.
@@ -124,10 +171,13 @@ Decisions already made in discussion with the backend session, before any fronte
 
 # Current status
 
-Auth foundation is built and confirmed working end-to-end against the live backend (login and register both tested manually, 2026-08-14).
+Auth foundation is built and confirmed working end-to-end against the live backend (login and register both tested manually, 2026-08-14). The app shell (home route + header + logout) is also built and confirmed working end-to-end (2026-08-14).
 
 ## Done
 
+- App shell — `App` (`app.ts`/`app.html`) renders a header with a logout button only when `authState.isAuthenticated()`, plus `<router-outlet />`; this is also the future mount point for the floating chat panel, per the architecture decision above.
+- Home route (`features/home/`) — lands at `path: ''`, guarded by `authGuard`, greets the user by reading `authState.user()?.firstName`.
+- `app.routes.ts` — `''` (Home, guarded), `login`, `register`, and a `**` wildcard redirecting to `''`.
 - `proxy.conf.json` — `/api` and `/auth` → `http://localhost:1010`, dev-only.
 - PWA installable shell (`ng add @angular/pwa`) — `ngsw-config.json`, `public/manifest.webmanifest`, `public/icons/`, `provideServiceWorker('ngsw-worker.js', { enabled: !isDevMode(), registrationStrategy: 'registerWhenStable:30000' })` wired in `app.config.ts`.
 - The two interceptors + the error utility:
@@ -137,17 +187,16 @@ Auth foundation is built and confirmed working end-to-end against the live backe
   - Registered in `app.config.ts`: `provideHttpClient(withInterceptors([authInterceptor, unwrapInterceptor]))`.
 - `AuthStateService` (`core/auth/auth-state.service.ts`) — `login()`, `register()` (both funnel through a shared `applyAuthResponse` that stores the token and hydrates the user), `hydrateUser()`, `hydrateIfAuthenticated()` (called once from `App`'s constructor on bootstrap so a stored token rehydrates `user`/`isAuthenticated` on page load), `logout()` (client-side only, per the backend's stateless JWT). Exposes `user` and `isAuthenticated` as readonly signals.
 - Token persistence: `core/auth/token-storage.ts` — thin wrapper over `localStorage`, key `align_access_token`.
-- `authGuard` (`core/auth/auth.guard.ts`) — `CanActivateFn`, redirects to `/login` when there's no token. **Built but not yet applied to any route** (see gaps below — there's no protected route for it to guard yet).
+- `authGuard` (`core/auth/auth.guard.ts`) — `CanActivateFn`, redirects to `/login` when there's no token. Applied to the `''` (home) route.
 - Login screen (`features/auth/login/`) — reactive form (email + password), calls `authState.login()`, navigates to `/` on success.
 - Register screen (`features/auth/register/`) — reactive form (email, password w/ `minLength(8)`, firstName, lastName), calls `authState.register()`. Registering logs the user in immediately (same `AuthResponse` handling as login) and navigates to `/`, since the backend returns a full `AuthResponse` from `/auth/register` — there's no separate "now go log in" step.
+- Task feature area (`features/tasks/`) — list (`GET /api/tasks`) and create (`POST /api/tasks`) confirmed working end-to-end against the live backend (2026-08-18). `TaskService` is a stateless HTTP client (see [Frontend conventions](#frontend-conventions--standards)); `TaskList` (`/tasks`) and `TaskForm` (`/tasks/new`) are separate guarded routes. This is the reference implementation for the feature-area pattern — edit/delete and the Finance area should follow its shape. Edit/delete deliberately deferred to the next iteration, not an oversight.
 
 ## Known gaps / next steps, in order
 
-1. **`app.routes.ts` only defines `login` and `register`** — there's no root/home route yet, so `authGuard` has nothing to protect. Next: add whatever lands at `/` (even a placeholder shell) and apply `authGuard` to it.
-2. **`app.html` still has the untouched Angular CLI default template** (marketing splash content) with a bare `<router-outlet />` appended at the bottom — needs replacing with the real app shell once there's a home route to route into. This is also where the floating chat panel will eventually mount as a `<router-outlet>` sibling, per the architecture decision above.
-3. Task feature area (`/api/tasks`) — not started.
-4. Finance feature area (`/api/transactions`) — not started.
-5. Chat panel — not started (blocked on the app shell replacement in #2).
+1. Task feature area — edit (`PUT /api/tasks/{id}`) and delete (`DELETE /api/tasks/{id}`); will need `TaskUpdateRequest` added to `task.model.ts`.
+2. Finance feature area (`/api/transactions`) — not started.
+3. Chat panel — not started. No longer blocked (the app shell exists); still deferred until Tasks/Finance establish the feature-area pattern.
 
 ## Local dev gotcha
 

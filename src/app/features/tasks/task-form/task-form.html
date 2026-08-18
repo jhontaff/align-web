@@ -1,0 +1,38 @@
+<h2>Nueva tarea</h2>
+
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  <label>
+    Título
+    <input type="text" formControlName="title" />
+  </label>
+
+  <label>
+    Descripción
+    <textarea formControlName="description"></textarea>
+  </label>
+
+  <label>
+    Prioridad
+    <select formControlName="priority">
+      <option value="LOW">Baja</option>
+      <option value="MEDIUM">Media</option>
+      <option value="HIGH">Alta</option>
+    </select>
+  </label>
+
+  <label>
+    Fecha límite
+    <input type="date" formControlName="dueDate" />
+  </label>
+
+  <label>
+    Hora límite
+    <input type="time" formControlName="dueTime" />
+  </label>
+
+  @if (errorMessage()) {
+    <p>{{ errorMessage() }}</p>
+  }
+
+  <button type="submit" [disabled]="submitting()">Crear</button>
+</form>
