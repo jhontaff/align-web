@@ -1,38 +1,51 @@
-<h2>Nueva tarea</h2>
+<div class="page">
+  <div class="page-header">
+    <h1>Nueva tarea</h1>
+  </div>
 
-<form [formGroup]="form" (ngSubmit)="onSubmit()">
-  <label>
-    Título
-    <input type="text" formControlName="title" />
-  </label>
+  <div class="card card--wide">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      @if (errorMessage()) {
+        <p class="form-error">{{ errorMessage() }}</p>
+      }
 
-  <label>
-    Descripción
-    <textarea formControlName="description"></textarea>
-  </label>
+      <div class="field">
+        <label for="title">Título</label>
+        <input id="title" type="text" formControlName="title" />
+      </div>
 
-  <label>
-    Prioridad
-    <select formControlName="priority">
-      <option value="LOW">Baja</option>
-      <option value="MEDIUM">Media</option>
-      <option value="HIGH">Alta</option>
-    </select>
-  </label>
+      <div class="field">
+        <label for="description">Descripción</label>
+        <textarea id="description" formControlName="description" rows="3"></textarea>
+      </div>
 
-  <label>
-    Fecha límite
-    <input type="date" formControlName="dueDate" />
-  </label>
+      <div class="field">
+        <label for="priority">Prioridad</label>
+        <select id="priority" formControlName="priority">
+          <option value="LOW">Baja</option>
+          <option value="MEDIUM">Media</option>
+          <option value="HIGH">Alta</option>
+        </select>
+      </div>
 
-  <label>
-    Hora límite
-    <input type="time" formControlName="dueTime" />
-  </label>
+      <div class="field-row">
+        <div class="field">
+          <label for="dueDate">Fecha límite</label>
+          <input id="dueDate" type="date" formControlName="dueDate" />
+        </div>
 
-  @if (errorMessage()) {
-    <p>{{ errorMessage() }}</p>
-  }
+        <div class="field">
+          <label for="dueTime">Hora límite</label>
+          <input id="dueTime" type="time" formControlName="dueTime" />
+        </div>
+      </div>
 
-  <button type="submit" [disabled]="submitting()">Crear</button>
-</form>
+      <div class="form-actions">
+        <a class="btn btn-ghost" routerLink="/tasks">Cancelar</a>
+        <button class="btn btn-primary" type="submit" [disabled]="submitting()">
+          {{ submitting() ? 'Creando...' : 'Crear tarea' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
