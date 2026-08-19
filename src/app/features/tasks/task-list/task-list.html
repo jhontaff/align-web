@@ -1,16 +1,29 @@
-<h2>Tareas</h2>
-<a routerLink="/tasks/new">Nueva tarea</a>
+<div class="page">
+  <div class="page-header">
+    <h1>Tareas</h1>
+    <a class="btn btn-primary" routerLink="/tasks/new">+ Nueva tarea</a>
+  </div>
 
-@if (loading()) {
-  <p>Cargando...</p>
-} @else if (tasks().length === 0) {
-  <p>No hay tareas todavía.</p>
-} @else {
-  <ul>
-    @for (task of tasks(); track task.id) {
-      <li>
-        <strong>{{ task.title }}</strong> — {{ task.status }} ({{ task.priority }})
-      </li>
-    }
-  </ul>
-}
+  @if (loading()) {
+    <p class="empty-state">Cargando...</p>
+  } @else if (tasks().length === 0) {
+    <p class="empty-state">No hay tareas todavía.</p>
+  } @else {
+    <ul class="task-list">
+      @for (task of tasks(); track task.id) {
+        <li class="task-item">
+          <div class="task-item__main">
+            <span class="task-item__title">{{ task.title }}</span>
+            @if (task.description) {
+              <span class="task-item__description">{{ task.description }}</span>
+            }
+          </div>
+          <div class="task-item__meta">
+            <span class="badge" [class]="'badge--status-' + task.status.toLowerCase()">{{ statusLabel(task.status) }}</span>
+            <span class="badge" [class]="'badge--priority-' + task.priority.toLowerCase()">{{ priorityLabel(task.priority) }}</span>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</div>

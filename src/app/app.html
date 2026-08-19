@@ -1,8 +1,10 @@
 @if (authState.isAuthenticated()) {
-  <header>
-    <span>Align</span>
-    <a routerLink="/tasks">Tareas</a>
-    <button type="button" (click)="onLogout()">Cerrar sesión</button>
+  <header class="app-header">
+    <span class="app-header__brand">Align</span>
+    <nav class="app-header__nav">
+      <a routerLink="/tasks">Tareas</a>
+      <button class="btn btn-ghost" type="button" (click)="onLogout()">Cerrar sesión</button>
+    </nav>
   </header>
 }
 

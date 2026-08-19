@@ -1,21 +1,37 @@
-<form [formGroup]="form" (ngSubmit)="onSubmit()">
-  <label for="email">Email</label>
-  <input id="email" type="email" formControlName="email" />
+<div class="auth-shell">
+  <div class="card">
+    <h1>Crear cuenta</h1>
 
-  <label for="password">Contraseña</label>
-  <input id="password" type="password" formControlName="password" />
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      @if (errorMessage()) {
+        <p class="form-error">{{ errorMessage() }}</p>
+      }
 
-  <label for="firstName">Nombre</label>
-  <input id="firstName" type="text" formControlName="firstName" />
+      <div class="field">
+        <label for="firstName">Nombre</label>
+        <input id="firstName" type="text" formControlName="firstName" />
+      </div>
 
-  <label for="lastName">Apellido</label>
-  <input id="lastName" type="text" formControlName="lastName" />
+      <div class="field">
+        <label for="lastName">Apellido</label>
+        <input id="lastName" type="text" formControlName="lastName" />
+      </div>
 
-  @if (errorMessage()) {
-    <p class="error">{{ errorMessage() }}</p>
-  }
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" formControlName="email" />
+      </div>
 
-  <button type="submit" [disabled]="submitting()">Crear cuenta</button>
+      <div class="field">
+        <label for="password">Contraseña</label>
+        <input id="password" type="password" formControlName="password" />
+      </div>
 
-  <a routerLink="/login">¿Ya tienes cuenta? Inicia sesión</a>
-</form>
+      <button class="btn btn-primary btn-block" type="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Creando...' : 'Crear cuenta' }}
+      </button>
+    </form>
+
+    <p class="form-footer">¿Ya tienes cuenta? <a routerLink="/login">Inicia sesión</a></p>
+  </div>
+</div>
