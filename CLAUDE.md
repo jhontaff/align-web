@@ -49,11 +49,11 @@ The backend is a separate repo (`align`, Spring Boot 3.5 / Java 21). Everything 
 - **Logout is client-side only.** The JWT is stateless (no server-side session/blacklist); "logging out" means deleting the local token, not invalidating it server-side.
 - Every route except `/auth/**`, `/swagger-ui/**`, `/v3/api-docs/**` requires `Authorization: Bearer <token>`.
 
-## The `ApiResponse<T>` envelope — and its one exception
+## The `ApiResponse<T>` envelope — and its exceptions
 
 Every REST endpoint wraps its body: `{ timestamp, status, success, message, data, errors }`. The actual resource is in `.data`.
 
-**Exception**: `POST /api/agent/chat` returns `AgentResponse` (`{ reply }`) directly, unwrapped. This is a backend inconsistency, not something to work around per-URL on the frontend — see [Frontend architecture decisions](#frontend-architecture-decisions) for how the unwrap interceptor handles both shapes with one generic check.
+**Exception**: `AgentController` as a whole returns its DTOs directly, unwrapped — both `POST /api/agent/chat` (`AgentResponse`, `{ reply }`) and `GET /api/agent/history` (`ChatHistoryResponse`, `{ turns }`). This is a backend inconsistency scoped to the whole controller, not just `/chat`, and not something to work around per-URL on the frontend — see [Frontend architecture decisions](#frontend-architecture-decisions) for how the unwrap interceptor handles both shapes with one generic check.
 
 ## Error shapes — two different paths, don't conflate them
 
@@ -88,8 +88,9 @@ Every REST endpoint wraps its body: `{ timestamp, status, success, message, data
 ## Chat agent (`/api/agent`)
 
 - `POST /api/agent/chat` — body `{ message: string }` → **unwrapped** `{ reply: string }` (see the `ApiResponse` exception above).
+- `GET /api/agent/history` — no body/params → **unwrapped** `ChatHistoryResponse` = `{ turns: ChatTurn[] }`, `ChatTurn` = `{ role: "user" | "assistant", content: string }`. Added on the backend 2026-08-19 specifically so the frontend can restore the conversation on load. Call it once when the chat panel mounts, not after every message — it returns the **entire** persisted history each time (no pagination, no `since`/cursor param), so re-polling it on every turn would be wasteful and pointless when the panel already has the latest messages in memory.
 - Synchronous request/response — no streaming (no SSE/WebSocket). The UI should show a loading state while waiting, not attempt a token-by-token "typing" effect; that would require backend changes that don't exist yet.
-- One conversation per user, persisted server-side, no session/thread concept. There is currently **no endpoint to fetch conversation history** — the frontend chat panel starts empty on every page load; this was a deliberate YAGNI call, not an oversight (see decisions below).
+- One conversation per user, persisted server-side, no session/thread concept.
 
 ## CORS
 
@@ -107,7 +108,7 @@ Decisions already made in discussion with the backend session, before any fronte
   - `unwrapInterceptor` — pure response transform, no injected dependencies, no side effects. Checks for the **full `ApiResponse` shape** (`success`, `status`, `timestamp`, `data` all present), not just "does `data` exist" — a weaker check risks misfiring on a future DTO that happens to have its own `data` field. If the shape doesn't match (e.g. `AgentResponse`), it passes the body through unchanged — this is what makes the `/api/agent/chat` exception work with zero URL-specific branching.
   - `authInterceptor` — on a 401, clears the stored token and redirects to `/login`. This is legitimately a global interceptor (not a utility) because there's exactly one correct behavior for every caller, everywhere — unlike generic error display, which is caller-dependent.
   - `extractErrorMessage(err: HttpErrorResponse): string` — a plain function, not an interceptor. Normalizes `.error.message`/`.error.errors` (when present, per the `ApiResponse.error` shape) into something displayable. Deliberately has no side effects and doesn't decide presentation (toast vs. inline field error vs. silent) — that decision belongs to whichever service/component calls it inside its own `catchError`, since only the caller knows whether a given failure should interrupt the user or fail quietly.
-- **No conversation history endpoint yet** — the chat panel resets on every page load. Adding `GET /api/agent/history` on the backend was considered and explicitly deferred; revisit only if losing history on refresh becomes a real problem, not preemptively.
+- **Conversation history now has a backend endpoint** (`GET /api/agent/history`, added 2026-08-19) — this reverses the earlier "deferred, chat resets on every load" decision that used to be recorded here. When the chat panel gets built, call it once on mount to hydrate the message list, then let the panel keep messages in its own in-memory state for the rest of the session — same "service stateless, component owns state" default as the rest of the app (see [Service pattern](#service-pattern--stateless-is-the-default)). Don't call it again after every message; only the initial load needs it.
 - **CORS handled via `proxy.conf.json` in dev**, not backend changes — see below.
 - **PWA scope: installable shell only, not offline-first data.** `ng add @angular/pwa` gives an installable app (manifest, icons) and caches static assets (JS/CSS/`index.html`) via the Angular Service Worker. `ngsw-config.json` deliberately has **no `dataGroups`** for `/api/**` or `/auth/**` — those routes always hit the network, never the Service Worker cache. Tasks/Finance data being available offline (IndexedDB, mutation queue, sync/conflict resolution) is a much larger scope that was explicitly deferred — the backend isn't designed for it today, and there's no real need yet. Revisit only if offline usage becomes an actual requirement, not preemptively.
 - **No `environment.ts` for the API base URL — relative paths (`/api`, `/auth`) everywhere.** `proxy.conf.json` already resolves these in dev. The plan for a real deployment is to keep the frontend behind a reverse proxy that forwards the same `/api`/`/auth` paths to the backend, so relative paths keep working unchanged across dev and prod and the CORS gap above stays irrelevant. Only introduce `environment.ts` (via `ng generate environments`) if frontend and backend ever end up on genuinely different origins without a shared reverse proxy — don't add it preemptively.
@@ -136,7 +137,13 @@ Patterns established across the app shell, Auth, and Tasks — treat these as th
 
 - Standalone, explicit `imports: [...]` array, split `.ts`/`.html`. Only add a `.scss` file when there are actual styles to put in it — an empty one just to match the shape is noise (see `home.ts`, which has no `styleUrl` at all).
 - Anything the template reads reactively is a `signal()`, exposed `protected readonly`.
-- Forms: `FormBuilder.nonNullable.group()` + `Validators`, guard `onSubmit()` with `if (form.invalid) { form.markAllAsTouched(); return; }`, track `submitting`/`errorMessage` signals, and on error call `extractErrorMessage(err)` — never hand-parse `err.error.message` inline (see `login.ts`/`register.ts`/`task-form.ts`).
+- Forms: `FormBuilder.nonNullable.group()` + `Validators`, guard `onSubmit()` with `if (form.invalid) { form.markAllAsTouched(); return; }`, track `submitting`/`errorMessage` signals, and on error call `extractErrorMessage(err)` — never hand-parse `err.error.message` inline (see `login.ts`/`register.ts`/`task-form.ts`). Exception: a single free-text field with no validation rules (the chat message box) uses plain `[(ngModel)]`/`FormsModule` instead — spinning up a `FormGroup` for one unvalidated field would be the premature abstraction [Development philosophy](#development-philosophy) warns against.
+
+## Visual design system
+
+- Global tokens and reusable primitives live in `src/styles.scss` — CSS custom properties (`--color-*`, `--radius`, `--shadow`, `--font-sans`) plus shared classes: `.card`/`.card--wide`, `.field`, `.btn`/`.btn-primary`/`.btn-ghost`/`.btn-block`, `.badge`, `.page`/`.page-header`, `.empty-state`, `.form-error`, `.form-footer`, `.auth-shell`. New screens should compose these instead of writing bespoke CSS for cards, buttons, or form fields — component-level `.scss` is for genuinely component-specific layout only (`task-list.scss`'s `.task-item*`/`.badge--*` color variants, `chat-widget.scss`'s fixed-position bubble/panel).
+- Palette: neutral/clean — off-white background (`--color-bg: #fafafa`), near-black text, single indigo accent (`--color-accent: #4f46e5`). Picked 2026-08-20 over warmer/dark alternatives for being the safest to keep consistent as more features (Finance) get added.
+- `public/manifest.webmanifest`'s `theme_color`/`background_color` and `index.html`'s `<meta name="theme-color">` are kept in sync with `--color-accent`/`--color-bg` — update both together if the palette ever changes. The icon PNGs in `public/icons/` are still the Angular CLI defaults (not regenerated to match) — that needs an external tool (e.g. realfavicongenerator.net), not something to hand-edit as code.
 
 ## Service pattern — stateless is the default
 
@@ -154,7 +161,7 @@ Patterns established across the app shell, Auth, and Tasks — treat these as th
 
 1. `features/<name>/models/<name>.model.ts` — Request/Response DTOs matching the [Backend contract](#backend-contract) section.
 2. `features/<name>/<name>.service.ts` — stateless `HttpClient` wrapper, one method per endpoint used so far.
-3. One folder per screen, e.g. `<name>-list/`, `<name>-form/` — standalone component + template.
+3. One folder per screen, e.g. `<name>-list/`, `<name>-form/` — standalone component + template. Reuse the shared classes from [Visual design system](#visual-design-system) (`.card`, `.field`, `.btn`, `.page`) before writing new component-specific CSS.
 4. Register the routes in `app.routes.ts`, guarded and lazy-loaded, inserted **before** the `**` wildcard entry.
 5. Wire a nav link into `app.html` if the feature needs to be reachable from the shell.
 6. Run `ng build` before calling it done — it won't catch the routing-order mistake above, but it does catch unused-import warnings (a good signal a template/component got out of sync) and type errors for free.
@@ -171,7 +178,7 @@ Patterns established across the app shell, Auth, and Tasks — treat these as th
 
 # Current status
 
-Auth foundation is built and confirmed working end-to-end against the live backend (login and register both tested manually, 2026-08-14). The app shell (home route + header + logout) is also built and confirmed working end-to-end (2026-08-14).
+Auth foundation is built and confirmed working end-to-end against the live backend (login and register both tested manually, 2026-08-14). The app shell (home route + header + logout) is also built and confirmed working end-to-end (2026-08-14). Login, register, Tasks, and the app shell now share a consistent visual design system, and the chat panel is fully wired up end-to-end (2026-08-20).
 
 ## Done
 
@@ -190,13 +197,14 @@ Auth foundation is built and confirmed working end-to-end against the live backe
 - `authGuard` (`core/auth/auth.guard.ts`) — `CanActivateFn`, redirects to `/login` when there's no token. Applied to the `''` (home) route.
 - Login screen (`features/auth/login/`) — reactive form (email + password), calls `authState.login()`, navigates to `/` on success.
 - Register screen (`features/auth/register/`) — reactive form (email, password w/ `minLength(8)`, firstName, lastName), calls `authState.register()`. Registering logs the user in immediately (same `AuthResponse` handling as login) and navigates to `/`, since the backend returns a full `AuthResponse` from `/auth/register` — there's no separate "now go log in" step.
-- Task feature area (`features/tasks/`) — list (`GET /api/tasks`) and create (`POST /api/tasks`) confirmed working end-to-end against the live backend (2026-08-18). `TaskService` is a stateless HTTP client (see [Frontend conventions](#frontend-conventions--standards)); `TaskList` (`/tasks`) and `TaskForm` (`/tasks/new`) are separate guarded routes. This is the reference implementation for the feature-area pattern — edit/delete and the Finance area should follow its shape. Edit/delete deliberately deferred to the next iteration, not an oversight.
+- Task feature area (`features/tasks/`) — list (`GET /api/tasks`) and create (`POST /api/tasks`) confirmed working end-to-end against the live backend (2026-08-18). `TaskService` is a stateless HTTP client (see [Frontend conventions](#frontend-conventions--standards)); `TaskList` (`/tasks`) and `TaskForm` (`/tasks/new`) are separate guarded routes. This is the reference implementation for the feature-area pattern — edit/delete and the Finance area should follow its shape. Edit/delete deliberately deferred to the next iteration, not an oversight. `TaskList` also renders `dueDate`/`dueTime` per task when present, formatted as a single string (e.g. "25 ago · 14:30") via a component-local `dueLabel()` helper (2026-08-20).
+- Visual design system (`src/styles.scss`) — neutral/clean palette (tokens + `.card`/`.field`/`.btn`/`.badge`/`.page` primitives, see [Visual design system](#visual-design-system)) applied across the app shell, login, register, and Tasks. `public/manifest.webmanifest` and `index.html`'s `theme-color` meta updated to match (2026-08-20).
+- Chat feature (`features/chat/`) — `ChatWidget`, a floating bubble/panel mounted directly in `app.html` (statically imported in `app.ts`, not lazy-loaded — it's shell UI, not a route) as a sibling of `<router-outlet>`, shown only when `authState.isAuthenticated()`. `ChatService` is a stateless HTTP client with `send()` (`POST /api/agent/chat`) and `history()` (`GET /api/agent/history`). History loads once in `ChatWidget.ngOnInit()` to restore the conversation; the panel then keeps messages in its own signal for the rest of the session, same "service stateless, component owns state" pattern as Tasks. Confirmed working end-to-end (2026-08-20) — conversation survives in-app navigation and a page reload.
 
 ## Known gaps / next steps, in order
 
 1. Task feature area — edit (`PUT /api/tasks/{id}`) and delete (`DELETE /api/tasks/{id}`); will need `TaskUpdateRequest` added to `task.model.ts`.
-2. Finance feature area (`/api/transactions`) — not started.
-3. Chat panel — not started. No longer blocked (the app shell exists); still deferred until Tasks/Finance establish the feature-area pattern.
+2. Finance feature area (`/api/transactions`) — not started. Can now reuse both the Tasks feature-area pattern and the shared visual design system, so it should move faster than Tasks did.
 
 ## Local dev gotcha
 
