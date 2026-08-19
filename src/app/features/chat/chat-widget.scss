@@ -98,3 +98,17 @@
   outline: none;
   border-color: var(--color-accent);
 }
+
+.chat-mic {
+  padding: 0.5rem;
+  border-radius: 50%;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+}
+
+.chat-mic--active {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
