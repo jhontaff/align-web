@@ -13,8 +13,10 @@
       <button class="btn btn-ghost" type="button" (click)="toggle()">Cerrar</button>
     </div>
 
-    <div class="chat-panel__messages">
-      @if (messages().length === 0) {
+        <div class="chat-panel__messages">
+      @if (loadingHistory()) {
+        <p class="empty-state">Cargando conversación...</p>
+      } @else if (messages().length === 0) {
         <p class="empty-state">Escríbele algo a Align para empezar.</p>
       }
       @for (message of messages(); track $index) {
@@ -24,6 +26,7 @@
         <div class="chat-message chat-message--assistant chat-message--pending">Escribiendo...</div>
       }
     </div>
+
 
     <form class="chat-panel__input" (ngSubmit)="send()">
       <input

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ChatService } from './chat.service';
 import { ChatMessage } from './models/chat.model';
@@ -9,13 +9,26 @@ import { ChatMessage } from './models/chat.model';
   templateUrl: './chat-widget.html',
   styleUrl: './chat-widget.scss'
 })
-export class ChatWidget {
+export class ChatWidget implements OnInit {
   private readonly chatService = inject(ChatService);
 
   protected readonly open = signal(false);
   protected readonly messages = signal<ChatMessage[]>([]);
+  protected readonly loadingHistory = signal(true);
   protected readonly sending = signal(false);
   protected draft = '';
+
+  ngOnInit(): void {
+    this.chatService.history().subscribe({
+      next: response => {
+        this.messages.set(response.turns.map(turn => ({ role: turn.role, text: turn.content })));
+        this.loadingHistory.set(false);
+      },
+      error: () => {
+        this.loadingHistory.set(false);
+      }
+    });
+  }
 
   protected toggle(): void {
     this.open.update(value => !value);
