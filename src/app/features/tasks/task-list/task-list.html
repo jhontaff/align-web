@@ -17,6 +17,9 @@
             @if (task.description) {
               <span class="task-item__description">{{ task.description }}</span>
             }
+            @if (dueLabel(task); as due) {
+              <span class="task-item__due">{{ due }}</span>
+            }
           </div>
           <div class="task-item__meta">
             <span class="badge" [class]="'badge--status-' + task.status.toLowerCase()">{{ statusLabel(task.status) }}</span>
