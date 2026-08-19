@@ -13,7 +13,7 @@
       <button class="btn btn-ghost" type="button" (click)="toggle()">Cerrar</button>
     </div>
 
-        <div class="chat-panel__messages">
+    <div class="chat-panel__messages">
       @if (loadingHistory()) {
         <p class="empty-state">Cargando conversación...</p>
       } @else if (messages().length === 0) {
@@ -27,13 +27,24 @@
       }
     </div>
 
-
     <form class="chat-panel__input" (ngSubmit)="send()">
+      @if (voiceSupported) {
+        <button
+          type="button"
+          class="btn btn-ghost chat-mic"
+          [class.chat-mic--active]="listening()"
+          (click)="toggleListening()"
+          [attr.aria-pressed]="listening()"
+          aria-label="Hablar"
+        >
+          🎤
+        </button>
+      }
       <input
         type="text"
         name="draft"
         [(ngModel)]="draft"
-        placeholder="Escribe un mensaje..."
+        placeholder="Escribe o hablá un mensaje..."
         [disabled]="sending()"
       />
       <button class="btn btn-primary" type="submit" [disabled]="sending()">Enviar</button>

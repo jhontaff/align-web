@@ -1,7 +1,8 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ChatService } from './chat.service';
 import { ChatMessage } from './models/chat.model';
+import { SpeechRecognitionLike, createSpeechRecognizer, isSpeechRecognitionSupported } from './speech-recognition';
 
 @Component({
   selector: 'app-chat-widget',
@@ -9,13 +10,16 @@ import { ChatMessage } from './models/chat.model';
   templateUrl: './chat-widget.html',
   styleUrl: './chat-widget.scss'
 })
-export class ChatWidget implements OnInit {
+export class ChatWidget implements OnInit, OnDestroy {
   private readonly chatService = inject(ChatService);
+  private recognition: SpeechRecognitionLike | null = null;
 
   protected readonly open = signal(false);
   protected readonly messages = signal<ChatMessage[]>([]);
   protected readonly loadingHistory = signal(true);
   protected readonly sending = signal(false);
+  protected readonly listening = signal(false);
+  protected readonly voiceSupported = isSpeechRecognitionSupported();
   protected draft = '';
 
   ngOnInit(): void {
@@ -30,8 +34,33 @@ export class ChatWidget implements OnInit {
     });
   }
 
+  ngOnDestroy(): void {
+    this.recognition?.stop();
+  }
+
   protected toggle(): void {
     this.open.update(value => !value);
+  }
+
+  protected toggleListening(): void {
+    if (this.listening()) {
+      this.recognition?.stop();
+      return;
+    }
+
+    this.recognition = createSpeechRecognizer(
+      transcript => {
+        this.draft = transcript;
+      },
+      () => this.listening.set(false)
+    );
+
+    if (!this.recognition) {
+      return;
+    }
+
+    this.listening.set(true);
+    this.recognition.start();
   }
 
   protected send(): void {
