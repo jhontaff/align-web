@@ -41,4 +41,20 @@ export class TaskList implements OnInit {
   protected priorityLabel(priority: TaskResponse['priority']): string {
     return this.priorityLabels[priority];
   }
+
+    protected dueLabel(task: TaskResponse): string | null {
+    if (!task.dueDate) {
+      return null;
+    }
+
+    const date = new Date(`${task.dueDate}T00:00:00`);
+    const formatted = date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+
+    if (!task.dueTime) {
+      return formatted;
+    }
+
+    return `${formatted} · ${task.dueTime.slice(0, 5)}`;
+  }
+
 }

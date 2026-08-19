@@ -1,10 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthStateService } from './core/auth/auth-state.service';
+import { ChatWidget } from './features/chat/chat-widget';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink],
+  imports: [RouterOutlet, RouterLink, ChatWidget],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
