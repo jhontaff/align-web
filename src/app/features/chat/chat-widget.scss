@@ -6,19 +6,19 @@
   height: 56px;
   border-radius: 50%;
   border: none;
-  background: var(--color-accent);
+  background: var(--color-primary);
   color: #fff;
   font-size: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-lg);
   z-index: 50;
 }
 
 .chat-fab:hover {
-  background: var(--color-accent-hover);
+  background: var(--color-primary-hover);
 }
 
 .chat-panel {
@@ -28,8 +28,9 @@
   width: min(360px, calc(100vw - 3rem));
   height: min(480px, calc(100vh - 8rem));
   background: var(--color-surface);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -57,20 +58,20 @@
 .chat-message {
   max-width: 80%;
   padding: 0.5rem 0.75rem;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   font-size: 0.9rem;
   line-height: 1.4;
 }
 
 .chat-message--user {
   align-self: flex-end;
-  background: var(--color-accent);
+  background: var(--color-primary);
   color: #fff;
 }
 
 .chat-message--assistant {
   align-self: flex-start;
-  background: var(--color-bg);
+  background: var(--color-surface-muted);
   color: var(--color-text);
 }
 
@@ -89,12 +90,12 @@
   flex: 1;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--color-border);
-  border-radius: calc(var(--radius) - 2px);
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
 }
 
 .chat-panel__input input:focus {
   outline: none;
-  border-color: var(--color-accent);
+  border-color: var(--color-primary);
 }

@@ -114,6 +114,88 @@ Decisions already made in discussion with the backend session, before any fronte
 
 ---
 
+# Design system
+
+Built 2026-08-19 from a written brand spec + light/dark reference boards. Lives in `src/styles/`, wired through `src/styles.scss` (the only file listed in `angular.json` → `styles`).
+
+```
+src/styles.scss          @use tokens → base → components (orden obligatorio)
+src/styles/_tokens.scss  paleta + semántica + tema oscuro
+src/styles/_base.scss    reset y defaults de elementos HTML (sin clases)
+src/styles/_components.scss  primitivas globales (.btn, .card, .field, .badge…)
+```
+
+## Tokens: dos niveles, y la separación es la regla
+
+- **Nivel 1** — paleta cruda (`--blue-600`, `--slate-200`, `--navy-950`, `--emerald-500`…). **Nunca se usa fuera de `_tokens.scss`.** Existe solo para que el nivel 2 tenga de dónde elegir.
+- **Nivel 2** — intención semántica (`--color-primary`, `--color-surface`, `--color-text-muted`, `--color-danger-soft`…). **Es lo único que puede aparecer en un `.scss` de componente o en `_components.scss`.**
+
+Un hex literal en un `.scss` de feature es un bug de diseño, no una decisión estética: significa que ese color no existe en el sistema, o que se saltó el nivel 2. Los únicos hex fuera de `_tokens.scss` son `#ffffff` sobre fondos de marca (`.btn-danger`), donde el blanco no depende del tema.
+
+## Tema oscuro
+
+Todo el tema oscuro está en el mixin `dark-tokens` de `_tokens.scss`, aplicado en dos sitios:
+
+```scss
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { @include dark-tokens; } }
+:root[data-theme='dark'] { @include dark-tokens; }
+```
+
+**Consecuencia práctica: no debe existir ni una sola `@media (prefers-color-scheme)` fuera de `_tokens.scss`.** Si un componente necesita una, el token que le falta no está en el nivel 2 — la solución es añadir el token, no la media query. El doble bloque (media query + `[data-theme]`) es lo que permite que el botón de tema del header conviva con la preferencia del sistema — ver [Cambio de tema](#cambio-de-tema-botón-del-header).
+
+`color-scheme` se declara en ambos temas, así que scrollbars y controles nativos siguen el tema sin CSS extra.
+
+## Cambio de tema (botón del header)
+
+`ThemeService` (`core/theme/theme.service.ts`) + `ThemeToggle` (`layout/theme-toggle/`), montado en la nav de `app.html`. Botón cíclico de tres posiciones: **sistema → claro → oscuro → sistema**.
+
+**`system` es un estado de primera clase, no la ausencia de elección.** `ThemePreference = 'light' | 'dark' | 'system'`, y `'system'` se persiste explícitamente en `localStorage` bajo `align_theme`. La distinción importa: si `system` fuera solo "todavía no eligió nada", el usuario no podría *volver* a delegar en el SO después de haber probado los otros dos, y quien tiene auto-dark perdería esa función por haber tocado un botón una vez.
+
+`theme` (computed) resuelve la preferencia contra `systemTheme` (un signal alimentado por el listener de `matchMedia`), así que la app reacciona a que el SO cambie de tema en vivo mientras la preferencia sea `system`.
+
+La regla que hace que todo lo demás funcione: **`data-theme` en `<html>` existe solo cuando la preferencia es `light` o `dark`.** Con `system` el atributo se borra, no se escribe el valor resuelto. Escribir el valor resuelto clavaría la app al tema que hubiera en el arranque y `system` dejaría de significar nada. Ese es exactamente el escenario para el que `_tokens.scss` usa `:root:not([data-theme='light'])` dentro de la media query.
+
+Detalles que no son obvios al leer el código:
+
+- **Un solo escritor del atributo**: el `effect()` del servicio. Hay dos fuentes que mueven el tema (el botón y el SO), así que la escritura al DOM se centraliza en vez de repetirse en cada una. Este es el caso de uso legítimo de `effect` — manipulación de DOM fuera del render de Angular — no propagación de estado entre signals.
+- **Script inline en `index.html`** para evitar el flash de tema contrario al recargar. Corre antes del primer pintado y solo escribe el atributo si lo guardado es `light` o `dark`. Duplica la constante `'align_theme'` a propósito: tiene que ejecutarse antes de que exista ningún bundle, así que no puede importarla del servicio. Si la clave cambia, hay que cambiarla en los dos sitios.
+- **El icono muestra el estado actual, no el destino** (sol / luna / monitor). Con dos estados anunciar el destino funcionaba; con tres, el usuario perdería de vista en cuál está. La acción se movió a la etiqueta: `"Tema: sistema. Cambiar a claro"`, usada a la vez como `aria-label` y `title`.
+- **Región `aria-live` fuera del botón.** El `aria-label` cambia al hacer click, pero los lectores de pantalla no reannuncian de forma fiable el nombre de un elemento que ya tiene el foco. El `<span class="visually-hidden" role="status">` lo dice en voz alta, y va fuera del `<button>` para no interferir con el cálculo de su nombre accesible.
+- El componente no tiene `.scss`: reutiliza `.btn .btn-ghost .btn-icon` del design system.
+
+**Hueco conocido**: las metas `theme-color` de `index.html` siguen a `prefers-color-scheme`, no a `data-theme`. Si el usuario fuerza claro con el SO en oscuro, la barra de estado del PWA instalado se queda del color contrario. Arreglarlo exige manipular las metas imperativamente desde el servicio; no se hizo por ahora.
+
+## Escalas
+
+- **Tipografía**: Inter (Google Fonts, cargada en `index.html`), fallback a `system-ui`. `--text-xs/sm/base/lg/h2/h1` = 12/14/16/18/20/24px. Pesos `--weight-regular/medium/semibold/bold`.
+- **Espaciado**: base 4px, `--space-1` … `--space-16`. No usar rem sueltos en valores nuevos.
+- **Radios**: `--radius-sm` 6px, `--radius-md` 8px (controles), `--radius-lg` 12px (cards), `--radius-full`.
+- **Elevación**: `--shadow-sm/md/lg`, con valores distintos por tema — en oscuro la sombra casi no se lee y el borde es lo que separa la superficie del fondo, por eso `.card` lleva borde **y** sombra.
+- **Contenedores**: `--container-max` 1280px (dashboard), `--container-md` 720px (listas), `--container-sm` 420px (formularios de auth).
+
+## Foco
+
+Un solo anillo (`--focus-ring`) aplicado globalmente vía `:focus-visible` en `_base.scss`. No se redefine `outline` por componente y **no se usa `outline: none` sin sustituto**.
+
+## Clase global vs. componente en `shared/ui/`
+
+El criterio de corte, para que `_components.scss` no se convierta en un framework:
+
+- **Clase global** si es solo pintura sobre un elemento que el consumidor ya escribe (`.btn`, `.badge`, `.field`, `.card`).
+- **Componente en `shared/ui/`** si tiene estructura interna, estado o variantes que se expresarían mejor con inputs (`stat-card`, `section-header`, `empty-state` con acción).
+
+Y la regla anti-abstracción-prematura: `shared/ui/` se puebla **al segundo uso**, no al primero. Con un solo caso de uso la API del componente se adivina; con dos se deduce.
+
+## Mapeo dominio → semántica
+
+Los estados de negocio no definen colores propios: apuntan a un token semántico. Ejemplo ya implementado en `task-list.scss` — `PENDING`/`MEDIUM` → `warning`, `IN_PROGRESS` → `primary`, `COMPLETED` → `success`, `HIGH` → `danger`, `LOW` → neutro de `.badge`. Así el tema oscuro sale gratis. Cualquier feature nueva (Finance: ingreso → `success`, gasto → `danger`) sigue el mismo patrón.
+
+## Discrepancia conocida en la referencia
+
+Los dos boards de referencia no coinciden en el color **Tertiary**: el claro usa emerald `#10B981`, el oscuro usa naranja `#D16900`. La spec escrita solo nombra `Success #10B981`. Resolución tomada: **emerald es `--color-success` en ambos temas** (ajustado a `#34D399` en oscuro por contraste), y el naranja del board oscuro se interpretó como el `warning` que la app ya necesitaba y la spec no nombraba — implementado como ámbar (`--color-warning`). Si el naranja era en realidad un tercer color de marca para distinguir dominios (Tareas / Finanzas / Chat), esa decisión está pendiente y añadiría un `--color-tertiary` al nivel 2.
+
+---
+
 # Frontend conventions & standards
 
 Patterns established across the app shell, Auth, and Tasks — treat these as the baseline for any new feature (Finance next, then Chat), not just documentation of what already exists. Consistency across features matters more than a locally "nicer" solution — see [Development philosophy](#development-philosophy).
@@ -127,9 +209,11 @@ Patterns established across the app shell, Auth, and Tasks — treat these as th
 - **Models**: `<name>.model.ts`, PascalCase interface/type.
 - **Plain utility modules** (no DI, just exported functions): kebab-case, no suffix (`token-storage.ts`, `extract-error-message.ts`).
 
-## Folder placement — `core/` vs `features/`
+## Folder placement — `core/`, `layout/`, `shared/ui/`, `features/`
 
-- `core/` is for things needed **outside a single feature**: auth state/guard/token storage, interceptors, HTTP utilities, and models shared by 2+ features (`ApiResponse<T>`, `Page<T>`). If only one feature touches it, it does not belong in `core/`.
+- `core/` is **lógica sin UI**: auth state/guard/token storage, interceptors, HTTP utilities, `ThemeService`, and models shared by 2+ features (`ApiResponse<T>`, `Page<T>`). If only one feature touches it, it does not belong in `core/`. **No van componentes aquí** — esa es la línea que lo separa de `layout/`.
+- `layout/` is **UI del shell**: cromo persistente que sobrevive a la navegación y no pertenece a ningún dominio (`theme-toggle/`, y en su momento `app-header/` y la nav). Puede inyectar servicios de `core/`.
+- `shared/ui/` is for **primitivas tontas reutilizadas por 2+ features** — solo inputs, sin inyección (`stat-card`, `section-header`). Se puebla al segundo uso, nunca al primero; ver [Design system](#design-system) para el criterio de clase global vs. componente. Todavía vacío.
 - `features/<name>/` is self-contained: its own `models/` subfolder for feature-specific DTOs, a service at the feature root, and one subfolder per screen (`task-list/`, `task-form/`). Nothing inside a feature folder should be imported by another feature — if that need shows up, the shared piece moves to `core/`, it doesn't get imported cross-feature.
 
 ## Component pattern

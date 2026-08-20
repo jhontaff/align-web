@@ -1,0 +1,91 @@
+// =============================================================================
+// Align Design System — Base
+// Reset mínimo + defaults tipográficos. Solo elementos HTML, nunca clases.
+// =============================================================================
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-text-body);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, p, figure, blockquote {
+  margin: 0;
+}
+
+h1, h2, h3, h4 {
+  color: var(--color-text);
+  line-height: var(--leading-tight);
+}
+
+h1 { font-size: var(--text-h1); font-weight: var(--weight-bold); }
+h2 { font-size: var(--text-h2); font-weight: var(--weight-semibold); }
+h3 { font-size: var(--text-lg); font-weight: var(--weight-semibold); }
+
+small {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+ul, ol {
+  margin: 0;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+img, svg, video {
+  display: block;
+  max-width: 100%;
+}
+
+input, textarea, select, button {
+  font: inherit;
+  color: inherit;
+}
+
+// Un único anillo de foco para toda la app. Se usa :focus-visible para no
+// castigar al usuario de mouse con un anillo en cada click.
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-soft-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
