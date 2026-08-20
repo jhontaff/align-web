@@ -1,0 +1,86 @@
+@use '../../../styles/layout';
+
+// Dimensiones propias del componente, no espaciado: por eso son literales y no
+// tokens. El tamaño de la burbuja vive aquí arriba porque la posición del panel
+// se deriva de él — si cambia uno sin el otro, el panel se monta encima.
+$fab-size: 56px;
+$panel-width: 360px;
+$panel-height: 480px;
+
+.chat-fab {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  width: $fab-size;
+  height: $fab-size;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  // Blanco literal: va sobre un fondo de marca, no depende del tema.
+  color: #ffffff;
+  font-size: var(--text-h1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+}
+
+.chat-fab:hover {
+  background: var(--color-primary-hover);
+}
+
+.chat-panel {
+  position: fixed;
+  right: var(--space-6);
+  // Justo encima de la burbuja: su hueco inferior, su alto, y un respiro.
+  bottom: calc(var(--space-6) + #{$fab-size} + var(--space-2));
+  // El `min` es lo que lo hace usable en móvil: por debajo de ~400px de ancho
+  // el panel se encoge en vez de desbordar la pantalla.
+  width: min($panel-width, calc(100vw - var(--space-6) * 2));
+  height: min($panel-height, calc(100vh - #{$fab-size} - var(--space-6) * 3));
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 50;
+}
+
+.chat-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-weight: var(--weight-semibold);
+}
+
+// Por debajo de escritorio `bottom-nav` ocupa la franja inferior, justo donde
+// se apoyan la burbuja y el panel. Ambos suben esa altura para no quedar
+// tapados; en escritorio no hace falta porque la navegación es lateral.
+//
+// Esto resuelve la colisión que quedaba anotada como decisión abierta: la
+// burbuja se desplaza, no se convierte en una pestaña más de la barra. Así el
+// chat sigue siendo cromo del shell y `bottom-nav` no acaba conociendo el
+// estado abierto/cerrado del panel.
+@include layout.below-desktop {
+  $lift: calc(var(--space-6) + #{layout.$bottom-nav-height} + env(safe-area-inset-bottom, 0px));
+
+  .chat-fab {
+    bottom: $lift;
+  }
+
+  .chat-panel {
+    bottom: calc(#{$lift} + #{$fab-size} + var(--space-2));
+    // El alto también se recorta: si no, el panel crece hacia arriba hasta
+    // salirse por la parte superior de la pantalla en móviles bajos.
+    height: min(
+      $panel-height,
+      calc(100dvh - #{$fab-size} - #{layout.$bottom-nav-height} - var(--space-6) * 3)
+    );
+  }
+}

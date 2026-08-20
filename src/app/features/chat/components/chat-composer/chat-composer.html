@@ -1,0 +1,28 @@
+<form class="chat-composer" (ngSubmit)="onSubmit()">
+  <!--
+    El botón se oculta entero donde no hay SpeechRecognition (Firefox, Safari
+    parcial): mejor ausente que presente y roto.
+  -->
+  @if (voiceSupported) {
+    <button
+      type="button"
+      class="btn btn-ghost chat-composer__mic"
+      [class.chat-composer__mic--active]="listening()"
+      (click)="toggleListening()"
+      [attr.aria-pressed]="listening()"
+      aria-label="Hablar"
+    >
+      🎤
+    </button>
+  }
+
+  <input
+    type="text"
+    name="draft"
+    [(ngModel)]="draft"
+    placeholder="Escribe o habla un mensaje..."
+    [disabled]="sending()"
+  />
+
+  <button class="btn btn-primary" type="submit" [disabled]="sending()">Enviar</button>
+</form>

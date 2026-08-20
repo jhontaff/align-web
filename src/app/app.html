@@ -1,14 +1,24 @@
-@if (authState.isAuthenticated()) {
-  <header class="app-header">
-    <span class="app-header__brand">Align</span>
-    <nav class="app-header__nav">
-      <a routerLink="/tasks">Tareas</a>
-      <app-theme-toggle />
-      <button class="btn btn-ghost" type="button" (click)="onLogout()">Cerrar sesión</button>
-    </nav>
-  </header>
+<!--
+  Un solo `<router-outlet />`, y está FUERA de los `@if`.
 
-  <app-chat-widget />
-}
+  Es la regla que sostiene toda la capa responsive: el outlet nunca cambia de
+  posición en el árbol de vistas, así que cruzar el breakpoint (rotar,
+  redimensionar, abrir devtools) o iniciar sesión no destruye el componente
+  ruteado. La forma —sidebar al lado vs. barra abajo— la resuelve el grid de
+  `app.scss`, no una condición en TypeScript.
+-->
+<div class="app-shell" [class.app-shell--authed]="authState.isAuthenticated()">
+  @if (authState.isAuthenticated()) {
+    <app-header />
+    <app-sidebar-nav />
+  }
 
-<router-outlet />
+  <main class="app-shell__main">
+    <router-outlet />
+  </main>
+
+  @if (authState.isAuthenticated()) {
+    <app-bottom-nav />
+    <app-chat-panel />
+  }
+</div>

@@ -1,0 +1,14 @@
+<header class="app-header">
+  <a class="app-header__brand" routerLink="/">Align</a>
+
+  <!--
+    Sin `<nav>`: aquí ya no hay enlaces de navegación. Los destinos viven en
+    `sidebar-nav` / `bottom-nav`, alimentados por `NAV_LINKS`. Marcar como
+    `<nav>` un contenedor que solo tiene acciones de sesión le miente al
+    lector de pantalla, que lo ofrece como punto de referencia navegable.
+  -->
+  <div class="app-header__actions">
+    <app-theme-toggle />
+    <button class="btn btn-ghost" type="button" (click)="onLogout()">Cerrar sesión</button>
+  </div>
+</header>

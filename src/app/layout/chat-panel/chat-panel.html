@@ -1,0 +1,30 @@
+<button
+  class="chat-fab"
+  type="button"
+  (click)="toggle()"
+  [attr.aria-expanded]="open()"
+  aria-label="Chat con Align"
+>
+  @if (open()) {
+    <span aria-hidden="true">✕</span>
+  } @else {
+    <span aria-hidden="true">💬</span>
+  }
+</button>
+
+@if (open()) {
+  <div class="chat-panel">
+    <div class="chat-panel__header">
+      <span>Align</span>
+      <button class="btn btn-ghost" type="button" (click)="toggle()">Cerrar</button>
+    </div>
+
+    <app-chat-thread
+      [messages]="messages()"
+      [loadingHistory]="loadingHistory()"
+      [sending]="sending()"
+    />
+
+    <app-chat-composer [sending]="sending()" (send)="onSend($event)" />
+  </div>
+}

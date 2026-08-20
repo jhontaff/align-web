@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ThemePreference, ThemeService } from '../../core/theme/theme.service';
 
 const PREFERENCE_LABEL: Record<ThemePreference, string> = {
@@ -16,12 +16,13 @@ const NEXT_LABEL: Record<ThemePreference, string> = {
 @Component({
   selector: 'app-theme-toggle',
   imports: [],
-  templateUrl: './theme-toggle.html'
+  templateUrl: './theme-toggle.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ThemeToggle {
   private readonly themeService = inject(ThemeService);
 
-  protected readonly preference = this.themeService.preference.asReadonly();
+  protected readonly preference = this.themeService.preference;
 
   // Con dos estados el botón podía anunciar el destino; con tres, el usuario
   // perdería de vista en cuál está. Así que el icono muestra el estado actual

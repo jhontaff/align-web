@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthStateService } from '../../../core/auth/auth-state.service';
@@ -8,7 +8,7 @@ import { extractErrorMessage } from '../../../core/http/extract-error-message';
   selector: 'app-register',
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './register.html',
-  styleUrl: './register.scss'
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Register {
   private readonly fb = inject(FormBuilder);
