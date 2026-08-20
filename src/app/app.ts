@@ -2,10 +2,11 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthStateService } from './core/auth/auth-state.service';
 import { ChatWidget } from './features/chat/chat-widget';
+import { ThemeToggle } from './layout/theme-toggle/theme-toggle';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, ChatWidget],
+  imports: [RouterOutlet, RouterLink, ChatWidget, ThemeToggle],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })

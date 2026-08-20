@@ -1,0 +1,205 @@
+// =============================================================================
+// Align Design System — Tokens
+// -----------------------------------------------------------------------------
+// Dos niveles, y la separación importa:
+//
+//   Nivel 1 (--blue-600, --slate-200…) = la paleta cruda. NO se usa en
+//   componentes. Solo existe para que el nivel 2 tenga de dónde elegir.
+//
+//   Nivel 2 (--color-primary, --color-surface…) = intención semántica.
+//   Es lo ÚNICO que puede aparecer en un .scss de componente.
+//
+// El tema oscuro reasigna solo el nivel 2. Por eso no hay ni una sola regla
+// `@media (prefers-color-scheme)` fuera de este archivo.
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// Nivel 1 — paleta cruda
+// -----------------------------------------------------------------------------
+:root {
+  // Blue — marca
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+  --blue-50:  #eff6ff;
+  --blue-100: #dbeafe;
+
+  // Slate — estructura y texto (tema claro)
+  --slate-50:  #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-700: #334155;
+  --slate-900: #0f172a;
+
+  // Navy — estructura del tema oscuro (derivada de #0C1324 de la referencia)
+  --navy-950: #0c1324;
+  --navy-900: #131c30;
+  --navy-800: #1b2540;
+  --navy-700: #27324d;
+
+  // Emerald — éxito / saldo positivo
+  --emerald-400: #34d399;
+  --emerald-500: #10b981;
+  --emerald-50:  #ecfdf5;
+
+  // Amber — advertencia / pendiente
+  --amber-400: #fbbf24;
+  --amber-500: #f59e0b;
+  --amber-700: #b45309;
+  --amber-50:  #fffbeb;
+
+  // Red — error / gasto / vencido
+  --red-400: #f87171;
+  --red-500: #ef4444;
+  --red-600: #dc2626;
+  --red-50:  #fef2f2;
+}
+
+// -----------------------------------------------------------------------------
+// Nivel 2 — semántica (tema claro por defecto)
+// -----------------------------------------------------------------------------
+:root {
+  color-scheme: light;
+
+  // Superficies
+  --color-bg: var(--slate-50);
+  --color-surface: #ffffff;
+  --color-surface-muted: var(--slate-100);
+  --color-border: var(--slate-200);
+  --color-border-strong: var(--slate-300);
+
+  // Texto
+  --color-text: var(--slate-900);
+  --color-text-body: var(--slate-700);
+  --color-text-muted: var(--slate-500);
+  --color-text-on-accent: #ffffff;
+
+  // Marca
+  --color-primary: var(--blue-600);
+  --color-primary-hover: var(--blue-700);
+  --color-primary-soft: var(--blue-50);
+  --color-primary-soft-text: var(--blue-700);
+
+  // Estado
+  --color-success: var(--emerald-500);
+  --color-success-soft: var(--emerald-50);
+  --color-success-soft-text: #047857;
+
+  --color-warning: var(--amber-500);
+  --color-warning-soft: var(--amber-50);
+  --color-warning-soft-text: var(--amber-700);
+
+  --color-danger: var(--red-600);
+  --color-danger-soft: var(--red-50);
+  --color-danger-soft-text: #991b1b;
+
+  // Foco — un solo token, aplicado por :focus-visible en _base.scss
+  --focus-ring: 0 0 0 3px rgb(37 99 235 / 0.35);
+
+  // Elevación — depende del tema: en oscuro la sombra casi no se ve,
+  // el borde es lo que separa la superficie del fondo.
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-md: 0 1px 3px rgb(15 23 42 / 0.08), 0 1px 2px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 10px 25px -5px rgb(15 23 42 / 0.10), 0 8px 10px -6px rgb(15 23 42 / 0.05);
+}
+
+// -----------------------------------------------------------------------------
+// Nivel 2 — tema oscuro
+// -----------------------------------------------------------------------------
+@mixin dark-tokens {
+  color-scheme: dark;
+
+  --color-bg: var(--navy-950);
+  --color-surface: var(--navy-900);
+  --color-surface-muted: var(--navy-800);
+  --color-border: var(--navy-800);
+  --color-border-strong: var(--navy-700);
+
+  --color-text: var(--slate-100);
+  --color-text-body: var(--slate-200);
+  --color-text-muted: var(--slate-400);
+  --color-text-on-accent: #ffffff;
+
+  --color-primary: var(--blue-500);
+  --color-primary-hover: var(--blue-400);
+  --color-primary-soft: #1c2c4d;
+  --color-primary-soft-text: #bfdbfe;
+
+  --color-success: var(--emerald-400);
+  --color-success-soft: #123a30;
+  --color-success-soft-text: #6ee7b7;
+
+  --color-warning: var(--amber-400);
+  --color-warning-soft: #3a2a10;
+  --color-warning-soft-text: #fcd34d;
+
+  --color-danger: var(--red-400);
+  --color-danger-soft: #3b1a1c;
+  --color-danger-soft-text: #fca5a5;
+
+  --focus-ring: 0 0 0 3px rgb(59 130 246 / 0.45);
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.40);
+  --shadow-md: 0 1px 3px rgb(0 0 0 / 0.50), 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-lg: 0 10px 25px -5px rgb(0 0 0 / 0.60), 0 8px 10px -6px rgb(0 0 0 / 0.45);
+}
+
+// Preferencia del sistema, salvo que el usuario haya forzado claro.
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { @include dark-tokens; }
+}
+
+// Override explícito, para un futuro selector de tema en la app.
+:root[data-theme='dark'] { @include dark-tokens; }
+
+// -----------------------------------------------------------------------------
+// Tokens sin tema — idénticos en claro y oscuro
+// -----------------------------------------------------------------------------
+:root {
+  // Tipografía
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --text-xs: 0.75rem;    // 12px
+  --text-sm: 0.875rem;   // 14px — metadata
+  --text-base: 1rem;     // 16px — body
+  --text-lg: 1.125rem;   // 18px
+  --text-h2: 1.25rem;    // 20px
+  --text-h1: 1.5rem;     // 24px
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  // Espaciado — base 4px
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  // Geometría
+  --radius-sm: 6px;
+  --radius-md: 8px;    // estándar (controles)
+  --radius-lg: 12px;   // cards
+  --radius-full: 999px;
+
+  // Contenedores
+  --container-max: 1280px;   // dashboard, vistas anchas
+  --container-md: 720px;     // listas, lectura
+  --container-sm: 420px;     // formularios de auth
+
+  --transition-fast: 0.15s ease;
+}

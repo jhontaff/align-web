@@ -3,7 +3,7 @@
     <h1>Nueva tarea</h1>
   </div>
 
-  <div class="card card--wide">
+  <div class="card form-card form-card--wide">
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
       @if (errorMessage()) {
         <p class="form-error">{{ errorMessage() }}</p>
