@@ -1,13 +1,32 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>AlignWeb</title>
+  <title>Align</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#4f46e5">
+  <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0c1324" media="(prefers-color-scheme: dark)">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    // Aplica la elección de tema ANTES del primer pintado, para que no haya un
+    // flash del tema contrario al recargar. Con 'system' (o sin nada guardado)
+    // no escribe nada: ahí manda @media (prefers-color-scheme) del CSS.
+    //
+    // La clave 'align_theme' está duplicada a propósito respecto de
+    // core/theme/theme.service.ts — este script tiene que correr antes de que
+    // exista cualquier bundle, así que no puede importarla.
+    (function () {
+      var stored = localStorage.getItem('align_theme');
+      if (stored === 'light' || stored === 'dark') {
+        document.documentElement.dataset.theme = stored;
+      }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

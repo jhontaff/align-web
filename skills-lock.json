@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "angular-developer": {
+      "source": "angular/skills",
+      "sourceType": "github",
+      "skillPath": "angular-developer/SKILL.md",
+      "computedHash": "d80a6375ce2ee27a978131da225c1402c6979e4ad6757a438f0640b553cf1911"
+    },
+    "angular-new-app": {
+      "source": "angular/skills",
+      "sourceType": "github",
+      "skillPath": "angular-new-app/SKILL.md",
+      "computedHash": "d9f712544847ab80ef7ed20043820afd275c394ca05340c2f20a0f051e35d945"
+    },
+    "frontend-design-audit": {
+      "source": "mistyhx/frontend-design-audit",
+      "sourceType": "github",
+      "skillPath": "frontend-design-audit/SKILL.md",
+      "computedHash": "7fa0d02b37a26f50c3ac043b4c392bdfeedb05f397265ac8f4c93d3d16e1303e"
+    },
+    "ui-ux-pro-max": {
+      "source": "nicohodt/claude-code-ui-ux-skill",
+      "sourceType": "github",
+      "skillPath": "ui-ux-pro-max/SKILL.md",
+      "computedHash": "a83f7d17116b8993fc34c672225c68dbb2f6d4c91ede3a345dd3b4258601629d"
+    },
+    "ux-designer": {
+      "source": "szilu/ux-designer-skill",
+      "sourceType": "github",
+      "skillPath": "ux-designer/SKILL.md",
+      "computedHash": "282e173210fee80b4fcaf83e4fc75e2c70190793c7fe9ae78e17e01e041a86f4"
+    }
+  }
+}
