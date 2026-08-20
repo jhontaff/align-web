@@ -1,0 +1,18 @@
+@if (loadingHistory()) {
+  <p class="empty-state">Cargando conversación...</p>
+} @else if (messages().length === 0) {
+  <p class="empty-state">Escríbele algo a Align para empezar.</p>
+}
+
+<!--
+  `track $index` es correcto aquí y no un atajo: ChatTurn no trae id y la lista
+  es append-only — nunca se reordena ni se borra por el medio. El día que se
+  puedan editar o borrar mensajes, esto pasa a ser un bug de reuso de DOM.
+-->
+@for (message of messages(); track $index) {
+  <div class="chat-message chat-message--{{ message.role }}">{{ message.text }}</div>
+}
+
+@if (sending()) {
+  <div class="chat-message chat-message--assistant chat-message--pending">Escribiendo...</div>
+}

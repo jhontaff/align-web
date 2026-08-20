@@ -1,0 +1,61 @@
+@use '../../../styles/layout';
+
+// Oculto por defecto y visible a partir de escritorio: el orden importa para
+// que la primera pintura en móvil no muestre el sidebar antes de aplicar la
+// media query.
+:host {
+  display: none;
+}
+
+@include layout.desktop {
+  :host {
+    display: block;
+    grid-area: sidebar;
+    // Se pega justo debajo del header, que también es sticky. `align-self`
+    // evita que el item de grid se estire a toda la fila y deje al sticky sin
+    // recorrido.
+    align-self: start;
+    position: sticky;
+    top: layout.$header-height;
+    height: calc(100dvh - #{layout.$header-height});
+    width: 220px;
+    padding: var(--space-4) var(--space-3);
+    background: var(--color-surface);
+    border-right: 1px solid var(--color-border);
+    overflow-y: auto;
+  }
+}
+
+.sidebar-nav__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sidebar-nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.sidebar-nav__link:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.sidebar-nav__link.is-active {
+  background: var(--color-primary-soft);
+  // El token emparejado, no `--color-primary`: en oscuro `--color-primary-soft`
+  // es un azul profundo y el primario encima se lee mal. La pareja soft/soft-text
+  // es la que el sistema garantiza contrastada en ambos temas.
+  color: var(--color-primary-soft-text);
+  font-weight: var(--weight-semibold);
+}

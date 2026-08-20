@@ -1,0 +1,31 @@
+<nav class="bottom-nav" aria-label="Navegación principal">
+  <ul class="bottom-nav__list">
+    @for (link of links; track link.path) {
+      <li class="bottom-nav__item">
+        <a
+          class="bottom-nav__link"
+          [routerLink]="link.path"
+          routerLinkActive="is-active"
+          [routerLinkActiveOptions]="{ exact: link.exact }"
+          #active="routerLinkActive"
+          [attr.aria-current]="active.isActive ? 'page' : null"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path [attr.d]="link.icon" />
+          </svg>
+          <span class="bottom-nav__label">{{ link.label }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+</nav>

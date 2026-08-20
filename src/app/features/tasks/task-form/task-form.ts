@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { TaskService } from '../task.service';
@@ -8,7 +8,8 @@ import { extractErrorMessage } from '../../../core/http/extract-error-message';
 @Component({
   selector: 'app-task-form',
   imports: [ReactiveFormsModule, RouterLink],
-  templateUrl: './task-form.html'
+  templateUrl: './task-form.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TaskForm {
   private readonly fb = inject(FormBuilder);

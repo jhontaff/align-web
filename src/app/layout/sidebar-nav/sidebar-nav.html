@@ -1,0 +1,37 @@
+<nav class="sidebar-nav" aria-label="Navegación principal">
+  <ul class="sidebar-nav__list">
+    @for (link of links; track link.path) {
+      <li>
+        <a
+          class="sidebar-nav__link"
+          [routerLink]="link.path"
+          routerLinkActive="is-active"
+          [routerLinkActiveOptions]="{ exact: link.exact }"
+          #active="routerLinkActive"
+          [attr.aria-current]="active.isActive ? 'page' : null"
+        >
+          <!--
+            `routerLinkActive` solo pone una clase, que es pintura. `aria-current`
+            es lo que hace que un lector de pantalla anuncie cuál de los tres
+            enlaces es la página actual, y hay que ponerlo a mano leyendo la
+            directiva por su nombre exportado.
+          -->
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path [attr.d]="link.icon" />
+          </svg>
+          <span>{{ link.label }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+</nav>

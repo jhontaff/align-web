@@ -26,6 +26,17 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    // Marcador de posición: la feature no está construida, pero el nav ya la
+    // ofrece y un enlace sin ruta caería en el comodín de abajo, devolviendo
+    // al usuario a Inicio en silencio.
+    path: 'finance',
+    loadComponent: () => import('./features/finance/overview/overview').then(m => m.Overview),
+    canActivate: [authGuard]
+  },
+  {
+    // Tiene que ser SIEMPRE la última entrada: el router evalúa de arriba
+    // abajo y `**` coincide con todo, así que cualquier ruta puesta después
+    // queda inalcanzable sin que `ng build` diga nada.
     path: '**',
     redirectTo: ''
   }

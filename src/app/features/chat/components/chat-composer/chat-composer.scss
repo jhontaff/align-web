@@ -1,0 +1,36 @@
+.chat-composer {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.chat-composer input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+// Sin `outline: none` sin sustituto: el anillo global de :focus-visible sigue
+// aplicándose, esto solo añade el realce del borde.
+.chat-composer input:focus {
+  border-color: var(--color-primary);
+}
+
+.chat-composer__mic {
+  flex-shrink: 0;
+  width: var(--space-10);
+  height: var(--space-10);
+  padding: var(--space-2);
+  border-radius: var(--radius-full);
+}
+
+.chat-composer__mic--active {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-soft-text);
+  border-color: var(--color-danger);
+}

@@ -1,0 +1,27 @@
+@use '../../../styles/layout';
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  // Alto fijo, no derivado del contenido: `sidebar-nav` se pega justo debajo
+  // con `top: $header-height` y `position: sticky` no puede medir a un hermano.
+  // Si este alto cambia, cambia en `styles/_layout.scss` y ambos se enteran.
+  height: layout.$header-height;
+  padding: 0 var(--space-6);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-header__brand {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-lg);
+  color: var(--color-text);
+}
+
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

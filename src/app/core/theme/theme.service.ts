@@ -29,8 +29,17 @@ export class ThemeService {
   /** Lo que el sistema operativo pide ahora mismo. */
   private readonly systemTheme = signal<Theme>(this.readSystemTheme());
 
-  /** La elección del usuario. */
-  readonly preference = signal<ThemePreference>(readStoredPreference());
+  private readonly _preference = signal<ThemePreference>(readStoredPreference());
+
+  /**
+   * La elección del usuario, solo lectura.
+   *
+   * Escribible únicamente a través de `cycle()` / `setPreference()`, porque
+   * cambiar la preferencia y persistirla en localStorage son la misma
+   * operación: un `.set()` suelto desde fuera dejaría el tema aplicado pero
+   * perdido en la siguiente recarga.
+   */
+  readonly preference = this._preference.asReadonly();
 
   /** El tema realmente aplicado, ya resuelto. */
   readonly theme = computed<Theme>(() => {
@@ -65,7 +74,7 @@ export class ThemeService {
   }
 
   setPreference(preference: ThemePreference): void {
-    this.preference.set(preference);
+    this._preference.set(preference);
     localStorage.setItem(THEME_KEY, preference);
   }
 

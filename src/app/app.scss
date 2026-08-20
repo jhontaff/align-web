@@ -1,31 +1,56 @@
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-6);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+@use '../styles/layout';
+
+// El shell sin sesión (login / registro) no necesita rejilla: esas pantallas
+// usan `.auth-shell` a pantalla completa.
+.app-shell {
+  min-height: 100dvh;
 }
 
-.app-header__brand {
-  font-weight: var(--weight-bold);
-  font-size: var(--text-lg);
-  color: var(--color-text);
+// Con sesión, una rejilla de una columna: header arriba, contenido debajo, y
+// la barra inferior flotando por encima con su hueco reservado.
+.app-shell--authed {
+  display: grid;
+  grid-template-areas:
+    'header'
+    'main';
+  grid-template-rows: auto 1fr;
 }
 
-.app-header__nav {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
+.app-shell__main {
+  grid-area: main;
+  // Sin esto una tabla o un bloque de código ancho estira la columna y rompe
+  // la rejilla en vez de desbordar dentro de su propio contenedor.
+  min-width: 0;
 }
 
-.app-header__nav a {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
+// El header es sticky y no un item fijo para que el scroll de la ventana siga
+// siendo el scroll de la página: `withInMemoryScrolling` restaura la posición
+// del viewport, no la de un contenedor interno. Meter el contenido en un
+// `main { overflow-y: auto }` dejaría esa opción del router sin efecto.
+app-header {
+  grid-area: header;
+  position: sticky;
+  top: 0;
+  z-index: 30;
 }
 
-.app-header__nav a:hover {
-  color: var(--color-text);
+@include layout.below-desktop {
+  .app-shell--authed {
+    // El hueco de `bottom-nav`, que es `position: fixed` y por tanto no ocupa
+    // sitio en el flujo. Sin esto la última tarea de la lista queda debajo de
+    // la barra y es inalcanzable.
+    padding-bottom: calc(#{layout.$bottom-nav-height} + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@include layout.desktop {
+  .app-shell--authed {
+    grid-template-areas:
+      'header header'
+      'sidebar main';
+    // `auto` toma el ancho declarado por el sidebar; `minmax(0, 1fr)` es lo
+    // que impide que el contenido ancho empuje la columna.
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
 }
