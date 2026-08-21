@@ -1,8 +1,14 @@
+<!--
+  La burbuja solo existe en escritorio; en móvil el disparador es la pestaña
+  "Chat IA" de `bottom-nav`. Se oculta con CSS y no con `@if` para que el
+  componente no se reconstruya al cruzar el breakpoint.
+-->
 <button
   class="chat-fab"
   type="button"
   (click)="toggle()"
   [attr.aria-expanded]="open()"
+  [attr.aria-controls]="open() ? 'chat-panel' : null"
   aria-label="Chat con Align"
 >
   @if (open()) {
@@ -13,10 +19,10 @@
 </button>
 
 @if (open()) {
-  <div class="chat-panel">
+  <div class="chat-panel" id="chat-panel">
     <div class="chat-panel__header">
       <span>Align</span>
-      <button class="btn btn-ghost" type="button" (click)="toggle()">Cerrar</button>
+      <button class="btn btn-ghost btn-sm" type="button" (click)="close()">Cerrar</button>
     </div>
 
     <app-chat-thread

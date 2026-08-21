@@ -59,28 +59,41 @@ $panel-height: 480px;
   font-weight: var(--weight-semibold);
 }
 
-// Por debajo de escritorio `bottom-nav` ocupa la franja inferior, justo donde
-// se apoyan la burbuja y el panel. Ambos suben esa altura para no quedar
-// tapados; en escritorio no hace falta porque la navegación es lateral.
-//
-// Esto resuelve la colisión que quedaba anotada como decisión abierta: la
-// burbuja se desplaza, no se convierte en una pestaña más de la barra. Así el
-// chat sigue siendo cromo del shell y `bottom-nav` no acaba conociendo el
-// estado abierto/cerrado del panel.
+// -----------------------------------------------------------------------------
+// Móvil: el chat deja de ser una burbuja y pasa a ser una sección
+// -----------------------------------------------------------------------------
+// Se abre desde la cuarta pestaña de `bottom-nav`, así que la burbuja sobra:
+// dos disparadores para lo mismo, uno de ellos tapando contenido. El panel se
+// extiende a toda la pantalla y se apoya justo encima de la barra, que se
+// queda por encima (z-index 60) para poder salir tocando otra pestaña.
 @include layout.below-desktop {
-  $lift: calc(var(--space-6) + #{layout.$bottom-nav-height} + env(safe-area-inset-bottom, 0px));
-
   .chat-fab {
-    bottom: $lift;
+    display: none;
   }
 
   .chat-panel {
-    bottom: calc(#{$lift} + #{$fab-size} + var(--space-2));
-    // El alto también se recorta: si no, el panel crece hacia arriba hasta
-    // salirse por la parte superior de la pantalla en móviles bajos.
-    height: min(
-      $panel-height,
-      calc(100dvh - #{$fab-size} - #{layout.$bottom-nav-height} - var(--space-6) * 3)
-    );
+    // `inset` con los cuatro lados sustituye al `bottom` + `width` + `height`
+    // calculados de escritorio; hay que neutralizar los tres o el `min()` del
+    // ancho seguiría encogiendo el panel.
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: calc(#{layout.$bottom-nav-height} + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    height: auto;
+    // A pantalla completa el borde y el radio no separan de nada, y la sombra
+    // no tiene sobre qué proyectarse.
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  // El panel se apoya en la barra, así que si la barra encoge y esto no, queda
+  // flotando sobre una franja vacía de 12px. Son el mismo número por
+  // definición: `bottom` del panel == alto de la barra.
+  @include layout.short-viewport {
+    .chat-panel {
+      bottom: calc(#{layout.$bottom-nav-height-compact} + env(safe-area-inset-bottom, 0px));
+    }
   }
 }

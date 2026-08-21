@@ -17,50 +17,205 @@
 .bottom-nav {
   position: fixed;
   inset: auto 0 0 0;
-  z-index: 40;
+  // Por encima del panel de chat (50): con el chat abierto, las pestañas
+  // tienen que seguir siendo pulsables — es como se sale de la conversación.
+  z-index: 60;
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
-  // El inset seguro evita que la barra quede bajo el indicador de gestos de
-  // iOS cuando la PWA corre a pantalla completa.
+  // Los insets seguros. El de abajo evita que la barra quede bajo el indicador
+  // de gestos de iOS cuando la PWA corre a pantalla completa; los laterales
+  // solo valen algo en apaisado, donde el notch invade un borde de la pantalla
+  // y, sin esto, se comería la primera o la última pestaña. En vertical valen
+  // 0 y no estorban.
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 .bottom-nav__list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  // El relleno es lo que despega la píldora del estado activo de los bordes de
+  // la barra; sin él el fondo tocaría el borde superior y dejaría de leerse
+  // como una pastilla. `box-sizing: border-box` es global, así que sigue
+  // sumando exactamente `$bottom-nav-height` de alto.
+  padding: var(--space-1) var(--space-2);
   display: flex;
+  gap: var(--space-1);
   min-height: layout.$bottom-nav-height;
 }
 
 .bottom-nav__item {
   flex: 1 1 0;
-  // Sin esto, un item con etiqueta larga se lleva más ancho que sus hermanos.
+  // Sin esto, "Finanzas" se lleva más ancho que sus hermanos y las cuatro
+  // pestañas dejan de estar repartidas a partes iguales.
   min-width: 0;
+  display: flex;
 }
 
+// La misma clase la llevan tres `<a>` y un `<button>`, así que hay que
+// neutralizar los estilos propios del botón para que las cuatro pestañas sean
+// indistinguibles.
 .bottom-nav__link {
-  height: 100%;
+  flex: 1 1 auto;
+  // La píldora ES el propio enlace, no un `::before` interior: así el área
+  // pulsable y la pintada son la misma cosa y no pueden desalinearse. Con el
+  // relleno de la lista quedan 48px de alto, por encima del objetivo táctil
+  // cómodo y muy por encima del mínimo de WCAG 2.5.8 (24px).
+  min-height: calc(#{layout.$bottom-nav-height} - var(--space-2));
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: var(--space-1) var(--space-1);
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  font: inherit;
   color: var(--color-text-muted);
+  // `_base.scss` subraya todo `<a>` en hover, que es lo correcto para un
+  // enlace dentro de un texto y ruido dentro de una pestaña: aquí el estado
+  // ya lo cuenta la píldora, y el subrayado además desalineaba la etiqueta
+  // respecto a las otras tres.
+  text-decoration: none;
+  cursor: pointer;
+  // Esta barra solo existe por debajo de escritorio, así que casi siempre se
+  // pulsa con el dedo. Las tres declaraciones de abajo son las que hacen que
+  // se sienta como una pestaña nativa y no como un enlace de página:
+  //
+  // - `touch-action: manipulation` quita el retardo de ~300ms que el navegador
+  //   se reserva para detectar un doble toque de zoom. Sin esto la pestaña
+  //   parece ir siempre un poco por detrás del dedo.
+  // - `-webkit-tap-highlight-color` apaga el recuadro gris que iOS y Android
+  //   pintan por su cuenta al tocar, que aparecía además de la píldora y con
+  //   otra forma.
+  // - El `transition` usa `--transition-fast`, el mismo token que `.btn`, para
+  //   que el encendido de la píldora no sea un salto seco. El bloque global de
+  //   `prefers-reduced-motion` de `_base.scss` ya lo neutraliza para quien lo
+  //   pida, así que no hace falta repetirlo aquí.
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+// Respuesta al toque. En táctil no hay hover que anticipe la pulsación, así
+// que sin esto la única señal de que el toque se ha registrado llega cuando ya
+// ha cambiado la pantalla — y en una navegación lenta el usuario vuelve a
+// tocar. El hundido es pequeño a propósito: es acuse de recibo, no animación.
+.bottom-nav__link:active {
+  transform: scale(0.94);
+}
+
+.bottom-nav__icon {
+  flex-shrink: 0;
 }
 
 .bottom-nav__label {
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
-  // Una etiqueta larga trunca en vez de romper la rejilla de tres columnas.
+  // Con cuatro columnas una etiqueta larga trunca en vez de romper el reparto.
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+// El hover va detrás de `hover: hover` y el resto de la hoja no.
+//
+// En un táctil el navegador deja el `:hover` pegado al último elemento tocado
+// hasta que se toca otra cosa: al volver de "Tareas" a "Inicio" la pestaña de
+// Tareas se quedaba con el fondo gris encendido, y con la píldora azul de
+// Inicio al lado parecían dos estados a la vez. La consulta lo limita a los
+// punteros que de verdad pueden apuntar sin pulsar.
+//
+// No se borran las reglas sin más porque esta barra también se ve en una
+// ventana de escritorio estrecha, donde sí hay ratón.
+@media (hover: hover) {
+  .bottom-nav__link:hover {
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+    text-decoration: none;
+  }
+}
+
+// El mismo par de tokens que usa `sidebar-nav` para su enlace activo: las dos
+// navegaciones son la misma idea en dos formas, así que el estado activo no
+// puede pintarse de dos maneras distintas.
+//
+// `--color-primary-soft-text` y no `--color-primary`: en oscuro el fondo soft
+// es un azul profundo y el primario encima se lee mal. La pareja soft/soft-text
+// es la que el sistema garantiza contrastada en ambos temas — por eso aquí no
+// hay ninguna `@media (prefers-color-scheme)`, y no debe haberla.
 .bottom-nav__link.is-active {
-  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-soft-text);
   font-weight: var(--weight-semibold);
+}
+
+// El hover no debe apagar la píldora activa: sin esto, pasar el ratón por la
+// pestaña actual en un portátil táctil la devolvería al gris de las inactivas.
+@media (hover: hover) {
+  .bottom-nav__link.is-active:hover {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-soft-text);
+  }
+}
+
+// Con el panel de chat abierto, la píldora de la ruta se apaga.
+//
+// El panel tapa la pantalla entera en móvil, así que la pestaña que representa
+// lo que el usuario está viendo es la del chat. Con el estilo anterior —solo
+// un cambio de color de texto— dos pestañas encendidas pasaban desapercibidas;
+// una píldora es un indicador de *selección*, y dos seleccionadas a la vez
+// contradicen lo que la píldora promete.
+//
+// El selector apunta a `a.bottom-nav__link`, así que la pestaña del chat (que
+// es un `<button>`, no un enlace) se queda encendida sin necesidad de ninguna
+// excepción. Y es supresión únicamente visual: `aria-current="page"` sigue en
+// la ruta real, porque la página no ha cambiado — lo que hay es un panel
+// encima.
+.bottom-nav.is-chat-open a.bottom-nav__link.is-active {
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: var(--weight-medium);
+}
+
+// ---------------------------------------------------------------------------
+// Apaisado: la misma barra, girada por dentro.
+//
+// Con el móvil tumbado quedan ~350px de alto para toda la app, y una barra de
+// 56px es un 16% de la pantalla gastado en cromo. Lo que sobra en cambio es
+// ancho: 4 pestañas en 700px son 175px cada una, y ahí un icono y su etiqueta
+// caben de sobra en la MISMA fila.
+//
+// Por eso se gira el contenido en vez de esconder las etiquetas, que era la
+// otra salida obvia: una barra de solo iconos obliga a adivinar qué hace cada
+// uno, y "Finanzas" y "Tareas" no tienen iconos universales que se reconozcan
+// sin texto. Aquí no se pierde nada — solo se aprovecha el eje que sobra.
+//
+// Va al final de la hoja porque una media query NO añade especificidad: estas
+// reglas pesan lo mismo que las de arriba y solo ganan por llegar después.
+// ---------------------------------------------------------------------------
+@include layout.short-viewport {
+  .bottom-nav__list {
+    min-height: layout.$bottom-nav-height-compact;
+  }
+
+  .bottom-nav__link {
+    // El cambio que lo hace todo: de columna a fila.
+    flex-direction: row;
+    gap: var(--space-2);
+    min-height: calc(#{layout.$bottom-nav-height-compact} - var(--space-2));
+  }
+
+  .bottom-nav__label {
+    // En fila, la etiqueta ya no compite con el icono por el alto, así que
+    // recupera el tamaño de texto normal de la app en lugar del reducido que
+    // necesitaba debajo del icono.
+    font-size: var(--text-sm);
+  }
 }

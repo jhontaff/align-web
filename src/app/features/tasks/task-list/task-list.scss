@@ -1,3 +1,5 @@
+@use '../../../../styles/layout';
+
 .task-list {
   list-style: none;
   margin: 0;
@@ -16,6 +18,20 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-5);
+
+  // Solo en movil. Ahi las dos badges le robaban el ancho al texto y la
+  // descripcion se quedaba en puntos suspensivos; apilar es la unica salida,
+  // porque la fila no cabe, no es que este mal repartida.
+  //
+  // En escritorio la fila SI cabe, asi que se queda como estaba: texto a la
+  // izquierda y badges a la derecha. Por eso el umbral es el de contenido
+  // (640px) y no el del shell (1024px): una ventana de 900px es escritorio.
+  @include layout.below-tablet {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
 }
 
 .task-item__main {
@@ -36,12 +52,29 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  // Con la tarjeta apilada ya sobra ancho: se permite envolver y se acota a dos
+  // lineas para que las tarjetas de la lista sigan midiendo mas o menos igual.
+  @include layout.below-tablet {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 .task-item__meta {
   display: flex;
   gap: var(--space-2);
   flex-shrink: 0;
+
+  // Debajo del texto, alineadas a la izquierda con el resto de la tarjeta.
+  // `wrap` cubre el caso de una etiqueta larga en un movil pequeno.
+  @include layout.below-tablet {
+    flex-wrap: wrap;
+  }
 }
 
 .task-item__due {

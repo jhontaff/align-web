@@ -18,7 +18,17 @@
   </main>
 
   @if (authState.isAuthenticated()) {
-    <app-bottom-nav />
-    <app-chat-panel />
+    <!--
+      `[(open)]` y no un signal interno del panel: en móvil el chat se abre
+      desde la cuarta pestaña de la barra, que es un hermano. El estado lo
+      posee este shell, que es el padre común de los dos.
+    -->
+    <app-chat-panel [(open)]="chatOpen" />
+
+    <app-bottom-nav
+      [chatOpen]="chatOpen()"
+      (chatToggle)="toggleChat()"
+      (chatClose)="closeChat()"
+    />
   }
 </div>

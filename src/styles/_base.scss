@@ -89,3 +89,13 @@ input, textarea, select, button {
     scroll-behavior: auto !important;
   }
 }
+
+// Bloqueo de scroll mientras hay un modal abierto.
+//
+// `showModal()` deja inerte el fondo pero no impide que la página siga
+// desplazándose detrás del panel, que es lo que hace que un drawer se sienta
+// roto en móvil. Se resuelve con `:has()` y sin una línea de JavaScript, así
+// que no hace falta que ningún componente recuerde poner y quitar una clase.
+body:has(dialog[open]) {
+  overflow: hidden;
+}

@@ -168,7 +168,8 @@ Detalles que no son obvios al leer el código:
 - **Script inline en `index.html`** para evitar el flash de tema contrario al recargar. Corre antes del primer pintado y solo escribe el atributo si lo guardado es `light` o `dark`. Duplica la constante `'align_theme'` a propósito: tiene que ejecutarse antes de que exista ningún bundle, así que no puede importarla del servicio. Si la clave cambia, hay que cambiarla en los dos sitios.
 - **El icono muestra el estado actual, no el destino** (sol / luna / monitor). Con dos estados anunciar el destino funcionaba; con tres, el usuario perdería de vista en cuál está. La acción se movió a la etiqueta: `"Tema: sistema. Cambiar a claro"`, usada a la vez como `aria-label` y `title`.
 - **Región `aria-live` fuera del botón.** El `aria-label` cambia al hacer click, pero los lectores de pantalla no reannuncian de forma fiable el nombre de un elemento que ya tiene el foco. El `<span class="visually-hidden" role="status">` lo dice en voz alta, y va fuera del `<button>` para no interferir con el cálculo de su nombre accesible.
-- El componente no tiene `.scss`: reutiliza `.btn .btn-ghost .btn-icon` del design system.
+- **`ThemeToggle` tiene dos presentaciones**, elegidas con `variant = input<'icon' | 'menu'>('icon')`: suelto en el header de escritorio y como fila del desplegable de móvil. Es la variante ganada al segundo uso, no una API adivinada. Ninguna de las dos define pintura propia: `icon` reutiliza `.btn .btn-ghost .btn-icon` y `menu` reutiliza `.menu-item`; su `.scss` solo lleva `:host { display: contents }` para no romper el layout del contenedor.
+- **En la variante `menu` NO se pone `aria-label`.** Con el texto ya en pantalla, un `aria-label` lo sustituiría por otro distinto y el nombre accesible dejaría de contener la etiqueta visible — que es lo que rompe "label in name" (WCAG 2.5.3) y deja tirado a quien navega por control de voz diciendo lo que lee. El nombre se compone del texto visible más un `<span class="visually-hidden">` con la acción.
 
 **Hueco conocido**: las metas `theme-color` de `index.html` siguen a `prefers-color-scheme`, no a `data-theme`. Si el usuario fuerza claro con el SO en oscuro, la barra de estado del PWA instalado se queda del color contrario. Arreglarlo exige manipular las metas imperativamente desde el servicio; no se hizo por ahora.
 
@@ -177,6 +178,7 @@ Detalles que no son obvios al leer el código:
 - **Tipografía**: Inter (Google Fonts, cargada en `index.html`), fallback a `system-ui`. `--text-xs/sm/base/lg/h2/h1` = 12/14/16/18/20/24px. Pesos `--weight-regular/medium/semibold/bold`.
 - **Espaciado**: base 4px, `--space-1` … `--space-16`. No usar rem sueltos en valores nuevos.
 - **Radios**: `--radius-sm` 6px, `--radius-md` 8px (controles), `--radius-lg` 12px (cards), `--radius-full`.
+- **Velo de modales**: `--color-scrim`, usado por `::backdrop`. Es un token y no un negro translúcido literal porque el valor del tema claro no sirve en oscuro: sobre un fondo ya oscuro apenas separa el panel del resto y hay que subir la opacidad.
 - **Elevación**: `--shadow-sm/md/lg`, con valores distintos por tema — en oscuro la sombra casi no se lee y el borde es lo que separa la superficie del fondo, por eso `.card` lleva borde **y** sombra.
 - **Contenedores**: `--container-max` 1280px (dashboard), `--container-md` 720px (listas), `--container-sm` 420px (formularios de auth).
 
@@ -188,7 +190,9 @@ Un solo anillo (`--focus-ring`) aplicado globalmente vía `:focus-visible` en `_
 
 El criterio de corte, para que `_components.scss` no se convierta en un framework:
 
-- **Clase global** si es solo pintura sobre un elemento que el consumidor ya escribe (`.btn`, `.badge`, `.field`, `.card`).
+- **Clase global** si es solo pintura sobre un elemento que el consumidor ya escribe (`.btn`, `.badge`, `.field`, `.card`, `.menu-item`).
+
+`.menu-item` / `.menu-divider` (2026-08-20) son el caso de libro y además ilustran la segunda razón para subir algo a global: la usan dos componentes con **encapsulación distinta** (`session-menu` y la variante `menu` de `theme-toggle`), y la alternativa era perforar la encapsulación con `::ng-deep` —deprecado— para compartir cuatro declaraciones.
 - **Componente en `shared/ui/`** si tiene estructura interna, estado o variantes que se expresarían mejor con inputs (`stat-card`, `section-header`, `empty-state` con acción).
 
 Y la regla anti-abstracción-prematura: `shared/ui/` se puebla **al segundo uso**, no al primero. Con un solo caso de uso la API del componente se adivina; con dos se deduce.
@@ -249,16 +253,17 @@ src/app/
 │   ├── models/                  api-response, page, auth-response, user-response         [hoy]
 │   ├── theme/                   theme.service.ts                                         [hoy]
 │   ├── data/                    data-refresh.service.ts  ← revalidar tras el agente      [hoy]
-│   ├── layout/                  breakpoint.service.ts  ← matchMedia, NO CDK              [luego]
+│   ├── layout/                  breakpoint.service.ts  ← matchMedia, NO CDK              [hoy]
 │   └── notifications/           notification.service.ts  ← solo con UI de toast real     [luego]
 │
 ├── layout/                      cromo del shell, persiste entre navegaciones
 │   ├── theme-toggle/            [hoy]
-│   ├── app-header/              marca + acciones; su nav se adapta por CSS               [hoy]
-│   ├── chat-panel/              burbuja flotante + posición fija (montaje del chat)      [hoy]
+│   ├── app-header/              marca + acciones de sesión; sin enlaces                  [hoy]
+│   ├── chat-panel/              burbuja en desktop, sección a pantalla completa          [hoy]
 │   ├── nav-links.ts             NAV_LINKS: los destinos, declarados UNA vez              [hoy]
-│   ├── sidebar-nav/             visible ≥ desktop, misma lista de enlaces                [hoy]
-│   └── bottom-nav/              visible < desktop, misma lista de enlaces                [hoy]
+│   ├── sidebar-nav/             visible ≥ desktop, lista vertical (3 rutas)              [hoy]
+│   ├── bottom-nav/              visible < desktop, 4 pestañas (incl. chat)               [hoy]
+│   └── session-menu/            cajón deslizante móvil/tablet: tema + salir      [hoy]
 │
 ├── shared/                      se puebla al SEGUNDO uso, nunca al primero
 │   ├── ui/                      stat-card/, section-header/, progress-bar/               [luego]
@@ -299,11 +304,19 @@ La regla, entonces:
 - **`layout/nav-links.ts`** exporta `NAV_LINKS` (Inicio `/`, Tareas `/tasks`, Finanzas `/finance`). Es la única declaración de los destinos; `sidebar-nav` y `bottom-nav` la consumen. El icono viaja dentro del `NavLink` como el `d` de un `<path>` 24×24: un `id` de icono más un `@switch` por componente reintroduciría en dos sitios justo la duplicación que la constante viene a eliminar.
 - **`exact: boolean` por enlace.** `routerLinkActive` marca activo cualquier prefijo y `/` es prefijo de todo, así que sin match exacto "Inicio" se queda encendido también en `/tasks`. Es el bug por defecto de esta directiva, no un detalle.
 - **`aria-current="page"` se pone a mano** leyendo la directiva por su nombre exportado (`#active="routerLinkActive"`). `routerLinkActive` solo aporta una clase, que es pintura; sin `aria-current` un lector de pantalla no sabe cuál de los tres es la página actual.
-- **`styles/_layout.scss`** declara `$breakpoint-desktop: 1024px`, `$bottom-nav-height: 56px` y `$header-height: 60px` más los mixins `desktop` / `below-desktop`. No emite CSS (solo variables y mixins), así que **no se añade a `styles.scss`**: se consume con `@use` desde las cuatro hojas que necesitan esos números (`app.scss`, las dos navs y `chat-panel.scss`). Duplicar el número es cómo la burbuja del chat acaba medio tapada por la barra tras tocar un solo archivo.
+- **`styles/_layout.scss`** declara `$breakpoint-desktop: 1024px`, `$bottom-nav-height: 56px` y `$header-height: 60px` más los mixins `desktop` / `below-desktop`. No emite CSS (solo variables y mixins), así que **no se añade a `styles.scss`**: se consume con `@use` desde las cinco hojas que necesitan esos números (`app.scss`, `app-header.scss`, las dos navs y `chat-panel.scss`). Duplicar el número es cómo la burbuja del chat acaba medio tapada por la barra tras tocar un solo archivo.
 - **`$header-height` es un número fijo a propósito**: el sidebar se pega con `position: sticky; top: $header-height` y sticky no puede medir a un hermano. Si cambia el alto del header, cambia en `_layout.scss` y ambos se enteran.
 - **El scroll sigue siendo el de la ventana.** El header es `sticky`, no un `main { overflow-y: auto }`: `withInMemoryScrolling({ scrollPositionRestoration: 'enabled' })` restaura la posición del *viewport*, no la de un contenedor interno, así que mover el scroll a `main` dejaría esa opción del router silenciosamente sin efecto.
 - **`bottom-nav` es `position: fixed`, no `sticky`.** Un sticky en la última fila del grid no tiene recorrido dentro de su propia área y se comporta como estático. Al ser fixed no ocupa sitio en el flujo, así que el shell le reserva el hueco con `padding-bottom` — sin eso el último ítem de una lista queda debajo de la barra e inalcanzable.
-- **No se construyó `BreakpointService`.** No hizo falta: toda la conmutación es CSS, y `display: none` ya saca del árbol de accesibilidad la nav que no toca, así que no hay ningún `aria-*` que alternar. Entra el día que haya algo que CSS no pueda hacer.
+- **Orden de `z-index` del cromo, de menor a mayor**: header 30, `session-menu` 40 (dentro del header), `chat-panel` 50, `bottom-nav` 60. La barra va por encima del chat a propósito: con el panel abierto a pantalla completa, las pestañas son la forma de salir de la conversación.
+- **El chat es la cuarta pestaña en móvil, y sigue siendo el MISMO componente.** Por debajo del breakpoint la burbuja es `display: none` y `.chat-panel` pasa a `inset` completo apoyado sobre la barra; en escritorio, burbuja y panel anclado. Ocultar la burbuja con CSS y no con `@if` es lo que permite cruzar el breakpoint sin reconstruir el panel ni perder la conversación en pantalla.
+- **El chat NO entra en `NAV_LINKS`.** Esa constante son rutas, y la consume también `sidebar-nav`. El chat no navega: alterna un panel. Meterlo dentro obligaría a convertir `NavLink` en una unión discriminada y a que el sidebar filtrase la variante que no sabe pintar, todo por un elemento que solo existe en un sitio. Se declara en la plantilla de `bottom-nav`, que es ese sitio.
+- **La pestaña de chat es un `<button>` con `aria-expanded` + `aria-controls`, no un `<a>` con `aria-current`.** No es una página; es un disparador de algo desplegable, y esos son los atributos que lo describen.
+- **`open` del panel es un `model()` cuyo dueño es `App`.** Hay dos disparadores en dos ramas del árbol (la burbuja del propio panel y la pestaña de la barra), y `App` es el padre común de ambos. Un servicio global para coordinar a dos hermanos que ya tienen padre sería un singleton inventado; duplicar el signal en los dos daría dos verdades para la misma pregunta.
+- **Navegar cierra el chat, y no hace falta consultar el breakpoint para saberlo.** Los enlaces de `bottom-nav` emiten `chatClose` porque en escritorio esa barra es `display: none` y sus enlaces no se pueden pulsar: el clic es móvil por construcción. Sin esto, en móvil el usuario cambia de sección detrás de un panel que la tapa entera y no ve cambiar nada.
+- **Una media query no añade especificidad; decide el orden de aparición.** `.x { display: flex }` y `@media (...) { .x { display: none } }` pesan lo mismo (0,1,0), así que el override tiene que ir **después** en el archivo. Esto no es teoría: `app-header.scss` tuvo el bloque `below-desktop` arriba y el `display: flex` de más abajo lo pisaba, dejando tema y cerrar sesión visibles en móvil al lado del botón del cajón que ya los contiene. Convención del repo: **los bloques de media query van al final de la hoja**, nunca junto a la regla que modifican. Se comprueba mirando el CSS emitido, no el fuente — el orden es lo único que importa y `ng build` no avisa.
+- **`BreakpointService` se construyó el 2026-08-20**, y no para elegir el layout —eso sigue siendo CSS— sino para el primer caso que CSS de verdad no podía: **cerrar el `<dialog>` de `session-menu` al cruzar a escritorio**. Ocultarlo con `display: none` lo dejaría abierto con el foco atrapado y `body:has(dialog[open])` bloqueando el scroll: la app parecería congelada. Y no es teórico — un iPad en vertical (768px) que rota a horizontal (1024px) cruza el umbral con el cajón abierto.
+- **`DESKTOP_BREAKPOINT_PX = 1024` está duplicado a mano** con `$breakpoint-desktop` de `_layout.scss`. No hay forma de compartir un número entre SCSS y TS sin build tooling extra; si cambia uno, cambia el otro. Mismo trato que la clave `align_theme` entre `index.html` y `ThemeService`.
 
 Precisión que evita el siguiente intento: **ningún mecanismo de plantilla preserva la instancia al mover un componente de rama.** Ni `@if`, ni `@switch`, ni `ngTemplateOutlet`, ni `@defer` — todos destruyen y reconstruyen. Angular solo mantiene viva una instancia si su posición en el árbol de vistas no cambia. Por eso la única solución es que el outlet no se mueva nunca y sea CSS quien reordene: `grid-template-areas` distinto por media query mueve la nav de abajo al lateral sin tocar el árbol de componentes.
 
@@ -351,7 +364,31 @@ No son malas ideas; no hay endpoint que las sostenga. Si vuelven a aparecer, est
 
 Ninguna pendiente ahora mismo.
 
-**Cerrada 2026-08-20 — colisión entre la burbuja del chat y `bottom-nav`**: por debajo del breakpoint **la burbuja y el panel suben la altura de la barra** (`@include layout.below-desktop` en `chat-panel.scss`), no se convierten en una pestaña de la nav. Se eligió así porque es puro CSS: no toca el árbol de componentes, no obliga a `bottom-nav` a conocer el estado abierto/cerrado del panel, y el chat sigue siendo cromo del shell independiente de la navegación. El `assistant-widget` de Home sigue siendo un montaje adicional, no un sustituto.
+**Cerrada 2026-08-20 — colisión entre la burbuja del chat y `bottom-nav`**: en móvil **no hay burbuja**. El chat es la cuarta pestaña de la barra y el panel ocupa la pantalla apoyado sobre ella; la burbuja queda solo para escritorio. Se descartó por el camino la opción de subir la burbuja por encima de la barra: eran dos disparadores para lo mismo, uno de ellos tapando contenido.
+
+El precio es que `bottom-nav` sí conoce el estado abierto/cerrado del panel — pero lo recibe como `input`/`output` desde `App`, no lo posee ni importa nada del chat, así que la barra sigue sin depender de `features/chat/`. El `assistant-widget` de Home sigue siendo un montaje adicional, no un sustituto.
+
+**Revisado 2026-08-20 (dos veces) — el menú móvil vuelve, y acaba siendo un cajón deslizante.** Primero como popover, y finalmente como `<dialog>` a pantalla completa entrando desde el borde derecho, en móvil **y tablet**. Esto contradice de frente el rechazo original, así que conviene ser explícito sobre qué cambió y qué no.
+
+**Lo que sigue rechazado**: meter los destinos dentro del cajón. Esa era la mitad más grave de la objeción —navegación duplicada respecto a la barra inferior, dos sitios que mantener y que pueden divergir— y sigue en pie. `session-menu` contiene tema y cerrar sesión, cero enlaces; los cuatro destinos están en `bottom-nav`, a la vista y a un toque.
+
+**Lo que cambió**: el precio. La objeción no era estética, era el coste — *"un overlay modal entero, con trampa de foco y bloqueo de scroll, para esconder dos botones"*. Ese coste ya no se paga, porque nada de eso se escribe a mano:
+
+| Lo que costaba | De dónde sale ahora |
+| --- | --- |
+| Trampa de foco | `<dialog>` + `showModal()` |
+| Cierre con Escape | `<dialog>`, nativo |
+| Fondo inerte y top layer | `<dialog>`, nativo |
+| Devolver el foco al cerrar | `<dialog>`, nativo |
+| Bloqueo de scroll | `body:has(dialog[open])` en `_base.scss`, cero JS |
+| Velo | `::backdrop` + `--color-scrim` |
+
+Lo que queda en `session-menu.ts` son cuatro métodos y un `effect`. Detalles que no son obvios leyendo el código:
+
+- **El `<dialog>` va sin `padding`.** "Cerrar al tocar fuera" es comparar `event.target === dialogEl`, porque un clic en el `::backdrop` llega con el diálogo como target. Con relleno, el borde del panel también reportaría el diálogo y cerraría al pulsarlo.
+- **`role="dialog"` y `aria-modal` NO se escriben**: son implícitos en `<dialog>` abierto con `showModal()`. `aria-labelledby` sí, o el cajón se anuncia sin nombre.
+- **La animación necesita `transition-behavior: allow-discrete` sobre `display` y `overlay`, más `@starting-style`.** Sin `allow-discrete` el navegador saca el elemento del top layer en el mismo fotograma del cierre y la salida no se ve; sin `@starting-style` no hay estado desde el que animar la entrada y solo se anima al cerrar. Verificado que los tres sobreviven al optimizador de `ng build`.
+- **`prefers-reduced-motion` quita solo el recorrido**, no la modalidad: un panel que barre la pantalla de lado es justo el movimiento que provoca malestar vestibular.
 
 ## Component pattern
 
@@ -470,8 +507,8 @@ Auth foundation is built and confirmed working end-to-end against the live backe
 - Register screen (`features/auth/register/`) — reactive form (email, password w/ `minLength(8)`, firstName, lastName), calls `authState.register()`. Registering logs the user in immediately (same `AuthResponse` handling as login) and navigates to `/`, since the backend returns a full `AuthResponse` from `/auth/register` — there's no separate "now go log in" step.
 - Task feature area (`features/tasks/`) — list (`GET /api/tasks`) and create (`POST /api/tasks`) confirmed working end-to-end against the live backend (2026-08-18). `TaskService` is a stateless HTTP client (see [Frontend conventions](#frontend-conventions--standards)); `TaskList` (`/tasks`) and `TaskForm` (`/tasks/new`) are separate guarded routes. This is the reference implementation for the feature-area pattern — edit/delete and the Finance area should follow its shape. Edit/delete deliberately deferred to the next iteration, not an oversight. `TaskList` also renders `dueDate`/`dueTime` per task when present, formatted as a single string (e.g. "25 ago · 14:30") via a component-local `dueLabel()` helper (2026-08-20).
 - Visual design system (`src/styles.scss`) — neutral/clean palette (tokens + `.card`/`.field`/`.btn`/`.badge`/`.page` primitives, see [Visual design system](#visual-design-system)) applied across the app shell, login, register, and Tasks. `public/manifest.webmanifest` and `index.html`'s `theme-color` meta updated to match (2026-08-20).
-- App header (`layout/app-header/`) — marca, `ThemeToggle` y botón de cerrar sesión. Ya **no** contiene enlaces de navegación (se fueron a `nav-links.ts` + las dos navs), así que su contenedor de acciones dejó de ser un `<nav>`: marcarlo así le mentiría al lector de pantalla, que lo ofrece como punto de referencia navegable. Alto fijo `$header-height`, sticky arriba.
-- Navegación principal (2026-08-20) — `layout/nav-links.ts` + `layout/sidebar-nav/` (≥1024px) + `layout/bottom-nav/` (<1024px), ambos montados siempre y conmutados por CSS. El grid de `app.scss` reordena el shell sin tocar el árbol de componentes, así que el único `<router-outlet />` nunca se mueve de rama. Ver [Estado construido](#estado-construido-2026-08-20).
+- App header (`layout/app-header/`) — marca y acciones de sesión en dos formas, ambas siempre en el DOM y conmutadas por CSS: en línea (`ThemeToggle` + cerrar sesión) en escritorio, y plegadas en el cajón deslizante `layout/session-menu/` en móvil y tablet. Ya **no** contiene enlaces de navegación (se fueron a `nav-links.ts` + las dos navs), así que su contenedor de acciones dejó de ser un `<nav>`: marcarlo así le mentiría al lector de pantalla, que lo ofrece como punto de referencia navegable. Alto fijo `$header-height`; quien se pega arriba es el envoltorio `.app-shell__top`, no el header por su cuenta.
+- Navegación principal (2026-08-20) — `layout/nav-links.ts` + `layout/sidebar-nav/` (≥1024px, 3 rutas) + `layout/bottom-nav/` (<1024px, 4 pestañas: las 3 rutas más el chat), ambos montados siempre y conmutados por CSS. Hubo una variante intermedia con la nav en una fila superior (`top-nav`) que se descartó el mismo día: la barra inferior gana en alcance del pulgar y es la que aloja la pestaña del chat. El grid de `app.scss` reordena el shell sin tocar el árbol de componentes, así que el único `<router-outlet />` nunca se mueve de rama. Ver [Estado construido](#estado-construido-2026-08-20).
 - Finanzas (`features/finance/overview/`) — **solo un marcador de posición**: título y un `.empty-state` diciendo que no está construido. Existe para que el enlace "Finanzas" del nav sea una ruta real; sin él caería en el comodín `**` y devolvería al usuario a Inicio sin explicación. No hay `transaction.service.ts` ni modelos todavía.
 - Chat feature — partido en dominio y montaje (2026-08-20), ver [Chat](#chat-dominio-en-features-montaje-en-layout):
   - `features/chat/chat.service.ts` — cliente HTTP stateless: `send()` (`POST /api/agent/chat`) y `history()` (`GET /api/agent/history`).

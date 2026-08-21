@@ -1,0 +1,8 @@
+// La variante `icon` no necesita nada: reutiliza `.btn .btn-ghost .btn-icon`.
+// La variante `menu` reutiliza `.menu-item`, también global. Lo único propio
+// es que el host no debe romper el layout de su contenedor: en el header es un
+// botón más de una fila flex, y dentro del desplegable tiene que ocupar el
+// ancho completo como cualquier otra fila.
+:host {
+  display: contents;
+}

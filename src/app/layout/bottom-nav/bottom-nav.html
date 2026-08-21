@@ -1,4 +1,14 @@
-<nav class="bottom-nav" aria-label="Navegación principal">
+<!--
+  `is-chat-open` es SOLO para pintura: con el panel abierto la píldora de la
+  ruta se apaga para que no haya dos pestañas encendidas a la vez. El
+  `aria-current="page"` de más abajo NO se toca — la página sigue siendo la
+  misma, lo que hay encima es un panel.
+-->
+<nav
+  class="bottom-nav"
+  [class.is-chat-open]="chatOpen()"
+  aria-label="Navegación principal"
+>
   <ul class="bottom-nav__list">
     @for (link of links; track link.path) {
       <li class="bottom-nav__item">
@@ -9,8 +19,16 @@
           [routerLinkActiveOptions]="{ exact: link.exact }"
           #active="routerLinkActive"
           [attr.aria-current]="active.isActive ? 'page' : null"
+          (click)="chatClose.emit()"
         >
+          <!--
+            `routerLinkActive` solo pone una clase, que es pintura. `aria-current`
+            es lo que hace que un lector de pantalla anuncie cuál es la página
+            actual, y hay que ponerlo a mano leyendo la directiva por su nombre
+            exportado.
+          -->
           <svg
+            class="bottom-nav__icon"
             viewBox="0 0 24 24"
             width="22"
             height="22"
@@ -27,5 +45,38 @@
         </a>
       </li>
     }
+
+    <li class="bottom-nav__item">
+      <!--
+        Un `<button>`, no un `<a>`: no lleva a ninguna parte, abre y cierra un
+        panel de esta misma pantalla. Por eso tampoco lleva `aria-current`
+        —no es una página— sino `aria-expanded` + `aria-controls`, que es lo
+        que describe un disparador de algo desplegable.
+      -->
+      <button
+        class="bottom-nav__link"
+        type="button"
+        [class.is-active]="chatOpen()"
+        [attr.aria-expanded]="chatOpen()"
+        [attr.aria-controls]="chatOpen() ? 'chat-panel' : null"
+        (click)="chatToggle.emit()"
+      >
+        <svg
+          class="bottom-nav__icon"
+          viewBox="0 0 24 24"
+          width="22"
+          height="22"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 3.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6z M12 5.8v1.7 M6.5 7.5h11a2 2 0 0 1 2 2v6.2a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2V9.5a2 2 0 0 1 2-2z M2.5 11.5v2.5 M21.5 11.5v2.5 M9.3 12v1.6 M14.7 12v1.6" />
+        </svg>
+        <span class="bottom-nav__label">Chat IA</span>
+      </button>
+    </li>
   </ul>
 </nav>
