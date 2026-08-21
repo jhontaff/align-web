@@ -1,0 +1,117 @@
+@use '../../../styles/layout';
+
+:host {
+  display: inline-flex;
+}
+
+// Solo existe en móvil y tablet: en escritorio el header muestra tema y cerrar
+// sesión en línea, que caben de sobra.
+@include layout.desktop {
+  :host {
+    display: none;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// El cajón
+// -----------------------------------------------------------------------------
+// Pegado al borde derecho y a toda la altura. Sin `padding` a propósito: el
+// relleno del `<dialog>` también reportaría el diálogo como `target` del clic
+// y cerraría el cajón al pulsar el borde del panel (ver `onBackdropClick`).
+.session-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(320px, 85vw);
+  max-width: 85vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+
+  display: flex;
+  flex-direction: column;
+
+  // Entra desde el borde derecho desplazándose hacia la izquierda.
+  //
+  // `allow-discrete` sobre `display` y `overlay` es lo que hace animable un
+  // elemento del top layer: sin ellos el navegador quita el cajón del top
+  // layer en el mismo fotograma en que se cierra y la salida no se ve.
+  translate: 100% 0;
+  transition:
+    translate 220ms ease,
+    display 220ms allow-discrete,
+    overlay 220ms allow-discrete;
+}
+
+.session-drawer[open] {
+  translate: 0 0;
+}
+
+// El estado desde el que arranca la animación de entrada. Sin esto el cajón
+// aparece ya colocado y solo se anima al cerrarse.
+@starting-style {
+  .session-drawer[open] {
+    translate: 100% 0;
+  }
+}
+
+.session-drawer::backdrop {
+  background: transparent;
+  transition:
+    background 220ms ease,
+    display 220ms allow-discrete,
+    overlay 220ms allow-discrete;
+}
+
+.session-drawer[open]::backdrop {
+  background: var(--color-scrim);
+}
+
+@starting-style {
+  .session-drawer[open]::backdrop {
+    background: transparent;
+  }
+}
+
+// Un cajón que se desliza es movimiento amplio y lateral, justo lo que dispara
+// malestar a quien tiene sensibilidad vestibular. Sigue apareciendo y sigue
+// siendo modal; lo que se quita es el recorrido.
+@media (prefers-reduced-motion: reduce) {
+  .session-drawer,
+  .session-drawer::backdrop {
+    transition: none;
+  }
+}
+
+.session-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  // Mismo alto que el header de la app: al abrirse, el botón de cerrar cae
+  // justo donde estaba el disparador.
+  height: layout.$header-height;
+  padding: 0 var(--space-3) 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.session-drawer__title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+
+.session-drawer__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-2);
+  // El inset seguro evita que la última fila quede bajo el indicador de gestos
+  // de iOS con la PWA a pantalla completa.
+  padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+}

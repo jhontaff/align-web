@@ -10,6 +10,7 @@
 // -----------------------------------------------------------------------------
 // Layout
 // -----------------------------------------------------------------------------
+
 .container {
   width: 100%;
   max-width: var(--container-max);
@@ -337,4 +338,47 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+}
+
+// -----------------------------------------------------------------------------
+// Filas de menú desplegable
+// -----------------------------------------------------------------------------
+// Global y no un componente de `shared/ui/` por el criterio de siempre: es
+// pintura sobre un `<button>` que el consumidor ya escribe, sin estructura
+// interna ni variantes. Es global —y no un `.scss` de `session-menu`— porque
+// la usan dos componentes con encapsulación distinta (`session-menu` y la
+// variante `menu` de `theme-toggle`), y perforar la encapsulación con
+// `::ng-deep` para compartir cuatro declaraciones es exactamente lo que una
+// clase global evita.
+.menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-body);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.menu-item__icon {
+  flex-shrink: 0;
+}
+
+.menu-divider {
+  height: 1px;
+  margin: var(--space-2) 0;
+  border: 0;
+  background: var(--color-border);
 }

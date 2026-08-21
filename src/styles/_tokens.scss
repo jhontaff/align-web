@@ -97,6 +97,11 @@
   --color-danger-soft: var(--red-50);
   --color-danger-soft-text: #991b1b;
 
+  // Velo de los overlays modales (::backdrop). Es un token porque el negro
+  // translúcido de un tema claro no sirve en oscuro: sobre un fondo ya oscuro
+  // apenas separa el panel del resto, y hay que subir la opacidad.
+  --color-scrim: rgb(15 23 42 / 0.45);
+
   // Foco — un solo token, aplicado por :focus-visible en _base.scss
   --focus-ring: 0 0 0 3px rgb(37 99 235 / 0.35);
 
@@ -140,6 +145,8 @@
   --color-danger: var(--red-400);
   --color-danger-soft: #3b1a1c;
   --color-danger-soft-text: #fca5a5;
+
+  --color-scrim: rgb(2 6 23 / 0.65);
 
   --focus-ring: 0 0 0 3px rgb(59 130 246 / 0.45);
 

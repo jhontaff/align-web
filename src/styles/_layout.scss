@@ -4,25 +4,71 @@
 // `@use` desde las hojas que lo necesiten y NUNCA se añade a `styles.scss`
 // (allí no imprimiría nada y daría a entender que sí).
 //
-// Existe porque los mismos tres números los necesitan cuatro hojas distintas
-// —el grid del shell, `sidebar-nav`, `bottom-nav` y `chat-panel`— y el árbol
-// canónico exige declarar el breakpoint una sola vez. Duplicarlo es la forma
-// clásica de que la burbuja del chat acabe medio tapada por la barra inferior
-// tras cambiar un valor en un solo sitio.
+// Existe porque los mismos números los necesitan varias hojas distintas —el
+// grid del shell, `sidebar-nav`, `bottom-nav` y `chat-panel`— y el árbol canónico
+// exige declarar el breakpoint una sola vez. Duplicarlo es la forma clásica de
+// que dos piezas del cromo dejen de encajar tras tocar un solo archivo.
+
+/// A partir de aquí la tarjeta de tarea cabe en una fila: texto a la izquierda
+/// y badges a la derecha. Por debajo no cabe y el contenido se apila.
+///
+/// Es un umbral de CONTENIDO, no de navegación: no cambia la forma del shell,
+/// solo la de componentes que se quedan sin ancho útil. Por eso es un segundo
+/// escalón y no se reutiliza `$breakpoint-desktop` — una ventana de escritorio
+/// de 900px sigue siendo escritorio, y ahí la fila lee perfectamente.
+$breakpoint-tablet: 640px;
 
 /// A partir de aquí la navegación es lateral; por debajo, barra inferior.
 $breakpoint-desktop: 1024px;
 
 /// Alto de `bottom-nav`. Lo leen la propia barra, el hueco que le reserva el
-/// shell y el desplazamiento vertical de la burbuja del chat.
+/// shell (es `fixed`, no ocupa flujo) y el panel de chat, que en móvil se
+/// apoya justo encima de ella.
 $bottom-nav-height: 56px;
+
+/// Alto de `bottom-nav` cuando la pantalla es apaisada y baja (ver el mixin
+/// `short-viewport`). Las pestañas pasan de icono-sobre-texto a icono-junto-a-
+/// texto, así que el mismo contenido cabe en menos alto sin perder la etiqueta.
+///
+/// Lo leen los mismos tres sitios que `$bottom-nav-height`: la barra, el hueco
+/// que le reserva el shell y el tope del panel de chat. Si solo se encogiera la
+/// barra, el panel quedaría flotando sobre una franja vacía de 12px.
+$bottom-nav-height-compact: 44px;
 
 /// Alto de `app-header`. El sidebar se pega justo debajo, así que necesita el
 /// número exacto: `position: sticky` no puede deducirlo de un hermano.
 $header-height: 60px;
 
+@mixin tablet {
+  @media (min-width: $breakpoint-tablet) {
+    @content;
+  }
+}
+
+@mixin below-tablet {
+  @media (max-width: $breakpoint-tablet - 1px) {
+    @content;
+  }
+}
+
 @mixin desktop {
   @media (min-width: $breakpoint-desktop) {
+    @content;
+  }
+}
+
+/// Pantalla baja: móvil en apaisado, básicamente.
+///
+/// Es `max-height` y NO `orientation: landscape` a propósito. `landscape` es
+/// cierto para cualquier ventana más ancha que alta —incluido un monitor de
+/// 1920×1080, que de apaisado no tiene nada útil aquí— y lo que de verdad
+/// obliga a compactar la barra es que queden ~350px de alto para el contenido.
+/// Un iPad en apaisado (768px de alto) no entra, y hace bien: le sobra sitio.
+///
+/// 480px cubre todos los móviles girados (el más alto, ~430px) y ninguna
+/// ventana de escritorio en uso normal.
+@mixin short-viewport {
+  @media (max-height: 480px) {
     @content;
   }
 }

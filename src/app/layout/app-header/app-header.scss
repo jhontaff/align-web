@@ -25,3 +25,25 @@
   align-items: center;
   gap: var(--space-2);
 }
+
+// -----------------------------------------------------------------------------
+// Móvil y tablet
+// -----------------------------------------------------------------------------
+// Este bloque va AL FINAL del archivo a propósito, después de las reglas base.
+// Una media query no añade especificidad: `.app-header__actions` dentro de
+// `@media` y fuera de ella pesan exactamente lo mismo (0,1,0), así que decide
+// el orden de aparición. Con el override arriba, el `display: flex` de después
+// lo pisaba y las acciones seguían viéndose en móvil junto al botón del cajón.
+@include layout.below-desktop {
+  .app-header {
+    padding: 0 var(--space-4);
+  }
+
+  // Aquí no se muestran: tema y cerrar sesión viven dentro del cajón de
+  // `SessionMenu`, que es el hermano de al lado. Dejarlas visibles además
+  // duplicaría los dos únicos controles del cajón justo al lado de su
+  // disparador.
+  .app-header__actions {
+    display: none;
+  }
+}

@@ -6,8 +6,9 @@
   min-height: 100dvh;
 }
 
-// Con sesión, una rejilla de una columna: header arriba, contenido debajo, y
-// la barra inferior flotando por encima con su hueco reservado.
+// Con sesión, una rejilla de una columna: la franja superior arriba y el
+// contenido debajo, y la barra inferior flotando encima con su hueco
+// reservado.
 .app-shell--authed {
   display: grid;
   grid-template-areas:
@@ -26,11 +27,14 @@
 // El header es sticky y no un item fijo para que el scroll de la ventana siga
 // siendo el scroll de la página: `withInMemoryScrolling` restaura la posición
 // del viewport, no la de un contenedor interno. Meter el contenido en un
-// `main { overflow-y: auto }` dejaría esa opción del router sin efecto.
+// `main { overflow-y: auto }` dejaría esa opción del router silenciosamente
+// sin efecto.
 app-header {
   grid-area: header;
   position: sticky;
   top: 0;
+  // Por encima del contenido; el desplegable de sesión sube a 40 dentro del
+  // propio header, el chat vive en 50 y la barra inferior en 60.
   z-index: 30;
 }
 
@@ -40,6 +44,16 @@ app-header {
     // sitio en el flujo. Sin esto la última tarea de la lista queda debajo de
     // la barra y es inalcanzable.
     padding-bottom: calc(#{layout.$bottom-nav-height} + env(safe-area-inset-bottom, 0px));
+  }
+
+  // En apaisado la barra se compacta (ver `bottom-nav.scss`), así que el hueco
+  // también. Anidado dentro de `below-desktop` y no suelto: una ventana de
+  // 1400×400 es "baja" pero es escritorio, ahí no hay barra que esquivar y el
+  // padding dejaría una franja muerta al pie de todas las pantallas.
+  @include layout.short-viewport {
+    .app-shell--authed {
+      padding-bottom: calc(#{layout.$bottom-nav-height-compact} + env(safe-area-inset-bottom, 0px));
+    }
   }
 }
 

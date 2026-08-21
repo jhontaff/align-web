@@ -46,12 +46,12 @@ export const NAV_LINKS: readonly NavLink[] = [
     path: '/tasks',
     label: 'Tareas',
     exact: false,
-    icon: 'M9 6h11 M9 12h11 M9 18h11 M4 6l1.4 1.4L8 4.8 M4 12l1.4 1.4L8 10.8 M4 18l1.4 1.4L8 16.8'
+    icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M8.2 12.1l2.6 2.6 5-5.2'
   },
   {
     path: '/finance',
     label: 'Finanzas',
     exact: false,
-    icon: 'M3 8a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v2 M3 8v9a2 2 0 0 0 2 2h13a1 1 0 0 0 1-1v-3 M21 10v4h-4a2 2 0 0 1 0-4z'
+    icon: 'M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z M5.5 10.5v3 M18.5 10.5v3'
   }
 ];
