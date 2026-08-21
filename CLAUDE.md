@@ -2,7 +2,7 @@
 
 # Align Web
 
-Align Web is the Angular frontend for **Align**, a personal productivity platform (Tasks, Finance, and a chat-based AI agent, with more domains planned). This repo is standalone — it consumes the Align backend (a separate Spring Boot repo) purely over HTTP. There is no shared code, no monorepo, no direct filesystem access between the two repos.
+Align Web is the Angular frontend for **Align**, a personal productivity platform (Tasks, Finance, Habits, and a chat-based AI agent, with more domains planned). This repo is standalone — it consumes the Align backend (a separate Spring Boot repo) purely over HTTP. There is no shared code, no monorepo, no direct filesystem access between the two repos.
 
 Same learning goal as the backend: understanding architecture over shipping features fast. Incremental development, YAGNI, no premature abstractions.
 
@@ -84,6 +84,18 @@ Every REST endpoint wraps its body: `{ timestamp, status, success, message, data
 - `TransactionResponse` = `{ id, type, amount, category, description, date, createdAt, updatedAt }`
 - `FinancialSummaryResponse` = `{ totalIncome, totalExpense, balance }`
 - `type`: `INCOME` | `EXPENSE`. `category`: `FOOD`, `TRANSPORT`, `HOUSING`, `HEALTH`, `ENTERTAINMENT`, `EDUCATION`, `SHOPPING`, `UTILITIES`, `OTHER_EXPENSE` (all `EXPENSE`); `SALARY`, `FREELANCE`, `INVESTMENT`, `GIFT`, `OTHER_INCOME` (all `INCOME`).
+
+## Habit (`/api/habits`)
+
+- `POST /api/habits` — `HabitRequest` → `201` + `HabitResponse`
+- `GET /api/habits/{id}` → `HabitResponse`
+- `GET /api/habits` → `HabitResponse[]` — **no pagination**, unlike Task/Finance; returns the full list. Small N expected (a personal habit list) — don't build a `Page<HabitResponse>` type or pagination UI for this endpoint.
+- `PUT /api/habits/{id}` — `HabitRequest` → `HabitResponse`
+- `DELETE /api/habits/{id}` → no body data
+- `POST /api/habits/{id}/completions` — no body → `200` + `HabitResponse`. Marks the habit done for today. **Idempotent** — calling it again the same day is a safe no-op, not an error; fine to wire to a button without disabling it after the first click.
+- `HabitRequest` = `{ name }` — same DTO for create and update, there's no `HabitUpdateRequest` (the domain only has one editable field today).
+- `HabitResponse` = `{ id, name, currentStreak, createdAt, updatedAt }` — `currentStreak` is computed server-side on every read; don't recompute it client-side.
+- No AI tools yet — the chat agent can't create/list/complete habits through conversation. REST only, for now.
 
 ## Chat agent (`/api/agent`)
 
@@ -522,8 +534,13 @@ Auth foundation is built and confirmed working end-to-end against the live backe
 ## Known gaps / next steps, in order
 
 1. Task feature area — edit (`PUT /api/tasks/{id}`) and delete (`DELETE /api/tasks/{id}`); will need `TaskUpdateRequest` added to `task.model.ts`.
+<<<<<<< HEAD
 2. Finance feature area (`/api/transactions`) — solo existe la pantalla vacía `overview/` y su ruta. Falta todo lo real: `models/`, `transaction.service.ts`, el resumen contra `GET /api/transactions/summary` y el listado paginado. En cuanto entre `activity/` como pantalla hermana hace falta `finance.routes.ts` con su componente contenedor y su propio `<router-outlet />`; hoy, con una sola pantalla, sería simetría vacía. Puede reutilizar el patrón de Tasks y el design system, así que debería ir más rápido.
 3. `assistant-widget` en Home y `sidebar-nav` con marca/usuario — el sidebar hoy es solo la lista de enlaces.
+=======
+2. Finance feature area (`/api/transactions`) — not started. Can now reuse both the Tasks feature-area pattern and the shared visual design system, so it should move faster than Tasks did.
+3. Habit feature area (`/api/habits`) — not started. Backend REST is ready (see [Habit](#habit-apihabits) above); no pagination and no `HabitUpdateRequest`, so it's a slightly smaller build than Task/Finance. No AI tools yet, so the habit list/completion UI has no chat equivalent to fall back on.
+>>>>>>> 5463ac681665b75afe44275ba57144db83dbb536
 
 ## Local dev gotcha
 
