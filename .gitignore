@@ -43,3 +43,6 @@ Thumbs.db
 
 # Graphify knowledge graph output
 /graphify-out
+
+# Servidor local para probar la PWA en el movil (no forma parte del build)
+/serve-pwa.mjs
