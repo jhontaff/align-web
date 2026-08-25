@@ -19,6 +19,22 @@
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-5);
 
+  // Ancla del enlace estirado de la plantilla: sin `relative` aqui, el `::after`
+  // del `<a>` se posicionaria respecto al viewport y cubriria la pagina entera.
+  position: relative;
+
+  // La fila entera es pulsable, asi que tiene que parecerlo. El realce se pone
+  // con `:has(:hover)` / `:has(:focus-visible)` sobre el enlace y no con el
+  // `:hover` del `<li>`, para que la tarjeta no se encienda cuando el puntero
+  // esta sobre el boton de borrar, que hace otra cosa.
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+
+  &:has(.task-item__link:hover),
+  &:has(.task-item__link:focus-visible) {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-sm);
+  }
+
   // Solo en movil. Ahi las dos badges le robaban el ancho al texto y la
   // descripcion se quedaba en puntos suspensivos; apilar es la unica salida,
   // porque la fila no cabe, no es que este mal repartida.
@@ -31,19 +47,65 @@
     align-items: stretch;
     gap: var(--space-3);
     padding: var(--space-4);
+
+    // El boton de borrar sale del flujo aqui; el ancla ya la pone `.task-item`
+    // mas arriba. El relleno derecho le reserva su hueco: sin el, un titulo
+    // largo pasaria por debajo de la "x" y quedaria ilegible justo en la
+    // esquina donde hay que pulsar.
+    padding-right: calc(var(--space-4) + 40px + var(--space-2));
   }
 }
 
+// Escritorio: el boton va el primero, asi que el bloque de texto tiene que
+// absorber el espacio libre. Sin esto, `space-between` repartiria el hueco
+// tambien entre el boton y el texto, y el titulo quedaria flotando en medio
+// de la tarjeta en vez de pegado a la izquierda.
 .task-item__main {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   min-width: 0;
+  flex: 1;
 }
 
 .task-item__title {
   font-weight: var(--weight-medium);
   color: var(--color-text);
+}
+
+// El enlace no se pinta de azul ni se subraya: la fila entera ya se comporta
+// como un destino, y diez titulos subrayados convertirian la lista en una
+// pagina de resultados de busqueda.
+.task-item__link {
+  text-decoration: none;
+  color: inherit;
+  overflow-wrap: anywhere;
+
+  // La capa pulsable. Cubre la tarjeta entera porque `.task-item` es su
+  // contenedor posicionado.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+
+  // El anillo de foco iria alrededor del texto del titulo, que en escritorio
+  // deja el resto de la tarjeta fuera y se lee como si el foco estuviera en
+  // otro sitio. Se apaga ahi y se redibuja sobre la capa estirada, que si
+  // coincide con lo que se va a activar.
+  //
+  // Es `box-shadow` y no `outline` porque asi lo define `--focus-ring` en
+  // `_base.scss`: el token es una sombra ya montada, y ponerlo en `outline`
+  // es un valor invalido que el navegador descarta sin avisar — el foco
+  // desapareceria del todo, que es peor que dejarlo donde estaba.
+  &:focus-visible {
+    box-shadow: none;
+
+    &::after {
+      box-shadow: var(--focus-ring);
+    }
+  }
 }
 
 .task-item__description {
@@ -80,6 +142,65 @@
 .task-item__due {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
+}
+
+// -----------------------------------------------------------------------------
+// Boton de borrar
+// -----------------------------------------------------------------------------
+// Un unico boton en el DOM, colocado por CSS en los dos sitios que pide el
+// diseno: a la izquierda del todo en escritorio y como "x" arriba a la derecha
+// en movil. Duplicarlo en dos ramas de plantilla daria dos controles con el
+// mismo nombre accesible por fila, y un lector de pantalla los anunciaria los
+// dos aunque uno este oculto con `display: none`.
+.task-item__delete {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+
+  // Por encima del `::after` del enlace. Sin esto el enlace se come el clic y
+  // pulsar la papelera navega al detalle en vez de abrir la confirmacion: el
+  // boton sigue ahi, visible y enfocable, pero inservible con raton.
+  position: relative;
+  z-index: 1;
+
+  // Solo se tine de rojo al apuntarlo o enfocarlo: en reposo, una lista de diez
+  // tareas con diez iconos rojos grita peligro sin que haya pasado nada.
+  &:hover:not(:disabled),
+  &:focus-visible {
+    color: var(--color-danger);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: progress;
+  }
+
+  @include layout.below-tablet {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+  }
+}
+
+.task-item__icon {
+  width: 18px;
+  height: 18px;
+}
+
+// La papelera es el icono de escritorio; la "x" el de movil. Se conmutan por
+// CSS dentro del mismo boton, igual que la posicion, para no partir el control
+// en dos.
+.task-item__icon--close {
+  display: none;
+}
+
+@include layout.below-tablet {
+  .task-item__icon--trash {
+    display: none;
+  }
+
+  .task-item__icon--close {
+    display: block;
+  }
 }
 
 // Mapeo dominio → semántica del design system. Los colores crudos no viven

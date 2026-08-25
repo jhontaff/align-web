@@ -26,6 +26,16 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    // Va DESPUES de 'tasks/new' a proposito: el router evalua de arriba abajo y
+    // ':id' coincide con cualquier segmento, asi que puesto antes se tragaria
+    // /tasks/new y el formulario de creacion seria inalcanzable — con un id
+    // "new" que ni siquiera es un numero. Es el mismo fallo silencioso que el
+    // comodin de abajo, y `ng build` tampoco lo detecta.
+    path: 'tasks/:id',
+    loadComponent: () => import('./features/tasks/task-detail/task-detail').then(m => m.TaskDetail),
+    canActivate: [authGuard]
+  },
+  {
     // Marcador de posición: la feature no está construida, pero el nav ya la
     // ofrece y un enlace sin ruta caería en el comodín de abajo, devolviendo
     // al usuario a Inicio en silencio.

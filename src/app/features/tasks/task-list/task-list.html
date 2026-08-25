@@ -4,6 +4,10 @@
     <a class="btn btn-primary" routerLink="/tasks/new">+ Nueva tarea</a>
   </div>
 
+  @if (errorMessage()) {
+    <p class="form-error">{{ errorMessage() }}</p>
+  }
+
   @if (loading()) {
     <p class="empty-state">Cargando...</p>
   } @else if (tasks().length === 0) {
@@ -12,8 +16,68 @@
     <ul class="task-list">
       @for (task of tasks(); track task.id) {
         <li class="task-item">
+          <!--
+            Va PRIMERO en el DOM porque en escritorio se pinta el primero: así
+            el orden de tabulación coincide con el visual sin recurrir a
+            `order`, que los separaría. En móvil se posiciona absoluto arriba a
+            la derecha, sobre la misma línea del título, de modo que el desfase
+            respecto al foco es de unos píxeles y no de una fila entera.
+
+            El nombre accesible lleva el título de la tarea: en una lista, diez
+            botones llamados "Eliminar" son indistinguibles al navegar por
+            landmarks o por lista de controles.
+          -->
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon task-item__delete"
+            [disabled]="deletingId() === task.id"
+            [attr.aria-label]="'Eliminar tarea: ' + task.title"
+            [title]="'Eliminar tarea: ' + task.title"
+            (click)="onDeleteClick(task)"
+          >
+            <svg
+              class="task-item__icon task-item__icon--trash"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+            </svg>
+            <svg
+              class="task-item__icon task-item__icon--close"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+
           <div class="task-item__main">
-            <span class="task-item__title">{{ task.title }}</span>
+            <!--
+              Enlace estirado: el `<a>` envuelve solo el titulo, pero su
+              `::after` cubre la tarjeta entera, asi que se puede pulsar en
+              cualquier punto de la fila.
+
+              La alternativa obvia —un `<a>` alrededor de todo el `<li>`— es
+              HTML invalido: el boton de eliminar quedaria anidado dentro del
+              enlace, y un enlace no puede contener contenido interactivo. Los
+              navegadores lo "arreglan" cada uno a su manera y el resultado es
+              un boton que a veces navega en vez de borrar.
+
+              Asi hay ademas UN solo tab stop para la fila y el nombre accesible
+              del enlace es el titulo de la tarea, no la tarjeta entera leida de
+              corrido con sus dos badges.
+            -->
+            <a class="task-item__title task-item__link" [routerLink]="['/tasks', task.id]">{{ task.title }}</a>
             @if (task.description) {
               <span class="task-item__description">{{ task.description }}</span>
             }
@@ -29,4 +93,22 @@
       }
     </ul>
   }
+
+  <!--
+    Uno solo para toda la lista, fuera del `@for`: la pregunta es siempre la
+    misma y solo cambia de quién habla. Uno por fila metería N diálogos
+    modales en el DOM para que se vea como mucho uno.
+
+    `[(open)]` es two-way porque el diálogo también se cierra por su cuenta
+    (Escape, clic en el velo); con enlace de una vía esta pantalla se quedaría
+    creyendo que sigue abierto y no podría volver a abrirlo.
+  -->
+  <app-confirm-dialog
+    [(open)]="confirmOpen"
+    heading="Eliminar tarea"
+    [message]="confirmMessage()"
+    confirmLabel="Eliminar"
+    tone="danger"
+    (confirm)="onConfirmDelete()"
+  />
 </div>
