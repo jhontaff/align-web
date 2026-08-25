@@ -1,0 +1,61 @@
+<div class="page">
+  <div class="page-header">
+    <!--
+      Enlace, no `history.back()`: a /tasks/12 se puede llegar pegando la URL o
+      desde una notificación, y ahí no hay "atrás" al que volver. Como enlace
+      real, además, se puede abrir la lista en otra pestaña.
+    -->
+    <a class="btn btn-ghost task-detail__back" routerLink="/tasks">← Tareas</a>
+  </div>
+
+  @if (errorMessage()) {
+    <p class="form-error">{{ errorMessage() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="empty-state">Cargando...</p>
+  } @else if (task(); as task) {
+    <article class="card task-detail">
+      <header class="task-detail__header">
+        <h1 class="task-detail__title">{{ task.title }}</h1>
+        <div class="task-detail__badges">
+          <span class="badge" [class]="'badge--status-' + task.status.toLowerCase()">{{ statusLabel(task.status) }}</span>
+          <span class="badge" [class]="'badge--priority-' + task.priority.toLowerCase()">{{ priorityLabel(task.priority) }}</span>
+        </div>
+      </header>
+
+      <!--
+        `<dl>` y no una tabla ni divs sueltos: son pares etiqueta/valor, que es
+        exactamente lo que una lista de definición anuncia a un lector de
+        pantalla. Los campos vacíos no se pintan como "—": una fila sin valor es
+        ruido, y el backend deja `description`, `dueDate` y `dueTime` en null
+        con total normalidad.
+      -->
+      <dl class="task-detail__fields">
+        @if (task.description) {
+          <div class="task-detail__field task-detail__field--wide">
+            <dt>Descripción</dt>
+            <dd>{{ task.description }}</dd>
+          </div>
+        }
+
+        @if (dueLabel(task); as due) {
+          <div class="task-detail__field">
+            <dt>Vencimiento</dt>
+            <dd>{{ due }}</dd>
+          </div>
+        }
+
+        <div class="task-detail__field">
+          <dt>Creada</dt>
+          <dd>{{ timestampLabel(task.createdAt) }}</dd>
+        </div>
+
+        <div class="task-detail__field">
+          <dt>Última actualización</dt>
+          <dd>{{ timestampLabel(task.updatedAt) }}</dd>
+        </div>
+      </dl>
+    </article>
+  }
+</div>

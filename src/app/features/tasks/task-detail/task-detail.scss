@@ -1,0 +1,112 @@
+@use '../../../../styles/layout';
+
+// El único elemento de la cabecera es el enlace de vuelta, y `.page-header`
+// reparte con `space-between`: sin esto se iría al centro o al borde derecho
+// según el navegador. `margin-right: auto` lo ancla a la izquierda sin tocar la
+// clase global.
+.task-detail__back {
+  margin-right: auto;
+}
+
+.task-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.task-detail__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+
+  // Titulo largo mas dos badges no caben en un movil; apilar es la unica
+  // salida, igual que en la fila de la lista.
+  @include layout.below-tablet {
+    flex-direction: column;
+  }
+}
+
+.task-detail__title {
+  margin: 0;
+  font-size: var(--text-h1);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+
+  // Sin esto un titulo de una sola palabra muy larga desborda la tarjeta y
+  // saca scroll horizontal a la pagina entera.
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.task-detail__badges {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.task-detail__fields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+
+  @include layout.below-tablet {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// La descripcion es texto libre y puede ser larga: ocupa la fila entera en vez
+// de quedarse en media columna con el doble de alto.
+.task-detail__field--wide {
+  grid-column: 1 / -1;
+}
+
+.task-detail__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+
+  dt {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+
+    // El texto que escribio el usuario conserva sus saltos de linea; sin esto
+    // una descripcion de varios parrafos se aplana en un bloque ilegible.
+    white-space: pre-wrap;
+  }
+}
+
+// Mapeo dominio → semantica. Duplicado respecto a `task-list.scss` porque la
+// encapsulacion de Angular es por componente: estas reglas no cruzan de una
+// hoja a otra. La alternativa —subirlas a `_components.scss`— convertiria un
+// mapeo de dominio en primitiva global, que es justo lo que el design system
+// evita; se hara si aparece un tercer consumidor.
+.badge--status-pending,
+.badge--priority-medium {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-soft-text);
+}
+
+.badge--status-in_progress {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-soft-text);
+}
+
+.badge--status-completed {
+  background: var(--color-success-soft);
+  color: var(--color-success-soft-text);
+}
+
+.badge--priority-high {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-soft-text);
+}

@@ -1,0 +1,47 @@
+<!--
+  `aria-labelledby` + `aria-describedby` y NO `role="dialog"`/`aria-modal`:
+  esos dos son implícitos en un `<dialog>` abierto con `showModal()`, así que
+  escribirlos sería ruido. El nombre sí hay que darlo, o se anuncia sin él.
+
+  `(close)` es el evento nativo, no un output propio: es el único que cubre el
+  cierre con Escape.
+-->
+<dialog
+  #dialog
+  class="confirm-dialog"
+  [attr.aria-labelledby]="titleId"
+  [attr.aria-describedby]="message() ? messageId : null"
+  (click)="onBackdropClick($event)"
+  (close)="onNativeClose()"
+>
+  <div class="confirm-dialog__panel">
+    <h2 class="confirm-dialog__title" [id]="titleId">{{ heading() }}</h2>
+
+    @if (message()) {
+      <p class="confirm-dialog__message" [id]="messageId">{{ message() }}</p>
+    }
+
+    <div class="confirm-dialog__actions">
+      <!--
+        Cancelar lleva el `autofocus` y va primero en el DOM. En un diálogo
+        destructivo el foco inicial no puede caer sobre el botón que borra:
+        quien confirma con Enter por reflejo perdería el dato sin haber leído
+        la pregunta. Confirmar se pinta a la derecha, que es donde la app ya
+        coloca la acción principal en `.form-actions`.
+      -->
+      <button class="btn btn-ghost" type="button" autofocus (click)="onCancel()">
+        {{ cancelLabel() }}
+      </button>
+
+      <button
+        class="btn"
+        [class.btn-danger]="tone() === 'danger'"
+        [class.btn-primary]="tone() === 'primary'"
+        type="button"
+        (click)="onConfirm()"
+      >
+        {{ confirmLabel() }}
+      </button>
+    </div>
+  </div>
+</dialog>
