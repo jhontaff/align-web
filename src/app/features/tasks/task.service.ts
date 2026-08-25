@@ -17,7 +17,7 @@ export class TaskService {
    * quita el `ApiResponse` antes de que el servicio vea el cuerpo, igual que en
    * `list()` — nunca se tipa como `Observable<ApiResponse<TaskResponse>>`.
    */
-  get(id: number): Observable<TaskResponse> {
+  get(id: string): Observable<TaskResponse> {
     return this.http.get<TaskResponse>(`/api/tasks/${id}`);
   }
 
@@ -31,7 +31,7 @@ export class TaskService {
    * de modo que `unwrapInterceptor` lo deja pasar tal cual — no hay nada que
    * desenvolver ni ningún tipo que declarar más allá de `void`.
    */
-  remove(id: number): Observable<void> {
+  remove(id: string): Observable<void> {
     return this.http.delete<void>(`/api/tasks/${id}`);
   }
 }
