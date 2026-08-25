@@ -10,7 +10,16 @@ export interface TaskRequest {
 }
 
 export interface TaskResponse {
-  id: number;
+  /**
+   * UUID, no numero. Verificado contra la spec viva del backend
+   * (`/v3/api-docs`): `TaskResponse.id` es `string (uuid)` y el path param de
+   * `/api/tasks/{id}` es `string`.
+   *
+   * Estuvo tipado como `number` y por eso el detalle pedia `/api/tasks/NaN`:
+   * al convertir el segmento de la URL con `numberAttribute`, un UUID no es un
+   * numero y la conversion devuelve NaN sin fallar.
+   */
+  id: string;
   title: string;
   description: string | null;
   status: TaskStatus;

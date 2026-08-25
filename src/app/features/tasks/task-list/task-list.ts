@@ -36,7 +36,7 @@ export class TaskList implements OnInit {
    * desactivaría los demás botones también, y el usuario no sabría cuál de
    * ellos está en vuelo.
    */
-  protected readonly deletingId = signal<number | null>(null);
+  protected readonly deletingId = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
 
   /**

@@ -5,8 +5,89 @@
       desde una notificación, y ahí no hay "atrás" al que volver. Como enlace
       real, además, se puede abrir la lista en otra pestaña.
     -->
-    <a class="btn btn-ghost task-detail__back" routerLink="/tasks">← Tareas</a>
+    <a class="btn btn-ghost task-detail__back" routerLink="/tasks">
+      <!--
+        SVG en línea y no el carácter `←` (U+2190): el glifo depende de la
+        fuente, y en Inter sale con un trazo mucho más fino que el texto que
+        acompaña, desalineado respecto a la línea base. Todos los iconos de la
+        app ya son SVG de trazo con `stroke-width="2"` y puntas redondas
+        (`bottom-nav`, `session-menu`, el borrar de la lista); este es el
+        mismo dibujo, así que la flecha por fin pesa lo mismo que las demás.
+      -->
+      <svg
+        class="task-detail__back-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M19 12H5M12 19l-7-7 7-7" />
+      </svg>
+      <!--
+        El nombre accesible queda en "Volver a Tareas", que CONTIENE la etiqueta
+        visible ("Tareas"). Un `aria-label` la sustituiría por otra distinta y
+        rompería "label in name" (WCAG 2.5.3), dejando tirado a quien navega
+        por voz diciendo lo que lee.
+      -->
+      <span class="visually-hidden">Volver a&nbsp;</span>Tareas
+    </a>
+
+    <!--
+      Va aquí y no dentro de la tarjeta porque es una acción sobre la página
+      entera, no sobre un campo. El `margin-right: auto` que ya llevaba el
+      enlace de vuelta lo empuja solo al borde derecho.
+
+      Guardado por `task()`: mientras carga o si la tarea no existe no hay nada
+      que borrar, y un botón que no puede funcionar es peor que no estar.
+    -->
+    @if (task()) {
+      <button
+        type="button"
+        class="btn btn-ghost btn-icon task-detail__delete"
+        [disabled]="deleting()"
+        aria-label="Eliminar tarea"
+        title="Eliminar tarea"
+        (click)="onDeleteClick()"
+      >
+        <svg
+          class="task-detail__delete-icon task-detail__delete-icon--trash"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+        </svg>
+        <svg
+          class="task-detail__delete-icon task-detail__delete-icon--close"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    }
   </div>
+
+  <!--
+    Separado de `errorMessage`: ese sustituye a la página (no se pudo cargar),
+    este se apila encima de una tarea que sigue en pantalla y sigue siendo
+    válida (no se pudo borrar).
+  -->
+  @if (deleteError()) {
+    <p class="form-error">{{ deleteError() }}</p>
+  }
 
   @if (errorMessage()) {
     <p class="form-error">{{ errorMessage() }}</p>
@@ -58,4 +139,18 @@
       </dl>
     </article>
   }
+
+  <!--
+    `[(open)]` en dos vías porque el diálogo también se cierra por su cuenta
+    (Escape, clic en el velo); con enlace de una vía esta pantalla se quedaría
+    creyendo que sigue abierto y no podría volver a abrirlo.
+  -->
+  <app-confirm-dialog
+    [(open)]="confirmOpen"
+    heading="Eliminar tarea"
+    [message]="confirmMessage()"
+    confirmLabel="Eliminar"
+    tone="danger"
+    (confirm)="onConfirmDelete()"
+  />
 </div>

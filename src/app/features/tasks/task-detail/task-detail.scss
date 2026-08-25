@@ -6,6 +6,111 @@
 // clase global.
 .task-detail__back {
   margin-right: auto;
+
+  // Alineación óptica con el contenido de la página.
+  //
+  // `.btn` lleva `padding: … var(--space-5)`, pensado para un botón con fondo,
+  // donde ese relleno se ve. Aquí el fondo es transparente, así que lo único
+  // que se percibe es que el texto arranca 20px por dentro del borde izquierdo
+  // mientras la tarjeta de abajo empieza en 0: el enlace parece descolgado.
+  // El margen negativo devuelve el texto a la línea del contenido y deja el
+  // relleno intacto como área de pulsación — al revés que bajar el `padding`,
+  // que encogería el objetivo.
+  margin-left: calc(var(--space-5) * -1);
+
+  // El icono se separa un pelo menos que el `gap` por defecto de `.btn`: una
+  // flecha pegada a su palabra se lee como una unidad, no como dos elementos.
+  gap: var(--space-1);
+
+  // 40px del `.btn` global se quedan por debajo del mínimo de 44px para un
+  // objetivo táctil. Se sube solo aquí y solo en pantallas sin puntero fino,
+  // en vez de tocar `.btn`, que también pinta botones de escritorio.
+  @include layout.below-tablet {
+    min-height: 44px;
+  }
+}
+
+.task-detail__back-icon {
+  width: 18px;
+  height: 18px;
+  // Sin esto el SVG se encoge si el contenedor aprieta y la flecha sale ovalada.
+  flex-shrink: 0;
+  transition: translate var(--transition-fast);
+}
+
+// La flecha retrocede un paso al apuntar o enfocar el enlace. El movimiento
+// dice hacia dónde lleva —refuerza la dirección, no decora—, y el destino
+// sigue escrito al lado para quien no tenga puntero: no hay información que
+// exista solo en el hover.
+.task-detail__back:hover .task-detail__back-icon,
+.task-detail__back:focus-visible .task-detail__back-icon {
+  translate: -2px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-detail__back-icon {
+    transition: none;
+  }
+
+  .task-detail__back:hover .task-detail__back-icon,
+  .task-detail__back:focus-visible .task-detail__back-icon {
+    translate: none;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Boton de borrar
+// -----------------------------------------------------------------------------
+// Papelera en escritorio, "x" en movil, igual que en la fila de la lista: un
+// solo boton en el DOM y los dos iconos conmutados por CSS. Dos ramas de
+// plantilla darian dos controles con el mismo nombre accesible, y un lector de
+// pantalla anunciaria los dos aunque uno este en `display: none`.
+//
+// Estas reglas repiten las de `task-list.scss` a proposito, mismo criterio que
+// el mapeo de badges de mas abajo: la encapsulacion de Angular es por
+// componente, y subirlas a `_components.scss` convertiria un boton de dominio
+// en primitiva global. Se extraera cuando aparezca el tercer consumidor.
+.task-detail__delete {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+
+  // Solo se tine de rojo al apuntarlo o enfocarlo: en reposo, un icono rojo
+  // permanente en la cabecera grita peligro sin que haya pasado nada.
+  &:hover:not(:disabled),
+  &:focus-visible {
+    color: var(--color-danger);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: progress;
+  }
+
+  // 40px del `.btn` global se quedan por debajo del minimo de 44px para un
+  // objetivo tactil, igual que en el enlace de vuelta.
+  @include layout.below-tablet {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+.task-detail__delete-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.task-detail__delete-icon--close {
+  display: none;
+}
+
+@include layout.below-tablet {
+  .task-detail__delete-icon--trash {
+    display: none;
+  }
+
+  .task-detail__delete-icon--close {
+    display: block;
+  }
 }
 
 .task-detail {
