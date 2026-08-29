@@ -6,6 +6,7 @@ import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { TaskService } from '../task.service';
 import { TaskResponse } from '../models/task.model';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog/confirm-dialog';
+import { Icon } from '../../../shared/ui/icon/icon';
 
 /**
  * Las tres situaciones posibles de la pantalla, como unión cerrada en vez de
@@ -27,7 +28,7 @@ type DetailState =
 
 @Component({
   selector: 'app-task-detail',
-  imports: [RouterLink, ConfirmDialog],
+  imports: [RouterLink, ConfirmDialog, Icon],
   templateUrl: './task-detail.html',
   styleUrl: './task-detail.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

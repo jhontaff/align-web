@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { ThemePreference, ThemeService } from '../../core/theme/theme.service';
+import { Icon } from '../../shared/ui/icon/icon';
 
 const PREFERENCE_LABEL: Record<ThemePreference, string> = {
   system: 'sistema',
@@ -24,7 +25,7 @@ const NEXT_LABEL: Record<ThemePreference, string> = {
  */
 @Component({
   selector: 'app-theme-toggle',
-  imports: [],
+  imports: [Icon],
   templateUrl: './theme-toggle.html',
   styleUrl: './theme-toggle.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

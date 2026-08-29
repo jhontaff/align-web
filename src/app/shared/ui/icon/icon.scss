@@ -1,0 +1,7 @@
+// `inline-flex` y no `inline`: alinea el SVG con la caja del texto sin el
+// hueco de línea base que deja `display: inline` bajo los glifos.
+:host {
+  display: inline-flex;
+  flex-shrink: 0;
+  line-height: 0;
+}

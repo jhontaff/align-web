@@ -1,25 +1,173 @@
 .chat-composer {
-  display: flex;
-  gap: var(--space-2);
-  padding: var(--space-3);
   border-top: 1px solid var(--color-border);
 }
 
-.chat-composer input {
+.chat-composer__error {
+  margin: 0;
+  padding: var(--space-2) var(--space-3) 0;
+}
+
+// --- Fila del compositor -----------------------------------------------------
+
+.chat-composer__row {
+  display: flex;
+  // Al crecer el campo, el botón y el envío se quedan abajo en vez de
+  // centrarse en un bloque cada vez más alto.
+  align-items: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+// Al grabar, la fila se parte en dos: arriba el campo con la transcripción;
+// debajo, el micrófono y el carril de cancelación a lo ancho.
+//
+// Es reordenación por CSS, no un `@if` que cambie el árbol: el botón del
+// micrófono NO puede destruirse a mitad del gesto o se pierde la captura de
+// puntero y el arrastre muere en seco.
+.chat-composer.is-recording .chat-composer__row {
+  flex-wrap: wrap;
+}
+
+.chat-composer__field {
+  position: relative;
   flex: 1;
   min-width: 0;
+}
+
+// `flex-basis: 100%` le da una línea entera para él; `order: -1` la coloca
+// ARRIBA, sobre el micrófono y el carril. Así la transcripción crece hacia la
+// conversación en vez de empujar los controles, y el botón que se está
+// manteniendo pulsado se queda quieto en el borde inferior mientras aparece el
+// texto: si se moviera bajo el dedo, el recorrido de cancelación cambiaría de
+// sitio a mitad del gesto.
+//
+// Se reordena con `order` y no cambiando el orden del marcado porque en reposo
+// la fila es [micrófono][campo][enviar]; mover el campo delante en el DOM
+// dejaría el micrófono a la derecha, pegado al envío, también en reposo.
+//
+// El precio es que mientras se graba el orden de tabulación va de abajo
+// arriba. Es asumible aquí y no lo sería en reposo: el campo está en
+// `readOnly`, el envío oculto, y el micrófono es el único control real de la
+// fila — de hecho ya tiene el foco, porque grabar es mantenerlo pulsado.
+.chat-composer.is-recording .chat-composer__field {
+  flex-basis: 100%;
+  order: -1;
+}
+
+// Redondo y del tamaño del micrófono: los dos controles de la fila se leen
+// como pareja y no como un icono suelto junto a una pastilla de texto.
+// `flex-shrink: 0` porque es contenido fijo — quien cede ancho es el campo.
+.chat-composer__send {
+  flex-shrink: 0;
+}
+
+// El envío desaparece mientras se graba: está deshabilitado de todos modos, y
+// su hueco es justo el que necesita el carril para llegar hasta el borde.
+.chat-composer.is-recording .chat-composer__send {
+  display: none;
+}
+
+.chat-composer__field textarea {
+  display: block;
+  width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
+  font: inherit;
+  line-height: 1.45;
+
+  // La altura la calcula el componente midiendo `scrollHeight`; `resize: none`
+  // quita el tirador nativo, que competiría con ese cálculo y dejaría el campo
+  // a una altura que el crecimiento automático volvería a pisar.
+  resize: none;
+  overflow-y: auto;
+
+  // La barra nativa de Windows trae flechas, se lleva ~17px del ancho —justo
+  // lo que escasea en el panel— y no sigue al tema oscuro. Con `overflow-y:
+  // auto` solo aparece pasados los 160px de alto, pero cuando aparece tiene
+  // que verse como parte del campo y no como cromo del sistema.
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
 }
 
 // Sin `outline: none` sin sustituto: el anillo global de :focus-visible sigue
 // aplicándose, esto solo añade el realce del borde.
-.chat-composer input:focus {
+.chat-composer__field textarea:focus {
   border-color: var(--color-primary);
 }
+
+.chat-composer.is-recording .chat-composer__field textarea {
+  //border-color: var(--color-danger);
+}
+
+// --- Carril de cancelación ---------------------------------------------------
+
+.chat-composer__lane {
+  position: relative;
+  // Ocupa todo el ancho que sobra a la derecha del micrófono: el recorrido
+  // llega hasta la papelera del borde, no se queda a media fila.
+  flex: 1;
+  min-width: 0;
+  height: var(--space-10);
+
+  // El margen negativo mete la pista POR DEBAJO del botón, anulando el `gap`
+  // de la fila. Sin esto los puntos arrancaban 8px a la derecha del micrófono
+  // y el recorrido se leía cortado en su origen; así la pista va de un extremo
+  // al otro y el botón queda encima como el tirador de un control deslizante.
+  //
+  // El margen negativo no descuadra la medida del recorrido: `measureTravel()`
+  // va del borde derecho del micrófono al derecho del carril, y ese no se mueve.
+  margin-inline-start: calc(-1 * (var(--space-10) + var(--space-2)));
+  padding-inline-start: var(--space-10);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-inline-end: var(--space-3);
+  overflow: hidden;
+
+  // Sin borde: el carril no se dibuja en reposo. Lo que marca el recorrido es
+  // el relleno que avanza bajo el dedo y la papelera del final, no una pista
+  // punteada esperando vacia.
+  //
+  // Se le quita la PINTURA, no el elemento: `measureTravel()` mide su rect
+  // para saber cuanto hay que arrastrar, asi que ocultarlo con `display: none`
+  // dejaria el recorrido en cero y cancelar se armaria al primer pixel.
+  //
+  // El radio se queda: es lo que le da forma de pastilla al relleno.
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+  // Todo el carril es decorado: el gesto lo lleva el botón, que está encima.
+  pointer-events: none;
+}
+
+// El relleno avanza con el dedo. Se anima con `transform` y no con `width`
+// porque escalar no dispara layout y el arrastre tiene que ir a 60fps.
+.chat-composer__lane-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background: var(--color-danger-soft);
+}
+
+.chat-composer__lane-target {
+  position: relative;
+  font-size: var(--text-lg);
+  transition:
+    color var(--transition-fast),
+    scale var(--transition-fast);
+}
+
+// Sin el borde del carril, el aviso de "armado" se apoya en la papelera. La
+// escala es lo que lo hace legible sin depender del color: quien no distingue
+// el rojo ve igualmente que el icono crece, y el relleno ya llego al final.
+.chat-composer__lane.is-armed .chat-composer__lane-target {
+  color: var(--color-danger);
+  scale: 1.35;
+}
+
+// --- Botón de dictado --------------------------------------------------------
 
 .chat-composer__mic {
   flex-shrink: 0;
@@ -27,10 +175,33 @@
   height: var(--space-10);
   padding: var(--space-2);
   border-radius: var(--radius-full);
+  font-size: var(--text-lg);
+
+  // Sin esto el navegador se queda el gesto para hacer scroll o zoom y deja
+  // de mandar `pointermove`: deslizar para cancelar no llegaría a detectarse
+  // nunca en un móvil.
+  touch-action: none;
+
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
-.chat-composer__mic--active {
+.chat-composer__mic.is-recording {
+  // Por encima del carril y con fondo sólido y sombra: al arrastrarlo tiene
+  // que leerse como un tirador que va POR ENCIMA de la pista, no como un icono
+  // que se solapa con lo que hay detrás.
+  position: relative;
+  z-index: 1;
   background: var(--color-danger-soft);
   color: var(--color-danger-soft-text);
-  border-color: var(--color-danger);
+  //border-color: var(--color-danger);
+  box-shadow: var(--shadow-md);
+}
+
+.chat-composer__mic.is-cancelling {
+  background: var(--color-danger);
+  // El blanco sobre un fondo de marca no depende del tema; es la excepción que
+  // el design system ya contempla para `.btn-danger`.
+  color: #ffffff;
 }

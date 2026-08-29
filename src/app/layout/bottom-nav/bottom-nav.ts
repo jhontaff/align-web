@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NAV_LINKS } from '../nav-links';
+import { Icon } from '../../shared/ui/icon/icon';
 
 /**
  * Barra inferior, visible por debajo del breakpoint de escritorio.
@@ -19,7 +20,7 @@ import { NAV_LINKS } from '../nav-links';
  */
 @Component({
   selector: 'app-bottom-nav',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, Icon],
   templateUrl: './bottom-nav.html',
   styleUrl: './bottom-nav.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
