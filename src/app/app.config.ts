@@ -7,7 +7,7 @@ import {
   isDevMode
 } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
-import localeEs from '@angular/common/locales/es';
+import localeEsCo from '@angular/common/locales/es-CO';
 import {
   provideRouter,
   withComponentInputBinding,
@@ -25,24 +25,27 @@ import { unwrapInterceptor } from './core/interceptors/unwrap-interceptor';
 // registrarlos a mano; sin esto `CurrencyPipe` y `DatePipe` formatean a la
 // inglesa (`$1,234.56`) por mucho que el texto de la app esté en español.
 //
-// `es-ES` no es una elección nueva: `task-list.ts` ya formatea las fechas de
-// vencimiento con `toLocaleDateString('es-ES', ...)`. Esto solo lo convierte en
-// la configuración de la app en vez de en una cadena suelta dentro de un
-// componente.
-registerLocaleData(localeEs);
+// `es-CO` y no `es-ES`: el backend corre con `align.timezone=America/Bogota` y
+// los importes ya registrados están en decenas y cientos de miles (700.000 de
+// vivienda, 56.000 de comida). Son pesos colombianos, no euros.
+//
+// `task-list.ts` todavía formatea a mano con `toLocaleDateString('es-ES', ...)`;
+// es deuda menor anotada, y debe pasar a inyectar `LOCALE_ID` como hace
+// `finance/overview`.
+registerLocaleData(localeEsCo);
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
 
-    { provide: LOCALE_ID, useValue: 'es-ES' },
+    { provide: LOCALE_ID, useValue: 'es-CO' },
 
     // El backend manda `amount` como número pelado, sin moneda: no hay ningún
     // campo del que deducirla, así que la decide el frontend. Va aquí y no en
     // cada `| currency:'EUR'` de cada plantilla para que cambiar de divisa sea
     // una línea y no una búsqueda global.
-    { provide: DEFAULT_CURRENCY_CODE, useValue: 'EUR' },
+    { provide: DEFAULT_CURRENCY_CODE, useValue: 'COP' },
 
     provideRouter(
       routes,
