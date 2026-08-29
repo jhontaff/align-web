@@ -74,14 +74,16 @@ Every REST endpoint wraps its body: `{ timestamp, status, success, message, data
 
 ## Finance (`/api/transactions`)
 
-- `POST /api/transactions` — `TransactionRequest` → `201` + `TransactionResponse`
+- `POST /api/transactions` — `TransactionRequest` → `200` + `TransactionResponse` (la spec viva dice `200`, no `201` como Task)
 - `GET /api/transactions/{id}` → `TransactionResponse`
 - `GET /api/transactions` — filter params `type?`, `category?`, `from?`, `to?` (all optional, bound as a flat query-param object) + pagination → `Page<TransactionResponse>`
 - `PUT /api/transactions/{id}` — `TransactionUpdateRequest` → `TransactionResponse`
 - `DELETE /api/transactions/{id}` → no body data
 - `GET /api/transactions/summary` — same filter params as the list endpoint, no pagination → `FinancialSummaryResponse`
-- `TransactionRequest` / `TransactionUpdateRequest` = `{ amount, category, description?, date? }` — **no `type` field**, it's derived server-side from `category`. Don't add a type selector to any transaction form; category alone determines income vs. expense.
-- `TransactionResponse` = `{ id, type, amount, category, description, date, createdAt, updatedAt }`
+- `TransactionRequest` = `{ amount, category, description?, date? }`
+- `TransactionUpdateRequest` = `{ amount, category, description?, date }` — **`date` es obligatorio aquí y opcional en el alta.** No son el mismo DTO, aunque este archivo lo diera por idéntico hasta el 2026-08-28; verificado contra `/v3/api-docs`, que lo lista en su `required`.
+- Ninguno de los dos tiene **campo `type`**: lo deriva el servidor a partir de `category`. No añadir un selector de tipo a ningún formulario de transacción; la categoría sola determina ingreso vs. gasto. `description` tiene `maxLength: 255`.
+- `TransactionResponse` = `{ id, type, amount, category, description, date, createdAt, updatedAt }` — `id` es **UUID `string`**, igual que `TaskResponse.id`. No convertirlo con `numberAttribute` al leerlo de la URL: devuelve `NaN` sin fallar.
 - `FinancialSummaryResponse` = `{ totalIncome, totalExpense, balance }`
 - `type`: `INCOME` | `EXPENSE`. `category`: `FOOD`, `TRANSPORT`, `HOUSING`, `HEALTH`, `ENTERTAINMENT`, `EDUCATION`, `SHOPPING`, `UTILITIES`, `OTHER_EXPENSE` (all `EXPENSE`); `SALARY`, `FREELANCE`, `INVESTMENT`, `GIFT`, `OTHER_INCOME` (all `INCOME`).
 
@@ -128,6 +130,8 @@ Decisions already made in discussion with the backend session, before any fronte
 - **CORS handled via `proxy.conf.json` in dev**, not backend changes — see below.
 - **PWA scope: installable shell only, not offline-first data.** `ng add @angular/pwa` gives an installable app (manifest, icons) and caches static assets (JS/CSS/`index.html`) via the Angular Service Worker. `ngsw-config.json` deliberately has **no `dataGroups`** for `/api/**` or `/auth/**` — those routes always hit the network, never the Service Worker cache. Tasks/Finance data being available offline (IndexedDB, mutation queue, sync/conflict resolution) is a much larger scope that was explicitly deferred — the backend isn't designed for it today, and there's no real need yet. Revisit only if offline usage becomes an actual requirement, not preemptively.
 - **No `environment.ts` for the API base URL — relative paths (`/api`, `/auth`) everywhere.** `proxy.conf.json` already resolves these in dev. The plan for a real deployment is to keep the frontend behind a reverse proxy that forwards the same `/api`/`/auth` paths to the backend, so relative paths keep working unchanged across dev and prod and the CORS gap above stays irrelevant. Only introduce `environment.ts` (via `ng generate environments`) if frontend and backend ever end up on genuinely different origins without a shared reverse proxy — don't add it preemptively.
+- **Locale `es-ES` y moneda `EUR` se proveen una vez en `app.config.ts`, no por plantilla** (2026-08-28). Angular solo trae `en-US` compilado; sin `registerLocaleData(localeEs)` + `{ provide: LOCALE_ID, useValue: 'es-ES' }`, `CurrencyPipe` y `DatePipe` formatean a la inglesa (`$1,234.56`) por muy en español que esté el texto. No es una elección nueva: `task-list.ts` ya formateaba con `toLocaleDateString('es-ES', ...)`; esto solo lo sube de cadena suelta a configuración.
+  **La moneda la decide el frontend porque el backend no la manda**: `amount` es un número pelado, no hay campo de divisa ni preferencias de usuario. Va en `DEFAULT_CURRENCY_CODE` y no repetida en cada `| currency:'EUR'` para que cambiarla sea una línea. Si algún día el backend guarda la divisa por usuario, este proveedor es el punto que se sustituye.
 - **Voice input is client-only (Web Speech API), not a backend feature.** `POST /api/agent/chat` stays a plain text endpoint — the mic button in the chat panel just fills the existing message input via the browser's `SpeechRecognition`, the user reviews/edits before hitting Enviar, same flow as typing. No audio ever leaves the browser, no STT/TTS on the backend. Chosen because it needs zero backend changes and covers the common case (Chrome/Edge); `SpeechRecognition` isn't supported in Firefox and is spotty in Safari, so `features/chat/speech-recognition.ts` feature-detects and the mic button hides itself entirely when unsupported, rather than rendering broken. Revisit only if backend-side transcription or spoken replies (TTS) become a real requirement, not preemptively.
 
 ---
@@ -287,9 +291,10 @@ src/app/
     │                            assistant-widget/ ← mini-chat, mismo store que el panel)
     ├── tasks/                   task.service.ts, models/, task-list/, task-form/         [hoy]
     │                            + components/ (task-filter-tabs/, task-section/, task-item/)
-    ├── finance/                 overview/ es hoy un marcador de posición vacío           [hoy]
-    │                            transaction.service.ts, models/, activity/,
-    │                            components/ y finance.routes.ts                          [luego]
+    ├── finance/                 transaction.service.ts, models/, transaction-labels.ts,
+    │                            date-ranges.ts                                           [hoy]
+    │                            overview/ sigue siendo un marcador de posición vacío     [hoy]
+    │                            activity/, transaction-form/, finance.ts + .routes.ts    [luego]
     └── chat/                    chat.service.ts (HTTP), chat.store.ts (signals),         [hoy]
                                  models/, speech-recognition.ts
                                  + components/ (chat-thread/, chat-composer/)  [hoy]
@@ -410,6 +415,7 @@ Lo que queda en `session-menu.ts` son cuatro métodos y un `effect`. Detalles qu
 - Nombres de outputs en camelCase **sin prefijo `on`** (`send`, `valueChanged`, no `onSend`) y sin colisionar con eventos nativos (`click`, `submit`). Los inputs tampoco colisionan con propiedades DOM (`id`, `title`).
 - `changeDetection: ChangeDetectionStrategy.OnPush` en todo componente nuevo. La app corre con Zone.js, así que por defecto Angular revisa el árbol entero ante cualquier evento; con el estado ya en signals, `OnPush` es gratis y acota la revisión a lo que de verdad cambió. La condición para que sea seguro es la regla de arriba: si un campo que la plantilla lee no es signal y se escribe fuera de un evento de plantilla, con `OnPush` deja de repintarse.
 - Forms: `FormBuilder.nonNullable.group()` + `Validators`, guard `onSubmit()` with `if (form.invalid) { form.markAllAsTouched(); return; }`, track `submitting`/`errorMessage` signals, and on error call `extractErrorMessage(err)` — never hand-parse `err.error.message` inline (see `login.ts`/`register.ts`/`task-form.ts`). Exception: a single free-text field with no validation rules (the chat message box) uses plain `[(ngModel)]`/`FormsModule` instead — spinning up a `FormGroup` for one unvalidated field would be the premature abstraction [Development philosophy](#development-philosophy) warns against.
+- **Todo `.form-error` lleva `role="alert"`.** El mensaje entra en el DOM cuando falla la petición, y un nodo que simplemente aparece no lo anuncia ningún lector de pantalla: quien no ve la pantalla se queda con un formulario que no hizo nada visible. `role="alert"` es una región `aria-live="assertive"` implícita, así que es la palabra entera del arreglo. Aplicado a los seis usos existentes el 2026-08-28 (auth, tareas); cualquier `.form-error` nuevo nace con él.
 
 ## Angular 20.3 — APIs disponibles y límites de versión
 
@@ -521,7 +527,13 @@ Auth foundation is built and confirmed working end-to-end against the live backe
 - Visual design system (`src/styles.scss`) — neutral/clean palette (tokens + `.card`/`.field`/`.btn`/`.badge`/`.page` primitives, see [Visual design system](#visual-design-system)) applied across the app shell, login, register, and Tasks. `public/manifest.webmanifest` and `index.html`'s `theme-color` meta updated to match (2026-08-20).
 - App header (`layout/app-header/`) — marca y acciones de sesión en dos formas, ambas siempre en el DOM y conmutadas por CSS: en línea (`ThemeToggle` + cerrar sesión) en escritorio, y plegadas en el cajón deslizante `layout/session-menu/` en móvil y tablet. Ya **no** contiene enlaces de navegación (se fueron a `nav-links.ts` + las dos navs), así que su contenedor de acciones dejó de ser un `<nav>`: marcarlo así le mentiría al lector de pantalla, que lo ofrece como punto de referencia navegable. Alto fijo `$header-height`; quien se pega arriba es el envoltorio `.app-shell__top`, no el header por su cuenta.
 - Navegación principal (2026-08-20) — `layout/nav-links.ts` + `layout/sidebar-nav/` (≥1024px, 3 rutas) + `layout/bottom-nav/` (<1024px, 4 pestañas: las 3 rutas más el chat), ambos montados siempre y conmutados por CSS. Hubo una variante intermedia con la nav en una fila superior (`top-nav`) que se descartó el mismo día: la barra inferior gana en alcance del pulgar y es la que aloja la pestaña del chat. El grid de `app.scss` reordena el shell sin tocar el árbol de componentes, así que el único `<router-outlet />` nunca se mueve de rama. Ver [Estado construido](#estado-construido-2026-08-20).
-- Finanzas (`features/finance/overview/`) — **solo un marcador de posición**: título y un `.empty-state` diciendo que no está construido. Existe para que el enlace "Finanzas" del nav sea una ruta real; sin él caería en el comodín `**` y devolvería al usuario a Inicio sin explicación. No hay `transaction.service.ts` ni modelos todavía.
+- Finanzas — **el dominio existe, la UI todavía no** (2026-08-28):
+  - `features/finance/models/transaction.model.ts` — contratos verificados contra `/v3/api-docs`, no contra el resumen de este archivo. Las categorías van en **dos uniones** (`ExpenseCategory | IncomeCategory`) y no en una lista plana: es lo que permite que los `<optgroup>` del formulario y la derivación categoría → tipo salgan de una sola fuente que el compilador vigila.
+  - `features/finance/transaction-labels.ts` — las 14 etiquetas en español, los dos arrays por tipo y `categoryType()`. Fuera de `models/` porque ese archivo es contrato de tipos puro; fuera de las pantallas porque lo usan tres.
+  - `features/finance/date-ranges.ts` — `currentMonth()` / `lastMonth()` / `currentYear()` y sus presets. Existe porque `summary` **sin filtro devuelve el histórico completo**, que es un número que solo crece y no responde a ninguna pregunta real; el resumen arranca en el mes en curso. Formatea con componentes de fecha locales y no con `toISOString()`, que convierte a UTC antes de formatear y a partir de las 22:00 devolvería el día siguiente.
+  - `features/finance/transaction.service.ts` — stateless, solo `list()` y `summary()` (los endpoints que hay pantallas para consumir). Su `toParams()` privado omite las claves vacías y **reasigna** el retorno de `HttpParams.set()`.
+  - `features/finance/overview/` sigue siendo **un marcador de posición**: título y un `.empty-state`. Existe para que el enlace "Finanzas" del nav sea una ruta real; sin él caería en el comodín `**` y devolvería al usuario a Inicio sin explicación.
+  - **Nada de esto está probado contra el backend vivo todavía**: no hay componente que llame al servicio.
 - Chat feature — partido en dominio y montaje (2026-08-20), ver [Chat](#chat-dominio-en-features-montaje-en-layout):
   - `features/chat/chat.service.ts` — cliente HTTP stateless: `send()` (`POST /api/agent/chat`) y `history()` (`GET /api/agent/history`).
   - `features/chat/chat.store.ts` — el estado (`messages`/`loadingHistory`/`sending` como signals readonly) y el guard `loadedOnce` que garantiza un único GET de historial por sesión. Excepción de servicio con estado, ganada por la conversación única del backend.
@@ -534,7 +546,7 @@ Auth foundation is built and confirmed working end-to-end against the live backe
 ## Known gaps / next steps, in order
 
 1. Task feature area — edit (`PUT /api/tasks/{id}`) and delete (`DELETE /api/tasks/{id}`); will need `TaskUpdateRequest` added to `task.model.ts`.
-2. Finance feature area (`/api/transactions`) — solo existe la pantalla vacía `overview/` y su ruta. Falta todo lo real: `models/`, `transaction.service.ts`, el resumen contra `GET /api/transactions/summary` y el listado paginado. En cuanto entre `activity/` como pantalla hermana hace falta `finance.routes.ts` con su componente contenedor y su propio `<router-outlet />`; hoy, con una sola pantalla, sería simetría vacía. Puede reutilizar el patrón de Tasks y el design system, así que debería ir más rápido.
+2. Finance feature area (`/api/transactions`) — el dominio (modelos, etiquetas, rangos de fecha y servicio) está construido; falta **toda la UI**: el resumen real contra `GET /api/transactions/summary` sustituyendo el marcador de posición, y luego `activity/` (listado paginado + filtros en query params) y `transaction-form/`. En cuanto entre `activity/` como pantalla hermana hace falta `finance.routes.ts` (con `export default`) y un contenedor con su propio `<router-outlet />`; ese contenedor lleva un `<nav>` con `aria-current="page"`, **no un `role="tablist"`** — son rutas con historial propio, no paneles que se intercambian, y `@angular/aria` es v21+ y no está instalado.
 3. Habit feature area (`/api/habits`) — not started. Backend REST is ready (see [Habit](#habit-apihabits) above); no pagination and no `HabitUpdateRequest`, so it's a slightly smaller build than Task/Finance. No AI tools yet, so the habit list/completion UI has no chat equivalent to fall back on.
 4. `assistant-widget` en Home y `sidebar-nav` con marca/usuario — el sidebar hoy es solo la lista de enlaces.
 
