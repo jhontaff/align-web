@@ -14,10 +14,11 @@ import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { TaskService } from '../task.service';
 import { TaskResponse } from '../models/task.model';
+import { Icon } from '../../../shared/ui/icon/icon';
 
 @Component({
   selector: 'app-task-list',
-  imports: [RouterLink, ConfirmDialog],
+  imports: [RouterLink, ConfirmDialog, Icon],
   templateUrl: './task-list.html',
   styleUrl: './task-list.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

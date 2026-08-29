@@ -1,28 +1,93 @@
-<form class="chat-composer" (ngSubmit)="onSubmit()">
+<div class="chat-composer" [class.is-recording]="recording()">
   <!--
-    El botón se oculta entero donde no hay SpeechRecognition (Firefox, Safari
-    parcial): mejor ausente que presente y roto.
+    `role="alert"` y no un párrafo suelto: el mensaje entra en el DOM cuando
+    falla el dictado, y un nodo que simplemente aparece no lo anuncia ningún
+    lector de pantalla. Misma regla que el resto de `.form-error` de la app.
   -->
-  @if (voiceSupported) {
-    <button
-      type="button"
-      class="btn btn-ghost chat-composer__mic"
-      [class.chat-composer__mic--active]="listening()"
-      (click)="toggleListening()"
-      [attr.aria-pressed]="listening()"
-      aria-label="Hablar"
-    >
-      🎤
-    </button>
+  @if (errorMessage()) {
+    <p class="form-error chat-composer__error" role="alert">{{ errorMessage() }}</p>
   }
 
-  <input
-    type="text"
-    name="draft"
-    [(ngModel)]="draft"
-    placeholder="Escribe o habla un mensaje..."
-    [disabled]="sending()"
-  />
+  <form class="chat-composer__row" (ngSubmit)="onSubmit()">
+    <!--
+      El botón se oculta entero donde no hay SpeechRecognition (Firefox):
+      mejor ausente que presente y roto. Donde sí existe pero el origen no es
+      seguro, el botón se queda y al usarlo explica que falta HTTPS — ahí
+      esconderlo dejaría al usuario sin ninguna pista de por qué no está.
+    -->
+    @if (voiceSupported) {
+      <button
+        #mic
+        type="button"
+        class="btn btn-ghost chat-composer__mic"
+        [class.is-recording]="recording()"
+        [class.is-cancelling]="willCancel()"
+        [style.transform]="micTransform()"
+        [attr.aria-label]="micLabel()"
+        [attr.title]="recording() ? null : micLabel()"
+        [attr.aria-pressed]="recording()"
+        [disabled]="sending()"
+        (pointerdown)="onPointerDown($event)"
+        (pointermove)="onPointerMove($event)"
+        (pointerup)="onPointerUp($event)"
+        (pointercancel)="onPointerCancel($event)"
+        (keydown)="onKeyDown($event)"
+        (keyup)="onKeyUp($event)"
+      >
+        <app-icon name="bi:mic-fill" />
+      </button>
+    }
 
-  <button class="btn btn-primary" type="submit" [disabled]="sending()">Enviar</button>
-</form>
+    <!--
+      El carril ocupa TODO el ancho que queda a la derecha del micrófono, con
+      la papelera al final: el recorrido de cancelación llega hasta el borde,
+      no se queda a medias. Es una fila propia, así que el botón nunca pasa
+      por encima del texto — la transcripción va encima, y los controles se
+      quedan abajo. El orden visual lo pone el `order` del CSS; en el marcado
+      el campo sigue detrás del micrófono, que es el orden de reposo.
+    -->
+    @if (recording()) {
+      <div #lane class="chat-composer__lane" [class.is-armed]="willCancel()" aria-hidden="true">
+        <span class="chat-composer__lane-fill" [style.transform]="laneFill()"></span>
+        <app-icon class="chat-composer__lane-target" name="bi:trash3" />
+      </div>
+    }
+
+    <div class="chat-composer__field">
+      <textarea
+        #field
+        rows="1"
+        name="draft"
+        [ngModel]="displayText()"
+        (ngModelChange)="onDraftInput($event)"
+        (keydown)="onFieldKeyDown($event)"
+        [readOnly]="recording()"
+        [disabled]="sending()"
+        [attr.placeholder]="placeholder()"
+      ></textarea>
+    </div>
+
+    <!--
+      Botón de icono y no de texto: "Enviar" ocupaba ~90px de un panel de 440 y
+      el campo se quedaba con menos de la mitad del ancho. El `aria-label` no es
+      opcional — un botón solo-icono sin nombre lo anuncia un lector de
+      pantalla como "botón", y el icono lleva `aria-hidden` fijo a propósito.
+    -->
+    <button
+      class="btn btn-primary btn-icon chat-composer__send"
+      type="submit"
+      [disabled]="sending()"
+      aria-label="Enviar mensaje"
+      title="Enviar mensaje"
+    >
+      <app-icon name="bi:send" />
+    </button>
+  </form>
+
+  <!--
+    Fuera del botón a propósito: el `aria-label` del micrófono cambia al
+    empezar a grabar, pero los lectores no reannuncian de forma fiable el
+    nombre de un elemento que ya tiene el foco.
+  -->
+  <span class="visually-hidden" role="status" aria-live="polite">{{ status() }}</span>
+</div>
