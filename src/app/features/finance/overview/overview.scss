@@ -17,7 +17,14 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+
+  // `minmax(0, ...)` y no `1fr` a secas. `1fr` es `minmax(auto, 1fr)`, y ese
+  // `auto` NO baja del ancho mínimo del contenido: un importe como
+  // "$ 3.500.000" no tiene dónde partirse, así que cada columna exige su ancho
+  // completo, la rejilla se sale del contenedor y arrastra a toda la página
+  // consigo. Se ve como scroll horizontal en móvil, no como texto cortado, y
+  // por eso es tan fácil atribuirlo a otra cosa.
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
@@ -132,15 +139,26 @@
 // `app-header.scss`.
 // -----------------------------------------------------------------------------
 @include layout.below-tablet {
-  // Tres columnas en un móvil dejan cada importe en dos líneas partidas. Dos
-  // arriba y el balance ocupando el ancho completo abajo, que además es la
-  // jerarquía correcta: el balance es la conclusión de los otros dos.
+  // Una sola columna, y cada tarjeta pasa de apilada a fila: etiqueta a la
+  // izquierda, importe a la derecha.
+  //
+  // Con dos columnas el hueco útil de cada tarjeta era de ~102px y un importe
+  // en pesos mide ~140px: no cabía por bastante. Y no es cuestión de bajar la
+  // tipografía hasta que entre — en fila hay 280px disponibles para lo mismo,
+  // las tres cifras quedan alineadas verticalmente (que es como se comparan) y
+  // el bloque ocupa menos alto que dos tarjetas apiladas.
   .summary {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .summary__item:last-child {
-    grid-column: 1 / -1;
+  .summary__item {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+
+    // El relleno de `.card` (24px) se come el ancho que necesita el importe.
+    padding: var(--space-4);
   }
 
   .summary__value {

@@ -23,7 +23,7 @@
         <span class="summary__label" id="summary-income">Ingresos</span>
         <span class="summary__value summary__value--income" aria-labelledby="summary-income">
           @if (totals) {
-            +{{ totals.totalIncome | currency }}
+            +{{ totals.totalIncome | currency: undefined : 'symbol' : moneyDigits }}
           } @else {
             &mdash;
           }
@@ -34,7 +34,7 @@
         <span class="summary__label" id="summary-expense">Gastos</span>
         <span class="summary__value summary__value--expense" aria-labelledby="summary-expense">
           @if (totals) {
-            &minus;{{ totals.totalExpense | currency }}
+            &minus;{{ totals.totalExpense | currency: undefined : 'symbol' : moneyDigits }}
           } @else {
             &mdash;
           }
@@ -55,7 +55,7 @@
           aria-labelledby="summary-balance"
         >
           @if (totals) {
-            {{ totals.balance | currency }}
+            {{ totals.balance | currency: undefined : 'symbol' : moneyDigits }}
           } @else {
             &mdash;
           }
@@ -101,7 +101,7 @@
                   la fila se entienda sin verla.
                 -->
                 <span class="visually-hidden">{{ typeLabel(movement.type) }}: </span>
-                @if (movement.type === 'INCOME') { + } @else { &minus; }{{ absAmount(movement) | currency }}
+                @if (movement.type === 'INCOME') { + } @else { &minus; }{{ absAmount(movement) | currency: undefined : 'symbol' : moneyDigits }}
               </span>
               <span class="movement__date">{{ dateLabel(movement) }}</span>
             </div>

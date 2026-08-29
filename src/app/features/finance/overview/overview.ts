@@ -69,6 +69,20 @@ export class Overview implements OnInit {
    */
   protected readonly range = currentMonth();
 
+  /**
+   * `digitsInfo` de `CurrencyPipe`: sin decimales.
+   *
+   * El peso colombiano no usa céntimos en la práctica — nadie escribe
+   * "$ 3.500.000,00" — y arrastrarlos cuesta tres glifos por cifra, que es
+   * justo lo que hacía que los importes no cupieran en la tarjeta. Se pasa
+   * `undefined` como código de moneda para no pisar `DEFAULT_CURRENCY_CODE`:
+   * el formato de dígitos y la divisa son decisiones distintas.
+   *
+   * Vive aquí y no en una constante compartida porque hoy hay un solo
+   * consumidor; sube cuando `activity/` sea el segundo.
+   */
+  protected readonly moneyDigits = '1.0-0';
+
   protected readonly summary = signal<FinancialSummaryResponse | null>(null);
   protected readonly recent = signal<TransactionResponse[]>([]);
   protected readonly loading = signal(true);
