@@ -10,6 +10,7 @@ import { Router } from '@angular/router';
 import { AuthStateService } from '../../core/auth/auth-state.service';
 import { BreakpointService } from '../../core/layout/breakpoint.service';
 import { ThemeToggle } from '../theme-toggle/theme-toggle';
+import { Icon } from '../../shared/ui/icon/icon';
 
 /**
  * Cajón deslizante de cuenta para móvil y tablet: tema y cerrar sesión.
@@ -30,7 +31,7 @@ import { ThemeToggle } from '../theme-toggle/theme-toggle';
  */
 @Component({
   selector: 'app-session-menu',
-  imports: [ThemeToggle],
+  imports: [ThemeToggle, Icon],
   templateUrl: './session-menu.html',
   styleUrl: './session-menu.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

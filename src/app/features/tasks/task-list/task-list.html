@@ -5,7 +5,7 @@
   </div>
 
   @if (errorMessage()) {
-    <p class="form-error">{{ errorMessage() }}</p>
+    <p class="form-error" role="alert">{{ errorMessage() }}</p>
   }
 
   @if (loading()) {
@@ -35,30 +35,8 @@
             [title]="'Eliminar tarea: ' + task.title"
             (click)="onDeleteClick(task)"
           >
-            <svg
-              class="task-item__icon task-item__icon--trash"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
-            </svg>
-            <svg
-              class="task-item__icon task-item__icon--close"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            <app-icon class="task-item__icon task-item__icon--trash" name="bi:trash3" />
+            <app-icon class="task-item__icon task-item__icon--close" name="bi:x-lg" />
           </button>
 
           <div class="task-item__main">

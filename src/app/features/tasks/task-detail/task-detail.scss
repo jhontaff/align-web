@@ -31,8 +31,7 @@
 }
 
 .task-detail__back-icon {
-  width: 18px;
-  height: 18px;
+  font-size: var(--text-lg);
   // Sin esto el SVG se encoge si el contenedor aprieta y la flecha sale ovalada.
   flex-shrink: 0;
   transition: translate var(--transition-fast);
@@ -95,8 +94,7 @@
 }
 
 .task-detail__delete-icon {
-  width: 18px;
-  height: 18px;
+  font-size: var(--text-lg);
 }
 
 .task-detail__delete-icon--close {

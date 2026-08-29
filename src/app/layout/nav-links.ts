@@ -1,3 +1,5 @@
+import { IconName } from '../shared/ui/icon/icon-set';
+
 /** Un destino de la navegación principal. */
 export interface NavLink {
   /** Ruta absoluta, tal cual la declara `app.routes.ts`. */
@@ -12,16 +14,17 @@ export interface NavLink {
    */
   readonly exact: boolean;
   /**
-   * El atributo `d` del `<path>` del icono, en el viewBox 24×24 con trazo que
-   * ya usa `theme-toggle`.
+   * El icono, como nombre del set de Bootstrap Icons vía Iconify.
    *
-   * El icono viaja con el enlace en vez de vivir en cada plantilla porque el
-   * punto de esta constante es que `sidebar-nav` y `bottom-nav` no puedan
-   * divergir. Un `id` de icono más un `@switch` por componente reintroduciría
-   * exactamente la duplicación que esto viene a evitar, en dos sitios en vez
-   * de uno.
+   * Viaja con el enlace en vez de vivir en cada plantilla porque el punto de
+   * esta constante es que `sidebar-nav` y `bottom-nav` no puedan divergir. Un
+   * `id` propio más un `@switch` por componente reintroduciría exactamente la
+   * duplicación que esto viene a evitar, en dos sitios en vez de uno.
+   *
+   * El tipo es `IconName` y no `string`: una errata aquí es un error de
+   * compilación, no un hueco vacío en las dos navegaciones a la vez.
    */
-  readonly icon: string;
+  readonly icon: IconName;
 }
 
 /**
@@ -40,18 +43,18 @@ export const NAV_LINKS: readonly NavLink[] = [
     path: '/',
     label: 'Inicio',
     exact: true,
-    icon: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z M9 21v-6h6v6'
+    icon: 'bi:house-door'
   },
   {
     path: '/tasks',
     label: 'Tareas',
     exact: false,
-    icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M8.2 12.1l2.6 2.6 5-5.2'
+    icon: 'bi:check2-circle'
   },
   {
     path: '/finance',
     label: 'Finanzas',
     exact: false,
-    icon: 'M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z M5.5 10.5v3 M18.5 10.5v3'
+    icon: 'bi:wallet2'
   }
 ];
