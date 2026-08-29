@@ -534,13 +534,15 @@ Auth foundation is built and confirmed working end-to-end against the live backe
 ## Known gaps / next steps, in order
 
 1. Task feature area — edit (`PUT /api/tasks/{id}`) and delete (`DELETE /api/tasks/{id}`); will need `TaskUpdateRequest` added to `task.model.ts`.
-<<<<<<< HEAD
 2. Finance feature area (`/api/transactions`) — solo existe la pantalla vacía `overview/` y su ruta. Falta todo lo real: `models/`, `transaction.service.ts`, el resumen contra `GET /api/transactions/summary` y el listado paginado. En cuanto entre `activity/` como pantalla hermana hace falta `finance.routes.ts` con su componente contenedor y su propio `<router-outlet />`; hoy, con una sola pantalla, sería simetría vacía. Puede reutilizar el patrón de Tasks y el design system, así que debería ir más rápido.
-3. `assistant-widget` en Home y `sidebar-nav` con marca/usuario — el sidebar hoy es solo la lista de enlaces.
-=======
-2. Finance feature area (`/api/transactions`) — not started. Can now reuse both the Tasks feature-area pattern and the shared visual design system, so it should move faster than Tasks did.
 3. Habit feature area (`/api/habits`) — not started. Backend REST is ready (see [Habit](#habit-apihabits) above); no pagination and no `HabitUpdateRequest`, so it's a slightly smaller build than Task/Finance. No AI tools yet, so the habit list/completion UI has no chat equivalent to fall back on.
->>>>>>> 5463ac681665b75afe44275ba57144db83dbb536
+4. `assistant-widget` en Home y `sidebar-nav` con marca/usuario — el sidebar hoy es solo la lista de enlaces.
+
+## Tooling (no forma parte de la app, es para trabajar en el repo)
+
+- **Graphify** (2026-08-28) — instalado localmente (`pip install graphifyy`) y registrado como skill de Claude Code. Genera un knowledge graph del repo en `graphify-out/` (`graphify update .` para refrescar tras cambios, `graphify export obsidian` para exportarlo como vault). `graphify-out/` está en `.gitignore` — es output regenerable, no se versiona.
+- **Obsidian** (2026-08-28) — app de escritorio instalada vía winget, para explorar el vault que exporta Graphify.
+- **Angular skills** (2026-08-28) — `angular-developer` y `angular-new-app` instalados vía `npx skills add https://github.com/angular/skills` en `.agents/skills/` (symlink a `.claude/` local del proyecto). Pendiente decidir si `.agents/`, `.claude/` local y `skills-lock.json` se versionan o se gitignoran igual que `graphify-out/`.
 
 ## Local dev gotcha
 
