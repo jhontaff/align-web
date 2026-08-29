@@ -86,11 +86,11 @@
     válida (no se pudo borrar).
   -->
   @if (deleteError()) {
-    <p class="form-error">{{ deleteError() }}</p>
+    <p class="form-error" role="alert">{{ deleteError() }}</p>
   }
 
   @if (errorMessage()) {
-    <p class="form-error">{{ errorMessage() }}</p>
+    <p class="form-error" role="alert">{{ errorMessage() }}</p>
   }
 
   @if (loading()) {

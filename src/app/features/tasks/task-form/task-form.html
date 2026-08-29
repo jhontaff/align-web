@@ -6,7 +6,7 @@
   <div class="card form-card form-card--wide">
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
       @if (errorMessage()) {
-        <p class="form-error">{{ errorMessage() }}</p>
+        <p class="form-error" role="alert">{{ errorMessage() }}</p>
       }
 
       <div class="field">
