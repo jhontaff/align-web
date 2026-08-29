@@ -7,25 +7,13 @@
     -->
     <a class="btn btn-ghost task-detail__back" routerLink="/tasks">
       <!--
-        SVG en línea y no el carácter `←` (U+2190): el glifo depende de la
-        fuente, y en Inter sale con un trazo mucho más fino que el texto que
-        acompaña, desalineado respecto a la línea base. Todos los iconos de la
-        app ya son SVG de trazo con `stroke-width="2"` y puntas redondas
-        (`bottom-nav`, `session-menu`, el borrar de la lista); este es el
-        mismo dibujo, así que la flecha por fin pesa lo mismo que las demás.
+        Un icono y no el carácter `←` (U+2190): el glifo depende de la fuente,
+        y en Inter sale con un trazo mucho más fino que el texto al que
+        acompaña, desalineado respecto a la línea base. Con `<app-icon>` la
+        flecha pesa lo mismo que el resto de iconos de la app y hereda su
+        color, que es justo lo que un carácter suelto no hace.
       -->
-      <svg
-        class="task-detail__back-icon"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M19 12H5M12 19l-7-7 7-7" />
-      </svg>
+      <app-icon class="task-detail__back-icon" name="bi:arrow-left" />
       <!--
         El nombre accesible queda en "Volver a Tareas", que CONTIENE la etiqueta
         visible ("Tareas"). Un `aria-label` la sustituiría por otra distinta y
@@ -52,30 +40,8 @@
         title="Eliminar tarea"
         (click)="onDeleteClick()"
       >
-        <svg
-          class="task-detail__delete-icon task-detail__delete-icon--trash"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
-        </svg>
-        <svg
-          class="task-detail__delete-icon task-detail__delete-icon--close"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
+        <app-icon class="task-detail__delete-icon task-detail__delete-icon--trash" name="bi:trash3" />
+        <app-icon class="task-detail__delete-icon task-detail__delete-icon--close" name="bi:x-lg" />
       </button>
     }
   </div>
@@ -86,11 +52,11 @@
     válida (no se pudo borrar).
   -->
   @if (deleteError()) {
-    <p class="form-error">{{ deleteError() }}</p>
+    <p class="form-error" role="alert">{{ deleteError() }}</p>
   }
 
   @if (errorMessage()) {
-    <p class="form-error">{{ errorMessage() }}</p>
+    <p class="form-error" role="alert">{{ errorMessage() }}</p>
   }
 
   @if (loading()) {

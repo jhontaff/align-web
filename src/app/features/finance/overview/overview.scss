@@ -1,0 +1,167 @@
+@use '../../../../styles/layout';
+
+// Encabezado de sección. Local y no global: es un `h2` con dos declaraciones, y
+// `shared/ui/section-header/` se gana existir cuando haya un segundo consumidor
+// con estructura de verdad (acción a la derecha, contador), no antes.
+.section-heading {
+  font-size: var(--text-h2);
+  font-weight: var(--weight-semibold);
+  margin: var(--space-6) 0 var(--space-3);
+}
+
+// -----------------------------------------------------------------------------
+// Las tres cifras
+// -----------------------------------------------------------------------------
+.summary {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+
+  // `minmax(0, ...)` y no `1fr` a secas. `1fr` es `minmax(auto, 1fr)`, y ese
+  // `auto` NO baja del ancho mínimo del contenido: un importe como
+  // "$ 3.500.000" no tiene dónde partirse, así que cada columna exige su ancho
+  // completo, la rejilla se sale del contenedor y arrastra a toda la página
+  // consigo. Se ve como scroll horizontal en móvil, no como texto cortado, y
+  // por eso es tan fácil atribuirlo a otra cosa.
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.summary__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.summary__label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.summary__value {
+  font-size: var(--text-h1);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+
+  // Cifras de ancho fijo. Sin esto las columnas de importes bailan de una fila
+  // a otra según los dígitos que toquen, y comparar dos cantidades de un
+  // vistazo deja de ser posible.
+  font-variant-numeric: tabular-nums;
+
+  // No hace falta reservar alto a mano: la plantilla pinta un guion mientras
+  // carga, así que la línea existe desde el primer fotograma.
+}
+
+// Mapeo dominio → semántica, igual que los badges de Tareas: ingreso apunta a
+// `success`, gasto a `danger`. Ningún hex aquí.
+.summary__value--income {
+  color: var(--color-success);
+}
+
+.summary__value--expense {
+  color: var(--color-danger);
+}
+
+// -----------------------------------------------------------------------------
+// Últimos movimientos
+// -----------------------------------------------------------------------------
+.movements {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.movement {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+
+.movement__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+
+  // Deja que la descripción se recorte en vez de empujar al importe fuera de la
+  // tarjeta: un `flex` no baja de su tamaño de contenido sin esto.
+  min-width: 0;
+  flex: 1;
+}
+
+.movement__category {
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+}
+
+.movement__description {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.movement__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.movement__amount {
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-danger);
+}
+
+// El gasto es el caso mayoritario en una app de gastos personales, así que el
+// rojo es el valor por defecto y solo el ingreso lleva modificador.
+.movement__amount--income {
+  color: var(--color-success);
+}
+
+.movement__date {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+// -----------------------------------------------------------------------------
+// Los bloques de media query van al FINAL de la hoja, nunca junto a la regla
+// que modifican: una media query no añade especificidad, solo decide el orden,
+// así que puesta arriba la pisa la declaración de más abajo. Ya pasó en
+// `app-header.scss`.
+// -----------------------------------------------------------------------------
+@include layout.below-tablet {
+  // Una sola columna, y cada tarjeta pasa de apilada a fila: etiqueta a la
+  // izquierda, importe a la derecha.
+  //
+  // Con dos columnas el hueco útil de cada tarjeta era de ~102px y un importe
+  // en pesos mide ~140px: no cabía por bastante. Y no es cuestión de bajar la
+  // tipografía hasta que entre — en fila hay 280px disponibles para lo mismo,
+  // las tres cifras quedan alineadas verticalmente (que es como se comparan) y
+  // el bloque ocupa menos alto que dos tarjetas apiladas.
+  .summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .summary__item {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+
+    // El relleno de `.card` (24px) se come el ancho que necesita el importe.
+    padding: var(--space-4);
+  }
+
+  .summary__value {
+    font-size: var(--text-h2);
+  }
+}

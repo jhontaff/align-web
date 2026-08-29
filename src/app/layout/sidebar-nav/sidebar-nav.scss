@@ -59,3 +59,8 @@
   color: var(--color-primary-soft-text);
   font-weight: var(--weight-semibold);
 }
+
+.sidebar-nav__icon {
+  flex-shrink: 0;
+  font-size: var(--text-lg);
+}

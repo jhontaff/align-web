@@ -182,8 +182,7 @@
 }
 
 .task-item__icon {
-  width: 18px;
-  height: 18px;
+  font-size: var(--text-lg);
 }
 
 // La papelera es el icono de escritorio; la "x" el de movil. Se conmutan por

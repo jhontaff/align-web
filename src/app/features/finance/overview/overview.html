@@ -3,8 +3,111 @@
     <h1>Finanzas</h1>
   </div>
 
-  <p class="empty-state">
-    Todavía no está construido. Aquí irán el resumen de ingresos y gastos y el
-    listado de movimientos.
-  </p>
+  @if (errorMessage()) {
+    <p class="form-error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  @let totals = summary();
+
+  <section aria-labelledby="summary-heading" [attr.aria-busy]="loading()">
+    <h2 class="section-heading" id="summary-heading">Resumen de {{ rangeLabel }}</h2>
+
+    <!--
+      La lista se pinta SIEMPRE, también mientras carga, con un guion en el
+      hueco de cada cifra. Montarla solo cuando llegan los datos haría saltar
+      hacia abajo todo lo que tiene debajo justo cuando el usuario ya está
+      leyendo — el guion ocupa la misma línea que ocupará el importe.
+    -->
+    <ul class="summary">
+      <li class="card summary__item">
+        <span class="summary__label" id="summary-income">Ingresos</span>
+        <span class="summary__value summary__value--income" aria-labelledby="summary-income">
+          @if (totals) {
+            +{{ totals.totalIncome | currency: undefined : 'symbol' : moneyDigits }}
+          } @else {
+            &mdash;
+          }
+        </span>
+      </li>
+
+      <li class="card summary__item">
+        <span class="summary__label" id="summary-expense">Gastos</span>
+        <span class="summary__value summary__value--expense" aria-labelledby="summary-expense">
+          @if (totals) {
+            &minus;{{ totals.totalExpense | currency: undefined : 'symbol' : moneyDigits }}
+          } @else {
+            &mdash;
+          }
+        </span>
+      </li>
+
+      <li class="card summary__item">
+        <span class="summary__label" id="summary-balance">Balance</span>
+        <!--
+          La única cifra sin signo escrito a mano: los ingresos siempre suman y
+          los gastos siempre restan, pero el balance puede ir en cualquier
+          dirección, así que el signo lo pone `CurrencyPipe` cuando el número es
+          negativo. Escribirlo aquí además daría "-−12,00 €".
+        -->
+        <span
+          class="summary__value"
+          [class.summary__value--expense]="balanceNegative()"
+          aria-labelledby="summary-balance"
+        >
+          @if (totals) {
+            {{ totals.balance | currency: undefined : 'symbol' : moneyDigits }}
+          } @else {
+            &mdash;
+          }
+        </span>
+      </li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="recent-heading">
+    <h2 class="section-heading" id="recent-heading">Últimos movimientos</h2>
+
+    @if (loading()) {
+      <p class="empty-state">Cargando...</p>
+    } @else if (recent().length === 0) {
+      <!--
+        Sin botón de "crear": el formulario de alta todavía no existe, y una
+        llamada a la acción que no lleva a ninguna parte es peor que ninguna.
+        Entra con la etapa 4.
+      -->
+      <p class="empty-state">Todavía no hay movimientos en {{ rangeLabel }}.</p>
+    } @else {
+      <ul class="movements">
+        @for (movement of recent(); track movement.id) {
+          <li class="card movement">
+            <div class="movement__main">
+              <span class="movement__category">{{ categoryLabel(movement.category) }}</span>
+              @if (movement.description) {
+                <span class="movement__description">{{ movement.description }}</span>
+              }
+            </div>
+
+            <div class="movement__meta">
+              <span
+                class="movement__amount"
+                [class.movement__amount--income]="movement.type === 'INCOME'"
+              >
+                <!--
+                  El color y el signo dicen lo mismo dos veces a propósito: el
+                  color solo no vale para quien no lo distingue. Pero ninguno de
+                  los dos llega a un lector de pantalla — el signo &minus; no se
+                  anuncia de forma fiable — así que el tipo va además escrito,
+                  oculto en pantalla. Es la tercera copia, y es la que hace que
+                  la fila se entienda sin verla.
+                -->
+                <span class="visually-hidden">{{ typeLabel(movement.type) }}: </span>
+                @if (movement.type === 'INCOME') { + } @else { &minus; }{{ absAmount(movement) | currency: undefined : 'symbol' : moneyDigits }}
+              </span>
+              <span class="movement__date">{{ dateLabel(movement) }}</span>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </section>
 </div>

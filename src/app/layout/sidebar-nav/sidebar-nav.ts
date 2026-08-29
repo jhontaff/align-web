@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NAV_LINKS } from '../nav-links';
+import { Icon } from '../../shared/ui/icon/icon';
 
 /**
  * Navegación lateral, visible a partir del breakpoint de escritorio.
@@ -16,7 +17,7 @@ import { NAV_LINKS } from '../nav-links';
  */
 @Component({
   selector: 'app-sidebar-nav',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, Icon],
   templateUrl: './sidebar-nav.html',
   styleUrl: './sidebar-nav.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

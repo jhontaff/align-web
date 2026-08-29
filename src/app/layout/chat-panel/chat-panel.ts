@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, model } from '@angu
 import { ChatComposer } from '../../features/chat/components/chat-composer/chat-composer';
 import { ChatThread } from '../../features/chat/components/chat-thread/chat-thread';
 import { ChatStore } from '../../features/chat/chat.store';
+import { Icon } from '../../shared/ui/icon/icon';
 
 /**
  * El montaje del chat en el shell. Tiene dos formas y las dos son este mismo
@@ -20,7 +21,7 @@ import { ChatStore } from '../../features/chat/chat.store';
  */
 @Component({
   selector: 'app-chat-panel',
-  imports: [ChatThread, ChatComposer],
+  imports: [ChatThread, ChatComposer, Icon],
   templateUrl: './chat-panel.html',
   styleUrl: './chat-panel.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

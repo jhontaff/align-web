@@ -374,6 +374,14 @@
 
 .menu-item__icon {
   flex-shrink: 0;
+  font-size: var(--text-lg);
+}
+
+// Los iconos son SVG de 1em, así que su tamaño lo fija el `font-size` del
+// contenedor y no un `width`. Centralizarlo aquí es lo que evita que cada
+// botón de icono elija el suyo y acaben a tres tamaños distintos.
+.btn-icon app-icon {
+  font-size: var(--text-lg);
 }
 
 .menu-divider {
