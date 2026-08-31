@@ -1,0 +1,211 @@
+@use '../../../../styles/layout';
+
+.habits-progress {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+// -----------------------------------------------------------------------------
+// Alta en línea
+// -----------------------------------------------------------------------------
+.habit-create {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+// `.field` global trae `margin-bottom`, que aquí desalinearía el campo respecto
+// al botón: la fila ya separa con `gap`.
+.habit-create__field {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.habit-create__submit {
+  flex-shrink: 0;
+  gap: var(--space-2);
+}
+
+// -----------------------------------------------------------------------------
+// La rejilla de tarjetas
+// -----------------------------------------------------------------------------
+.habit-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+
+  // `auto-fill` en vez de tres media queries: las tarjetas son todas del mismo
+  // tamaño y no tienen jerarquía entre sí, así que dejar que el navegador
+  // cuente cuántas caben es más honesto que fijar 3/2/1 a mano.
+  //
+  // `min(220px, 100%)` y no `220px` a secas: en un viewport más estrecho que
+  // 220px una pista de mínimo fijo no encoge, y la rejilla se sale del
+  // contenedor provocando scroll horizontal en toda la página. Es la misma
+  // clase de desbordamiento que `minmax(0, 1fr)` evita en `home.scss`.
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  gap: var(--space-3);
+}
+
+.habit-card {
+  display: flex;
+  flex-direction: column;
+  // Separa el nombre del pie y empuja el pie abajo: con nombres de una y de
+  // tres líneas en la misma fila, los checks quedarían a alturas distintas.
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  // El borde cambia de color al marcar, y sin transición el cambio es un salto
+  // seco. `--transition-fast` es el mismo token que usa `.btn`; el bloque
+  // global de `prefers-reduced-motion` de `_base.scss` ya lo neutraliza para
+  // quien lo pida, así que no hace falta repetirlo aquí.
+  transition: border-color var(--transition-fast);
+}
+
+.habit-card.is-done {
+  border-color: var(--color-success);
+}
+
+.habit-card__name {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+  // Dos líneas y luego recorta: sin tope, un nombre largo estira su tarjeta y
+  // desiguala toda la fila de la rejilla.
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.habit-card__footer {
+  display: flex;
+  align-items: center;
+  // 8px mínimo entre objetivos táctiles adyacentes. Aquí sobra porque la racha
+  // no es pulsable, pero mantiene la separación óptica entre el círculo y el
+  // número.
+  gap: var(--space-3);
+}
+
+// -----------------------------------------------------------------------------
+// El check del día
+// -----------------------------------------------------------------------------
+.habit-check {
+  // 44×44 exactos: el mínimo cómodo para el pulgar, y el objetivo real de esta
+  // pantalla — es el gesto que se repite a diario. El icono de dentro mide 1em
+  // y no manda en el tamaño del botón.
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  // Gris en reposo: el check vacío no debe leerse como una marca ya puesta.
+  color: var(--color-text-muted);
+  cursor: pointer;
+  // Sin retardo de ~300ms por doble toque, y sin el recuadro gris que iOS y
+  // Android pintan por su cuenta encima del círculo.
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.habit-check__icon {
+  font-size: var(--text-lg);
+}
+
+// Acuse de recibo al tocar. En táctil no hay hover que anticipe la pulsación,
+// así que sin esto la única señal llega cuando la petición ya ha vuelto.
+.habit-check:active {
+  transform: scale(0.92);
+}
+
+// Marcado: relleno verde y check en blanco. El color NO es el único canal —
+// también cambian el borde de la tarjeta y, sobre todo, aparece la racha.
+.habit-card.is-done .habit-check {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  // Blanco literal y no un token: es texto sobre un fondo de marca sólido, y
+  // no depende del tema. Mismo caso que `.btn-danger` en `_components.scss`.
+  color: #ffffff;
+  cursor: default;
+}
+
+// No hay vuelta atrás: el backend no expone forma de deshacer una completación,
+// así que el círculo marcado deja de invitar a pulsarlo.
+.habit-check[aria-disabled='true'] {
+  cursor: default;
+}
+
+.habit-check[aria-disabled='true']:active {
+  transform: none;
+}
+
+// -----------------------------------------------------------------------------
+// La racha
+// -----------------------------------------------------------------------------
+.habit-streak {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  color: var(--color-success-soft-text);
+
+  // Oculta pero OCUPANDO SITIO: con `display: none` la tarjeta cambiaría de
+  // alto al marcar y daría un salto justo bajo el dedo que acaba de tocarla.
+  // `visibility` la reserva, y la plantilla añade `aria-hidden` para que un
+  // lector de pantalla tampoco la lea mientras no se ve.
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity var(--transition-fast),
+    visibility var(--transition-fast);
+}
+
+.habit-streak.is-visible {
+  visibility: visible;
+  opacity: 1;
+}
+
+.habit-streak__value {
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  // Cifras de ancho fijo: sin esto el número baila de una tarjeta a otra según
+  // los dígitos que toquen.
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.habit-streak__unit {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+// -----------------------------------------------------------------------------
+// Los bloques de media query van al FINAL de la hoja, nunca junto a la regla
+// que modifican: una media query no añade especificidad, solo decide el orden,
+// así que puesta arriba la pisa la declaración de más abajo. Ya pasó en
+// `app-header.scss`.
+// -----------------------------------------------------------------------------
+@include layout.below-tablet {
+  // El campo ocupa la fila entera y el botón cae debajo a todo el ancho: lado a
+  // lado en una pantalla estrecha, el campo se queda con ~180px, que no da ni
+  // para ver lo que se escribe.
+  .habit-create {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

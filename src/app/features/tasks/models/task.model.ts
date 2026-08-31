@@ -1,6 +1,17 @@
 export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 
+/**
+ * Filtros que acepta `GET /api/tasks`.
+ *
+ * Solo `status`: es lo unico que el backend soporta hoy. El tipo no promete
+ * mas de lo que hay — anadir aqui un `search` o un `priority` haria que el
+ * compilador aceptara una llamada que el servidor ignora en silencio.
+ */
+export interface TaskFilter {
+  status?: TaskStatus;
+}
+
 export interface TaskRequest {
   title: string;
   description?: string;

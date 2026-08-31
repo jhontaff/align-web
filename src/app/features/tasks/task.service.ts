@@ -1,15 +1,32 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Page } from '../../core/models/page.model';
-import { TaskRequest, TaskResponse } from './models/task.model';
+import { toHttpParams } from '../../core/http/to-http-params';
+import { Page, Pageable } from '../../core/models/page.model';
+import { TaskFilter, TaskRequest, TaskResponse } from './models/task.model';
 
 @Injectable({ providedIn: 'root' })
 export class TaskService {
   private readonly http = inject(HttpClient);
 
-  list(): Observable<Page<TaskResponse>> {
-    return this.http.get<Page<TaskResponse>>('/api/tasks');
+  /**
+   * Listado paginado, con filtro por estado opcional.
+   *
+   * Ambos parametros son opcionales y `TaskList` sigue llamandolo sin
+   * argumentos; los anadio el resumen de Inicio, que necesita
+   * `status=PENDING&size=3&sort=dueDate,asc`.
+   *
+   * El filtro va al servidor y no al array devuelto a proposito. Contar o
+   * buscar en cliente solo ve la pagina cargada, asi que con paginacion el
+   * numero seria falso en cuanto haya mas tareas que el tamano de pagina —
+   * es el mismo motivo por el que el buscador de tareas sigue sin construirse.
+   * El contador honesto es `totalElements`, y viene en la misma respuesta que
+   * el `content`: una peticion, dos datos.
+   */
+  list(filter?: TaskFilter, pageable?: Pageable): Observable<Page<TaskResponse>> {
+    return this.http.get<Page<TaskResponse>>('/api/tasks', {
+      params: toHttpParams(filter, pageable)
+    });
   }
 
   /**

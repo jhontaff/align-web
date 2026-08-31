@@ -1,0 +1,44 @@
+<app-summary-card
+  heading="Tareas"
+  icon="bi:check2-circle"
+  link="/tasks"
+  linkLabel="Ver todas las tareas"
+>
+  @if (errorMessage(); as message) {
+    <!--
+      `role="alert"` en todo `.form-error`: el mensaje entra en el DOM cuando
+      falla la peticion, y un nodo que simplemente aparece no lo anuncia ningun
+      lector de pantalla.
+    -->
+    <p class="form-error" role="alert">{{ message }}</p>
+  } @else {
+    <!--
+      La cifra se pinta SIEMPRE, tambien mientras carga, con un guion en el
+      hueco. Montarla solo al llegar los datos empuja hacia abajo todo lo que
+      tiene debajo justo cuando el usuario esta leyendo — mismo criterio que la
+      lista de cifras del resumen de Finanzas.
+    -->
+    <p class="tasks-summary__count" [attr.aria-busy]="loading()">
+      @if (pendingCount(); as count) {
+        {{ countLabel(count) }}
+      } @else if (loading()) {
+        &mdash;
+      } @else {
+        Sin tareas pendientes
+      }
+    </p>
+
+    @if (!loading() && upcoming().length > 0) {
+      <ul class="tasks-summary__list">
+        @for (task of upcoming(); track task.id) {
+          <li class="tasks-summary__item">
+            <span class="tasks-summary__title">{{ task.title }}</span>
+            @if (dueLabel(task); as due) {
+              <span class="tasks-summary__due">{{ due }}</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+  }
+</app-summary-card>
