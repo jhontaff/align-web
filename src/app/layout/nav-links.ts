@@ -30,6 +30,11 @@ export interface NavLink {
 /**
  * La navegación principal, declarada una sola vez.
  *
+ * Anadir un destino aqui lo pinta en las DOS navegaciones y en ningun otro
+ * sitio hay que tocar nada — pero exige que la ruta exista en `app.routes.ts`:
+ * un enlace sin ruta cae en el comodin `**` y devuelve al usuario a Inicio en
+ * silencio, sin error de compilacion y sin nada que mirar en consola.
+ *
  * `sidebar-nav` (≥ desktop) y `bottom-nav` (< desktop) son dos componentes
  * porque su marcado y su semántica accesible son distintos, pero consumen
  * esta misma lista: es la pieza que impide que añadir una feature deje un
@@ -56,5 +61,11 @@ export const NAV_LINKS: readonly NavLink[] = [
     label: 'Finanzas',
     exact: false,
     icon: 'bi:wallet2'
+  },
+  {
+    path: '/habits',
+    label: 'Hábitos',
+    exact: false,
+    icon: 'bi:calendar-check'
   }
 ];

@@ -1,0 +1,39 @@
+@use '../../../styles/layout';
+
+.home-grid {
+  display: grid;
+
+  // `minmax(0, ...)` y no `1fr` a secas. `1fr` es `minmax(auto, 1fr)`, y ese
+  // `auto` no baja del ancho minimo del contenido: un importe en pesos no tiene
+  // donde partirse, asi que cada columna exige su ancho completo, la rejilla se
+  // sale del contenedor y arrastra a toda la pagina consigo. Se ve como scroll
+  // horizontal, no como texto cortado, y por eso cuesta atribuirlo a la
+  // rejilla. Ya se pago en `finance/overview.scss`.
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+
+  // Todas las tarjetas de una fila con el mismo alto: es lo que permite que
+  // `.summary-card` empuje su enlace al fondo y los tres queden alineados.
+  align-items: stretch;
+}
+
+// -----------------------------------------------------------------------------
+// Los bloques de media query van al FINAL de la hoja, nunca junto a la regla
+// que modifican: una media query no anade especificidad, solo decide el orden,
+// asi que puesta arriba la pisa la declaracion de mas abajo. Ya paso en
+// `app-header.scss`.
+// -----------------------------------------------------------------------------
+
+// Entre tablet y escritorio caben dos: a tres, cada tarjeta baja de ~200px y
+// los importes vuelven a no caber.
+@include layout.below-desktop {
+  .home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@include layout.below-tablet {
+  .home-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

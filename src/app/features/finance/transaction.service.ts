@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Page } from '../../core/models/page.model';
+import { toHttpParams } from '../../core/http/to-http-params';
+import { Page, Pageable } from '../../core/models/page.model';
 import {
   FinancialSummaryResponse,
-  Pageable,
   TransactionFilter,
   TransactionResponse
 } from './models/transaction.model';
@@ -34,40 +34,14 @@ export class TransactionService {
    */
   list(filter?: TransactionFilter, pageable?: Pageable): Observable<Page<TransactionResponse>> {
     return this.http.get<Page<TransactionResponse>>('/api/transactions', {
-      params: this.toParams(filter, pageable)
+      params: toHttpParams(filter, pageable)
     });
   }
 
   /** Totales del mismo conjunto que devolvería `list()` con ese filtro. */
   summary(filter?: TransactionFilter): Observable<FinancialSummaryResponse> {
     return this.http.get<FinancialSummaryResponse>('/api/transactions/summary', {
-      params: this.toParams(filter)
+      params: toHttpParams(filter)
     });
-  }
-
-  /**
-   * Filtro y paginación a query params.
-   *
-   * Dos cosas que parecen detalles y no lo son:
-   *
-   * 1. **`HttpParams` es inmutable.** `.set()` devuelve una instancia nueva en
-   *    vez de mutar la existente, así que el retorno hay que reasignarlo. Un
-   *    bucle que llame a `params.set(...)` ignorando el resultado manda la
-   *    petición sin ningún filtro y sin ningún error: el listado sale completo
-   *    y parece que el backend ignora los filtros.
-   * 2. **Se omiten las claves vacías.** Mandar `category=` no es lo mismo que
-   *    no mandar `category`: el backend intentaría convertir la cadena vacía al
-   *    enum y responde 400.
-   */
-  private toParams(filter?: TransactionFilter, pageable?: Pageable): HttpParams {
-    let params = new HttpParams();
-
-    for (const [key, value] of Object.entries({ ...filter, ...pageable })) {
-      if (value !== undefined && value !== null && value !== '') {
-        params = params.set(key, value);
-      }
-    }
-
-    return params;
   }
 }
