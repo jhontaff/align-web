@@ -8,6 +8,56 @@
 }
 
 // -----------------------------------------------------------------------------
+// Fila de notificaciones
+// -----------------------------------------------------------------------------
+.habit-notify {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  // Los botones caen debajo del texto en cuanto la fila no da de sí, en vez de
+  // aplastar el texto a una columna de dos palabras.
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  // Superficie con borde y sin sombra: es una fila informativa, no una card.
+  // Elevarla la pondría al mismo nivel visual que los hábitos, que son el
+  // contenido real de la pantalla.
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.habit-notify__icon {
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+// Bloqueado: la campana tachada pierde el color de acento. El icono cambia de
+// forma además de color, que es lo que hace que el estado se lea también sin
+// distinguir tonos.
+.habit-notify.is-denied .habit-notify__icon {
+  color: var(--color-text-muted);
+}
+
+.habit-notify__text {
+  margin: 0;
+  flex: 1;
+  // Suelo de ancho para que el texto empuje a los botones a la línea siguiente
+  // antes de quedarse en una columna estrecha. Sin él, `flex: 1` encoge hasta
+  // partir cada palabra en su propia línea.
+  min-width: 200px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.habit-notify__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+// -----------------------------------------------------------------------------
 // Alta en línea
 // -----------------------------------------------------------------------------
 .habit-create {
