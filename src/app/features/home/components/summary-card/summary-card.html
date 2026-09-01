@@ -1,0 +1,23 @@
+<!--
+  `<section>` y no `<div>`: con `aria-labelledby` cada tarjeta se convierte en
+  una region con nombre, y quien navega con lector de pantalla puede saltar
+  entre "Tareas", "Finanzas" y "Habitos" en vez de recorrer el panel entero de
+  corrido.
+-->
+<section class="card summary-card" [attr.aria-labelledby]="headingId">
+  <h2 class="summary-card__heading" [id]="headingId">
+    <app-icon class="summary-card__icon" [name]="icon()" />
+    {{ heading() }}
+  </h2>
+
+  <div class="summary-card__body">
+    <ng-content />
+  </div>
+
+  @if (link(); as target) {
+    <a class="summary-card__link" [routerLink]="target">
+      {{ linkLabel() }}
+      <app-icon name="bi:arrow-right" />
+    </a>
+  }
+</section>

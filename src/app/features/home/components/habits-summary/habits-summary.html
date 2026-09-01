@@ -1,0 +1,35 @@
+<app-summary-card
+  heading="Hábitos"
+  icon="bi:calendar-check"
+  link="/habits"
+  linkLabel="Ver todos los hábitos"
+>
+  @if (errorMessage(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  } @else if (loading()) {
+    <p class="habits-summary__count">&mdash;</p>
+  } @else if (count() === 0) {
+    <!--
+      Sin llamada a la accion: el alta de habitos no tiene pantalla todavia, y
+      un boton que no lleva a ninguna parte es peor que su ausencia. El enlace
+      del pie si existe ya — lleva al listado, que es una ruta real.
+    -->
+    <p class="empty-state">Todavía no hay hábitos.</p>
+  } @else {
+    <p class="habits-summary__count">{{ countLabel(count()) }}</p>
+
+    <ul class="habits-summary__list">
+      @for (habit of top(); track habit.id) {
+        <li class="habits-summary__item">
+          <span class="habits-summary__name">{{ habit.name }}</span>
+          <!--
+            La racha va escrita en palabras ("5 días") y no como un numero
+            suelto junto a un icono: sin la unidad, un "5" al lado de un nombre
+            no dice si son dias, veces o pendientes.
+          -->
+          <span class="habits-summary__streak">{{ streakLabel(habit) }}</span>
+        </li>
+      }
+    </ul>
+  }
+</app-summary-card>

@@ -47,14 +47,14 @@
 
 .bottom-nav__item {
   flex: 1 1 0;
-  // Sin esto, "Finanzas" se lleva más ancho que sus hermanos y las cuatro
+  // Sin esto, "Finanzas" se lleva más ancho que sus hermanos y las cinco
   // pestañas dejan de estar repartidas a partes iguales.
   min-width: 0;
   display: flex;
 }
 
-// La misma clase la llevan tres `<a>` y un `<button>`, así que hay que
-// neutralizar los estilos propios del botón para que las cuatro pestañas sean
+// La misma clase la llevan cuatro `<a>` y un `<button>`, así que hay que
+// neutralizar los estilos propios del botón para que las cinco pestañas sean
 // indistinguibles.
 .bottom-nav__link {
   flex: 1 1 auto;
@@ -77,7 +77,7 @@
   // `_base.scss` subraya todo `<a>` en hover, que es lo correcto para un
   // enlace dentro de un texto y ruido dentro de una pestaña: aquí el estado
   // ya lo cuenta la píldora, y el subrayado además desalineaba la etiqueta
-  // respecto a las otras tres.
+  // respecto a las demás.
   text-decoration: none;
   cursor: pointer;
   // Esta barra solo existe por debajo de escritorio, así que casi siempre se
@@ -118,7 +118,14 @@
 .bottom-nav__label {
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
-  // Con cuatro columnas una etiqueta larga trunca en vez de romper el reparto.
+  // Con cinco columnas una etiqueta larga trunca en vez de romper el reparto.
+  //
+  // Cinco es el tope: en un móvil de 360px cada pestaña dispone de ~58px para
+  // la etiqueta y "Finanzas" mide ~52px, así que entra justa; por debajo de
+  // 340px empieza a recortarse con puntos suspensivos. Se recorta a propósito
+  // en vez de encoger la tipografía o pasar a solo iconos: "Tareas" y
+  // "Finanzas" no tienen iconos que se reconozcan sin texto. Una sexta
+  // pestaña ya no cabe — a partir de ahí toca un menú "Más".
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -190,7 +197,7 @@
 //
 // Con el móvil tumbado quedan ~350px de alto para toda la app, y una barra de
 // 56px es un 16% de la pantalla gastado en cromo. Lo que sobra en cambio es
-// ancho: 4 pestañas en 700px son 175px cada una, y ahí un icono y su etiqueta
+// ancho: 5 pestañas en 700px son 140px cada una, y ahí un icono y su etiqueta
 // caben de sobra en la MISMA fila.
 //
 // Por eso se gira el contenido en vez de esconder las etiquetas, que era la

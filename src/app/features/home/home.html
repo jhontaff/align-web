@@ -1,1 +1,16 @@
-<p>Hola, {{ authState.user()?.firstName }}</p>
+<!--
+  `.page--wide` sube el ancho de `--container-md` (720px) a `--container-max`
+  (1280px): tres tarjetas no caben en el ancho de lectura que usan las listas y
+  los formularios.
+-->
+<div class="page page--wide">
+  <div class="page-header">
+    <h1>Hola, {{ authState.user()?.firstName }}</h1>
+  </div>
+
+  <div class="home-grid">
+    <app-tasks-summary />
+    <app-finance-summary />
+    <app-habits-summary />
+  </div>
+</div>

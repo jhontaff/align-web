@@ -1,0 +1,203 @@
+<div class="page page--wide">
+  <div class="page-header">
+    <h1>Hábitos</h1>
+
+    @if (!loading() && sorted().length > 0) {
+      <!--
+        Un dato, no una barra de progreso: con tres o cuatro hábitos una barra
+        se mueve a saltos del 33% y transmite precisión que no tiene.
+      -->
+      <p class="habits-progress">
+        @if (pendingToday() === 0) {
+          Todo hecho hoy
+        } @else {
+          {{ pendingToday() }} por hacer hoy
+        }
+      </p>
+    }
+  </div>
+
+  <!--
+    Notificaciones push del dispositivo.
+
+    El bloque entero desaparece cuando el navegador no las soporta —o cuando el
+    Service Worker no está activo, que es lo que pasa con `ng serve`—, igual que
+    el botón de micrófono en Firefox: un control que no puede funcionar es peor
+    que su ausencia. El motivo se explica por consola para quien desarrolla.
+
+    Vive en Hábitos y no en un menú de ajustes porque aquí es donde se entiende
+    para qué sirve: el usuario lo pulsa mientras piensa "quiero acordarme de
+    esto". El SERVICIO, en cambio, es de `core/` — la suscripción es del
+    dispositivo, no de esta pantalla.
+  -->
+  @if (push.supported()) {
+    <div class="habit-notify" [class.is-denied]="push.status() === 'denied'">
+      <app-icon
+        class="habit-notify__icon"
+        [name]="push.status() === 'denied' ? 'bi:bell-slash' : 'bi:bell'"
+      />
+
+      <!--
+        Se ramifica sobre permiso Y suscripción, no sobre uno solo: darse de
+        baja no revoca el permiso, así que tras "Desactivar" el estado queda en
+        `granted` sin suscripción. Mirando solo el permiso, la fila seguiría
+        diciendo "activados" justo después de desactivarlos.
+      -->
+      @if (push.status() === 'denied') {
+        <!--
+          Texto y NO un botón: el navegador no deja volver a preguntar desde la
+          página una vez bloqueado, así que un "Activar" aquí sería un control
+          que no puede hacer nada.
+        -->
+        <p class="habit-notify__text">
+          Notificaciones bloqueadas en este navegador. Para recibirlas hay que
+          permitirlas desde el candado de la barra de direcciones.
+        </p>
+      } @else if (push.subscribed()) {
+        <p class="habit-notify__text">Recordatorios activados en este dispositivo.</p>
+
+        <div class="habit-notify__actions">
+          <button
+            class="btn btn-outlined btn-sm"
+            type="button"
+            [disabled]="push.busy()"
+            (click)="onTestNotification()"
+          >
+            Probar
+          </button>
+
+          <button
+            class="btn btn-ghost btn-sm"
+            type="button"
+            [disabled]="push.busy()"
+            (click)="onDisableNotifications()"
+          >
+            Desactivar
+          </button>
+        </div>
+      } @else {
+        <p class="habit-notify__text">Recibe un aviso de los hábitos que te quedan por marcar.</p>
+
+        <div class="habit-notify__actions">
+          <button
+            class="btn btn-outlined btn-sm"
+            type="button"
+            [disabled]="push.busy()"
+            (click)="onEnableNotifications()"
+          >
+            {{ push.busy() ? 'Activando...' : 'Activar' }}
+          </button>
+        </div>
+      }
+    </div>
+
+    @if (push.error(); as message) {
+      <p class="form-error" role="alert">{{ message }}</p>
+    }
+  }
+
+  <!--
+    El alta va arriba y no al final: con la lista vacía es lo único que hay en
+    pantalla, y con la lista llena sigue estando donde el usuario ya mira en
+    vez de al fondo de un scroll.
+  -->
+  <form class="habit-create" [formGroup]="form" (ngSubmit)="onSubmit()">
+    <div class="field habit-create__field">
+      <!--
+        Etiqueta visible, no un `aria-label` sobre el input: un placeholder
+        desaparece al escribir y deja el campo sin nombre a la vista.
+      -->
+      <label for="habit-name">Nuevo hábito</label>
+      <input
+        #nameInput
+        id="habit-name"
+        type="text"
+        formControlName="name"
+        autocomplete="off"
+        [maxlength]="nameMaxLength"
+        placeholder="Leer 20 minutos"
+      />
+    </div>
+
+    <button class="btn btn-primary habit-create__submit" type="submit" [disabled]="submitting()">
+      <app-icon name="bi:plus-lg" />
+      Añadir
+    </button>
+  </form>
+
+  @if (createError(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+
+  @if (errorMessage(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+
+  @if (loading()) {
+    <p class="empty-state">Cargando...</p>
+  } @else if (sorted().length === 0) {
+    <!--
+      Sin llamada a la acción propia: el campo de alta de arriba ya lo es, y
+      repetir un botón aquí daría dos formas de hacer lo mismo a diez píxeles
+      de distancia.
+    -->
+    <p class="empty-state">No hay hábitos todavía. Añade el primero arriba.</p>
+  } @else {
+    <ul class="habit-grid">
+      @for (habit of sorted(); track habit.id) {
+        <li class="card habit-card" [class.is-done]="isDone(habit)">
+          <h2 class="habit-card__name">{{ habit.name }}</h2>
+
+          <div class="habit-card__footer">
+            <!--
+              `aria-disabled` y NO `disabled`: un botón deshabilitado sale del
+              orden de tabulación, así que quien navega con teclado no
+              encontraría nada dentro de la tarjeta en vez de encontrar un
+              control que anuncia "ya marcado". Como `aria-disabled` no impide
+              el clic, el bloqueo real está en `onComplete()`.
+
+              El nombre accesible lleva el del hábito: en una rejilla, ocho
+              botones llamados "Marcar" son indistinguibles al navegar por
+              lista de controles.
+            -->
+            <button
+              type="button"
+              class="habit-check"
+              [attr.aria-disabled]="isDone(habit) || completingId() === habit.id"
+              [attr.aria-label]="
+                (isDone(habit) ? 'Ya marcado hoy: ' : 'Marcar hoy como hecho: ') + habit.name
+              "
+              [title]="isDone(habit) ? 'Ya marcado hoy' : 'Marcar hoy como hecho'"
+              (click)="onComplete(habit)"
+            >
+              <app-icon class="habit-check__icon" name="bi:check-lg" />
+            </button>
+
+            <!--
+              La racha, a la derecha del check.
+
+              El hueco se reserva SIEMPRE y solo se oculta el contenido: con
+              `@if` la tarjeta cambiaría de alto al marcar y daría un salto
+              justo bajo el dedo que acaba de tocarla. Por eso `aria-hidden`
+              acompaña a la ocultación visual — el contenido sigue en el DOM y
+              sin él un lector de pantalla leería una racha que no está a la
+              vista.
+            -->
+            <p class="habit-streak" [class.is-visible]="isDone(habit)" [attr.aria-hidden]="!isDone(habit)">
+              <span class="visually-hidden">Racha: {{ streakLabel(habit) }}</span>
+              <span class="habit-streak__value" aria-hidden="true">{{ habit.currentStreak }}</span>
+              <span class="habit-streak__unit" aria-hidden="true">{{ streakUnit(habit) }}</span>
+            </p>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  <!--
+    Fuera de la rejilla y siempre en el DOM: una región `aria-live` que se monta
+    a la vez que su texto no se anuncia de forma fiable — el lector tiene que
+    estar ya observándola cuando el contenido cambia.
+  -->
+  <p class="visually-hidden" role="status">{{ statusMessage() }}</p>
+</div>

@@ -1,0 +1,48 @@
+:host {
+  display: block;
+}
+
+.summary-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.summary-card__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+// El tamano del icono se fija con `font-size` y nunca con `width`: el SVG mide
+// `1em`, asi que hereda del texto igual que cualquier glifo y se alinea solo.
+.summary-card__icon {
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+}
+
+// Empuja el pie al fondo de la tarjeta. Sin esto, tres tarjetas de altos
+// distintos dejan sus enlaces a tres alturas distintas dentro de la misma fila.
+.summary-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.summary-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.summary-card__link:hover {
+  text-decoration: underline;
+}
