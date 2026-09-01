@@ -1,0 +1,47 @@
+<div class="page">
+  <div class="page-header">
+    <a
+      class="btn btn-ghost habit-edit__back"
+      [routerLink]="habit() ? ['/habits', habit()!.id] : ['/habits']"
+    >
+      <app-icon class="habit-edit__back-icon" name="bi:arrow-left" />
+      <span class="visually-hidden">Volver a&nbsp;</span>{{ habit() ? 'Hábito' : 'Hábitos' }}
+    </a>
+  </div>
+
+  @if (loadError(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+
+  @if (loading()) {
+    <p class="empty-state">Cargando...</p>
+  } @else if (habit(); as habit) {
+    <div class="card form-card">
+      <h1 class="habit-edit__title">Editar hábito</h1>
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        @if (saveError(); as message) {
+          <p class="form-error" role="alert">{{ message }}</p>
+        }
+
+        <div class="field">
+          <label for="habit-name">Nombre</label>
+          <input
+            id="habit-name"
+            type="text"
+            formControlName="name"
+            autocomplete="off"
+            [maxlength]="nameMaxLength"
+          />
+        </div>
+
+        <div class="form-actions">
+          <a class="btn btn-ghost" [routerLink]="['/habits', habit.id]">Cancelar</a>
+          <button class="btn btn-primary" type="submit" [disabled]="submitting()">
+            {{ submitting() ? 'Guardando...' : 'Guardar cambios' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</div>

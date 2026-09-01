@@ -1,0 +1,24 @@
+@use '../../../../styles/layout';
+
+.habit-edit__back {
+  margin-right: auto;
+
+  margin-left: calc(var(--space-5) * -1);
+  gap: var(--space-1);
+
+  @include layout.below-tablet {
+    min-height: 44px;
+  }
+}
+
+.habit-edit__back-icon {
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+}
+
+.habit-edit__title {
+  margin: 0 0 var(--space-5);
+  font-size: var(--text-h2);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}

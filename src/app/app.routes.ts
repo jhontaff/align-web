@@ -49,6 +49,17 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'habits/:id/edit',
+    loadComponent: () => import('./features/habits/habit-edit/habit-edit').then(m => m.HabitEdit),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'habits/:id',
+    loadComponent: () =>
+      import('./features/habits/habit-detail/habit-detail').then(m => m.HabitDetail),
+    canActivate: [authGuard]
+  },
+  {
     // Tiene que ser SIEMPRE la última entrada: el router evalúa de arriba
     // abajo y `**` coincide con todo, así que cualquier ruta puesta después
     // queda inalcanzable sin que `ng build` diga nada.

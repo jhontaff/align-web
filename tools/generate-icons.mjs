@@ -39,7 +39,8 @@ const ICON_NAMES = [
   'bi:trash3',
   'bi:send',
   'bi:bell',
-  'bi:bell-slash'
+  'bi:bell-slash',
+  'bi:pencil'
 ];
 
 const OUT = 'src/app/shared/ui/icon/icon-set.ts';
