@@ -14,6 +14,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
+import { PushService } from '../../../core/notifications/push.service';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { HabitRequest, HabitResponse } from '../models/habit.model';
 import { HabitService } from '../habit.service';
@@ -69,6 +70,16 @@ export class HabitList implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly habits = inject(HabitService);
   private readonly dataRefresh = inject(DataRefreshService);
+
+  /**
+   * Publico para la plantilla, que lee `supported`/`status`/`busy`/`error`
+   * directamente del servicio en vez de duplicarlos en signals locales.
+   *
+   * El permiso de notificaciones es estado del navegador, global y unico: una
+   * copia por pantalla es como esta tarjeta y una futura pantalla de ajustes
+   * acabarian mostrando cosas distintas sin que ninguna estuviera mal.
+   */
+  protected readonly push = inject(PushService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly locale = inject(LOCALE_ID);
 
@@ -283,5 +294,57 @@ export class HabitList implements OnInit {
   /** "días" / "día", la unidad suelta que acompana al numero grande. */
   protected streakUnit(habit: HabitResponse): string {
     return habit.currentStreak === 1 ? 'día' : 'días';
+  }
+
+  /**
+   * Pide el permiso y registra el dispositivo.
+   *
+   * **Sale de un clic y de ningun otro sitio.** Pedir el permiso al montar la
+   * pantalla es como se consigue que el usuario pulse "Bloquear" sin leer, y
+   * `denied` no se puede revertir desde la pagina: a partir de ahi la unica
+   * salida es el candado de la barra de direcciones.
+   *
+   * El servicio ya guarda el error en su propio signal —lo pinta la plantilla
+   * en un `role="alert"`, como el resto de la app—, asi que aqui solo queda el
+   * anuncio del exito, que nadie mas cubre: al concederse el permiso el unico
+   * cambio visible es que el texto de la fila cambia.
+   */
+  protected async onEnableNotifications(): Promise<void> {
+    await this.push.enable();
+
+    if (this.push.subscribed() && !this.push.error()) {
+      this.statusMessage.set('Recordatorios activados en este dispositivo.');
+    }
+  }
+
+  /**
+   * Baja del dispositivo: lo borra del backend y cancela la suscripcion del
+   * navegador.
+   *
+   * **No revoca el permiso**, porque ninguna API lo permite. Volver a activar
+   * despues ya no vuelve a preguntar nada, que es justo lo que se quiere: la
+   * pregunta del permiso es irrepetible y gastarla en cada ida y vuelta seria
+   * arriesgar un `denied` permanente.
+   */
+  protected async onDisableNotifications(): Promise<void> {
+    await this.push.disable();
+
+    if (!this.push.subscribed() && !this.push.error()) {
+      this.statusMessage.set('Recordatorios desactivados en este dispositivo.');
+    }
+  }
+
+  /**
+   * Notificacion local de prueba, sin pasar por el backend.
+   *
+   * Separa dos fallos que desde fuera se ven igual: que el canal no este
+   * montado, o que lo este y el backend no mande nada.
+   */
+  protected async onTestNotification(): Promise<void> {
+    await this.push.showTest();
+
+    if (!this.push.error()) {
+      this.statusMessage.set('Notificación de prueba enviada.');
+    }
   }
 }
