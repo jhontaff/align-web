@@ -7,10 +7,8 @@ import { HabitRequest, HabitResponse } from './models/habit.model';
  * Cliente HTTP de Habitos. Sin estado, como `TaskService` y
  * `TransactionService`: el estado lo posee la pantalla que llama.
  *
- * Tres metodos, que son los que la pantalla dispara hoy. La edicion
- * (`PUT /api/habits/{id}`) y el borrado existen en el backend pero todavia no
- * tienen boton, y entran cuando lo tengan — mismo criterio que dejo a
- * `TransactionService` con dos metodos.
+ * Seis metodos, uno por endpoint del recurso: la feature ya consume la API de
+ * Habitos entera.
  */
 @Injectable({ providedIn: 'root' })
 export class HabitService {
@@ -25,6 +23,10 @@ export class HabitService {
     return this.http.get<HabitResponse[]>('/api/habits');
   }
 
+  get(id: string): Observable<HabitResponse> {
+    return this.http.get<HabitResponse>(`/api/habits/${id}`);
+  }
+
   /**
    * `HabitRequest` es `{ name }` y **sirve tambien para editar**: el backend no
    * tiene un `HabitUpdateRequest` porque el dominio solo tiene un campo
@@ -32,6 +34,14 @@ export class HabitService {
    */
   create(request: HabitRequest): Observable<HabitResponse> {
     return this.http.post<HabitResponse>('/api/habits', request);
+  }
+
+  update(id: string, request: HabitRequest): Observable<HabitResponse> {
+    return this.http.put<HabitResponse>(`/api/habits/${id}`, request);
+  }
+
+  remove(id: string): Observable<void> {
+    return this.http.delete<void>(`/api/habits/${id}`);
   }
 
   /**
