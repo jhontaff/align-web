@@ -15,9 +15,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { Icon } from '../../../shared/ui/icon/icon';
-import { markCompletedToday, readCompletedToday } from '../completed-today';
 import { HabitRequest, HabitResponse } from '../models/habit.model';
 import { HabitService } from '../habit.service';
+
+/** Tope de `HabitRequest.name` segun `/v3/api-docs`. */
+const NAME_MAX_LENGTH = 100;
 
 /**
  * Listado de habitos: una tarjeta por habito, con alta en linea.
@@ -45,11 +47,16 @@ import { HabitService } from '../habit.service';
  *
  * ---
  *
- * **Lo marcado hoy sale de `localStorage`, no del backend**, porque
- * `HabitResponse` no lo reporta. Ver `../completed-today.ts`: es un apano con
- * fecha de caducidad, y el arreglo real es un campo `completedToday: boolean`
- * en la respuesta. Mientras tanto, marcar en el movil no pinta el check en el
- * portatil.
+ * **Lo marcado hoy lo dice el servidor** (`HabitResponse.isCompletedToday`,
+ * anadido al backend el 2026-08-31). Esta pantalla no recuerda nada por su
+ * cuenta: el estado del check sale de la misma respuesta que la racha, asi que
+ * cruza de dispositivo y sobrevive a una recarga sin ningun almacenamiento
+ * local.
+ *
+ * Hubo un apano en `localStorage` (`completed-today.ts`) mientras el campo no
+ * existia. Se borro con este refactor y **no debe volver**: dos fuentes para el
+ * mismo hecho es como se acaba con un check verde en un dispositivo y gris en
+ * otro.
  */
 @Component({
   selector: 'app-habit-list',
@@ -69,12 +76,6 @@ export class HabitList implements OnInit {
 
   private readonly all = signal<HabitResponse[]>([]);
   protected readonly loading = signal(true);
-
-  /**
-   * Ids marcados hoy. Se siembra desde `localStorage` al construir para que una
-   * recarga no apague todos los checks — ver la nota de arriba.
-   */
-  private readonly doneToday = signal<ReadonlySet<string>>(readCompletedToday());
 
   /**
    * Dos signals de error, no uno.
@@ -100,8 +101,18 @@ export class HabitList implements OnInit {
   /** Lo ultimo confirmado, para la region `role="status"`. */
   protected readonly statusMessage = signal('');
 
+  /**
+   * `maxLength(100)` porque la spec viva declara ese tope en
+   * `HabitRequest.name`: sin el, un nombre largo se manda igual y vuelve como
+   * 400 — un error de servidor por algo que el navegador ya sabia.
+   *
+   * El input lleva ademas el atributo `maxlength` nativo, que **impide** pasarse
+   * en vez de avisar despues. El validador se queda como red: el atributo no
+   * cubre un pegado por programa ni un valor puesto desde el codigo, y sin el
+   * `form.invalid` no seria cierto.
+   */
   protected readonly form = this.fb.nonNullable.group({
-    name: ['', [Validators.required]]
+    name: ['', [Validators.required, Validators.maxLength(NAME_MAX_LENGTH)]]
   });
 
   /**
@@ -128,9 +139,15 @@ export class HabitList implements OnInit {
     [...this.all()].sort((a, b) => a.name.localeCompare(b.name, this.locale))
   );
 
-  /** Cuantos quedan por marcar hoy, para el resumen de la cabecera. */
+  /**
+   * Cuantos quedan por marcar hoy, para el resumen de la cabecera.
+   *
+   * Se deriva de la lista con un `computed`, no de un contador aparte: hay una
+   * sola fuente —lo que devolvio el servidor— y cualquier cosa que cambie
+   * `all()` (cargar, crear, marcar) lo actualiza sin acordarse de nada.
+   */
   protected readonly pendingToday = computed(
-    () => this.all().filter(habit => !this.doneToday().has(habit.id)).length
+    () => this.all().filter(habit => !habit.isCompletedToday).length
   );
 
   ngOnInit(): void {
@@ -159,8 +176,15 @@ export class HabitList implements OnInit {
     });
   }
 
+  /**
+   * Se expone para que la plantilla ponga el `maxlength` nativo en el input.
+   * Que el tope viva en una sola constante evita que el atributo y el validador
+   * digan cosas distintas.
+   */
+  protected readonly nameMaxLength = NAME_MAX_LENGTH;
+
   protected isDone(habit: HabitResponse): boolean {
-    return this.doneToday().has(habit.id);
+    return habit.isCompletedToday;
   }
 
   /**
@@ -220,8 +244,10 @@ export class HabitList implements OnInit {
 
     this.habits.complete(habit.id).subscribe({
       next: updated => {
+        // La respuesta del POST ya trae `isCompletedToday: true` y la racha
+        // recalculada, asi que sustituir la fila deja la tarjeta en su estado
+        // final sin tocar nada mas ni volver a pedir la lista.
         this.all.update(habits => habits.map(h => (h.id === updated.id ? updated : h)));
-        this.doneToday.set(markCompletedToday(updated.id));
         this.completingId.set(null);
 
         // El cambio visible es un color y un numero que aparece. Sin este
