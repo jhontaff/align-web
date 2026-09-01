@@ -22,6 +22,9 @@ const ICON_NAMES = [
   'bi:house-door',
   'bi:check2-circle',
   'bi:wallet2',
+  'bi:calendar-check',
+  'bi:plus-lg',
+  'bi:check-lg',
   'bi:robot',
   'bi:chat-dots',
   'bi:mic-fill',
@@ -34,7 +37,9 @@ const ICON_NAMES = [
   'bi:arrow-left',
   'bi:arrow-right',
   'bi:trash3',
-  'bi:send'
+  'bi:send',
+  'bi:bell',
+  'bi:bell-slash'
 ];
 
 const OUT = 'src/app/shared/ui/icon/icon-set.ts';

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthStateService } from './core/auth/auth-state.service';
+import { PushService } from './core/notifications/push.service';
 import { AppHeader } from './layout/app-header/app-header';
 import { BottomNav } from './layout/bottom-nav/bottom-nav';
 import { ChatPanel } from './layout/chat-panel/chat-panel';
@@ -50,9 +51,17 @@ export class App {
     this.chatOpen.set(false);
   }
 
+  private readonly push = inject(PushService);
+
   constructor() {
     // Un token guardado tiene que rehidratar user/isAuthenticated antes de que
     // el guard evalúe la primera ruta.
     this.authState.hydrateIfAuthenticated();
+
+    // Los clics en una notificación y los push que llegan con la app abierta se
+    // enganchan aquí y no en la pantalla de Hábitos: si vivieran allí, abrir la
+    // app desde una notificación cayendo en Inicio no engancharía nada. El
+    // shell está montado siempre, que es la única condición que esto pide.
+    this.push.listen();
   }
 }

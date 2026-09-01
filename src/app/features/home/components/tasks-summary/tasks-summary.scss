@@ -1,0 +1,40 @@
+.tasks-summary__count {
+  margin: 0;
+  font-size: var(--text-h1);
+  font-weight: var(--weight-semibold);
+
+  // Cifras de ancho fijo, igual que en el resumen de Finanzas: sin esto el
+  // numero baila al revalidar y el ojo lo lee como un parpadeo.
+  font-variant-numeric: tabular-nums;
+}
+
+.tasks-summary__list {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tasks-summary__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+// Deja que el titulo se recorte en vez de empujar la fecha fuera de la
+// tarjeta: un `flex` no baja de su tamano de contenido sin `min-width: 0`.
+.tasks-summary__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tasks-summary__due {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}

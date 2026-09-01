@@ -110,18 +110,3 @@ export interface FinancialSummaryResponse {
   totalExpense: number;
   balance: number;
 }
-
-/**
- * Parámetros de paginación de Spring.
- *
- * Vive en la feature y no en `core/models/` junto a `Page<T>` porque hoy tiene
- * un único consumidor: Tareas todavía pide `/api/tasks` sin paginar. Sube a
- * `core/` cuando haya un segundo, no antes.
- */
-export interface Pageable {
-  /** Base 0. */
-  page?: number;
-  size?: number;
-  /** Formato de Spring: `campo,direccion`. Por ejemplo `date,desc`. */
-  sort?: string;
-}
