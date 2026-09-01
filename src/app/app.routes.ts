@@ -26,6 +26,15 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    // Comparte componente con 'tasks/new': `TaskForm` mira si hay `:id` y
+    // decide modo. Va antes de 'tasks/:id' solo por legibilidad — no compiten,
+    // porque una ruta hoja exige consumir la URL entera y 'tasks/:id' se queda
+    // corta ante tres segmentos.
+    path: 'tasks/:id/edit',
+    loadComponent: () => import('./features/tasks/task-form/task-form').then(m => m.TaskForm),
+    canActivate: [authGuard]
+  },
+  {
     // Va DESPUES de 'tasks/new' a proposito: el router evalua de arriba abajo y
     // ':id' coincide con cualquier segmento, asi que puesto antes se tragaria
     // /tasks/new y el formulario de creacion seria inalcanzable — con un id
@@ -46,6 +55,17 @@ export const routes: Routes = [
   {
     path: 'habits',
     loadComponent: () => import('./features/habits/habit-list/habit-list').then(m => m.HabitList),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'habits/:id/edit',
+    loadComponent: () => import('./features/habits/habit-edit/habit-edit').then(m => m.HabitEdit),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'habits/:id',
+    loadComponent: () =>
+      import('./features/habits/habit-detail/habit-detail').then(m => m.HabitDetail),
     canActivate: [authGuard]
   },
   {

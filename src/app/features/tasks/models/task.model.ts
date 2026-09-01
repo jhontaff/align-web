@@ -40,3 +40,25 @@ export interface TaskResponse {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Cuerpo de `PUT /api/tasks/{id}`.
+ *
+ * **No es un parche: es un reemplazo completo.** Se manda cada campo, incluidos
+ * los que el usuario no tocó — omitir uno lo borra en el servidor, no lo deja
+ * como estaba. Por eso el formulario de edición se rellena con la tarea entera
+ * antes de dejar escribir.
+ *
+ * La diferencia con `TaskRequest` es exactamente `status`: al crear lo decide
+ * el backend (`PENDING`), al editar lo decide el usuario. Son dos tipos y no
+ * uno con `status?`, porque un opcional dejaría compilar un `update()` que
+ * manda la tarea sin estado — y el backend lo tomaría como que se lo quitan.
+ */
+export interface TaskUpdateRequest {
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate?: string;
+  dueTime?: string;
+}

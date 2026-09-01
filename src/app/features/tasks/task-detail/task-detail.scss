@@ -58,6 +58,35 @@
 }
 
 // -----------------------------------------------------------------------------
+// Enlace de editar
+// -----------------------------------------------------------------------------
+// Mismo peso visual que el de borrar y pegado a el: son las dos acciones sobre
+// la tarea, y separarlas o darle color propio a una convertiria una eleccion en
+// una recomendacion. En reposo los dos son del gris del texto secundario; solo
+// al apuntarlos se tinen, y cada uno del tono que le corresponde.
+.task-detail__edit {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+
+  // `--color-primary` y no el rojo del de al lado: editar no destruye nada.
+  &:hover,
+  &:focus-visible {
+    color: var(--color-primary);
+  }
+
+  // 40px del `.btn` global se quedan por debajo del minimo de 44px para un
+  // objetivo tactil, igual que el enlace de vuelta y el boton de borrar.
+  @include layout.below-tablet {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+.task-detail__edit-icon {
+  font-size: var(--text-lg);
+}
+
+// -----------------------------------------------------------------------------
 // Boton de borrar
 // -----------------------------------------------------------------------------
 // Papelera en escritorio, "x" en movil, igual que en la fila de la lista: un
