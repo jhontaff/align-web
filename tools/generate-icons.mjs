@@ -37,6 +37,7 @@ const ICON_NAMES = [
   'bi:arrow-left',
   'bi:arrow-right',
   'bi:trash3',
+  'bi:pencil',
   'bi:send',
   'bi:bell',
   'bi:bell-slash'

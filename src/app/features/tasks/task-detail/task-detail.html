@@ -28,10 +28,31 @@
       entera, no sobre un campo. El `margin-right: auto` que ya llevaba el
       enlace de vuelta lo empuja solo al borde derecho.
 
-      Guardado por `task()`: mientras carga o si la tarea no existe no hay nada
-      que borrar, y un botón que no puede funcionar es peor que no estar.
+      Guardadas por `task()`: mientras carga o si la tarea no existe no hay
+      nada que editar ni que borrar, y un control que no puede funcionar es peor
+      que no estar. El alias `as task` es lo que da el id al enlace de edición.
     -->
-    @if (task()) {
+    @if (task(); as task) {
+      <!--
+        Enlace y no botón: lleva a otra URL (`/tasks/:id/edit`), así que se
+        puede abrir en otra pestaña, copiar o marcar. Un `<button>` que llama
+        a `router.navigate` le quita todo eso al usuario y además miente al
+        lector de pantalla, que lo anuncia como acción y no como destino.
+
+        El nombre accesible no repite el título de la tarea, al contrario que
+        en la lista: allí hay diez controles iguales y hace falta distinguirlos,
+        aquí solo hay una tarea en pantalla. Mismo criterio que el botón de
+        eliminar de al lado.
+      -->
+      <a
+        class="btn btn-ghost btn-icon task-detail__edit"
+        [routerLink]="['/tasks', task.id, 'edit']"
+        aria-label="Editar tarea"
+        title="Editar tarea"
+      >
+        <app-icon class="task-detail__edit-icon" name="bi:pencil" />
+      </a>
+
       <button
         type="button"
         class="btn btn-ghost btn-icon task-detail__delete"

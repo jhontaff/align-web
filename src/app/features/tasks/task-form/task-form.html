@@ -1,51 +1,83 @@
 <div class="page">
   <div class="page-header">
-    <h1>Nueva tarea</h1>
+    <h1>{{ editing ? 'Editar tarea' : 'Nueva tarea' }}</h1>
   </div>
 
-  <div class="card form-card form-card--wide">
-    <form [formGroup]="form" (ngSubmit)="onSubmit()">
-      @if (errorMessage()) {
-        <p class="form-error" role="alert">{{ errorMessage() }}</p>
-      }
+  <!--
+    El fallo al cargar SUSTITUYE al formulario, no se apila encima: sobre una
+    ruta de edición, un formulario en blanco es un PUT esperando a vaciar la
+    tarea de verdad, porque el backend reemplaza el recurso entero.
+  -->
+  @if (loadError()) {
+    <p class="form-error" role="alert">{{ loadError() }}</p>
+    <p class="form-footer"><a routerLink="/tasks">Volver a Tareas</a></p>
+  } @else if (loading()) {
+    <p class="empty-state">Cargando...</p>
+  } @else {
+    <div class="card form-card form-card--wide">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        @if (errorMessage()) {
+          <p class="form-error" role="alert">{{ errorMessage() }}</p>
+        }
 
-      <div class="field">
-        <label for="title">Título</label>
-        <input id="title" type="text" formControlName="title" />
-      </div>
-
-      <div class="field">
-        <label for="description">Descripción</label>
-        <textarea id="description" formControlName="description" rows="3"></textarea>
-      </div>
-
-      <div class="field">
-        <label for="priority">Prioridad</label>
-        <select id="priority" formControlName="priority">
-          <option value="LOW">Baja</option>
-          <option value="MEDIUM">Media</option>
-          <option value="HIGH">Alta</option>
-        </select>
-      </div>
-
-      <div class="field-row">
         <div class="field">
-          <label for="dueDate">Fecha límite</label>
-          <input id="dueDate" type="date" formControlName="dueDate" />
+          <label for="title">Título</label>
+          <input id="title" type="text" formControlName="title" />
         </div>
 
         <div class="field">
-          <label for="dueTime">Hora límite</label>
-          <input id="dueTime" type="time" formControlName="dueTime" />
+          <label for="description">Descripción</label>
+          <textarea id="description" formControlName="description" rows="3"></textarea>
         </div>
-      </div>
 
-      <div class="form-actions">
-        <a class="btn btn-ghost" routerLink="/tasks">Cancelar</a>
-        <button class="btn btn-primary" type="submit" [disabled]="submitting()">
-          {{ submitting() ? 'Creando...' : 'Crear tarea' }}
-        </button>
-      </div>
-    </form>
-  </div>
+        <!--
+          Solo al editar. Al crear, el estado lo fija el backend en PENDING, y
+          un selector que no se manda a ninguna parte prometería un control que
+          no existe.
+        -->
+        @if (editing) {
+          <div class="field">
+            <label for="status">Estado</label>
+            <select id="status" formControlName="status">
+              <option value="PENDING">Pendiente</option>
+              <option value="IN_PROGRESS">En progreso</option>
+              <option value="COMPLETED">Completada</option>
+            </select>
+          </div>
+        }
+
+        <div class="field">
+          <label for="priority">Prioridad</label>
+          <select id="priority" formControlName="priority">
+            <option value="LOW">Baja</option>
+            <option value="MEDIUM">Media</option>
+            <option value="HIGH">Alta</option>
+          </select>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="dueDate">Fecha límite</label>
+            <input id="dueDate" type="date" formControlName="dueDate" />
+          </div>
+
+          <div class="field">
+            <label for="dueTime">Hora límite</label>
+            <input id="dueTime" type="time" formControlName="dueTime" />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a class="btn btn-ghost" [routerLink]="cancelLink()">Cancelar</a>
+          <button class="btn btn-primary" type="submit" [disabled]="submitting()">
+            @if (editing) {
+              {{ submitting() ? 'Guardando...' : 'Guardar cambios' }}
+            } @else {
+              {{ submitting() ? 'Creando...' : 'Crear tarea' }}
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  }
 </div>

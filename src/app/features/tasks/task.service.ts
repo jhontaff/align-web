@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { toHttpParams } from '../../core/http/to-http-params';
 import { Page, Pageable } from '../../core/models/page.model';
-import { TaskFilter, TaskRequest, TaskResponse } from './models/task.model';
+import { TaskFilter, TaskRequest, TaskResponse, TaskUpdateRequest } from './models/task.model';
 
 @Injectable({ providedIn: 'root' })
 export class TaskService {
@@ -40,6 +40,20 @@ export class TaskService {
 
   create(request: TaskRequest): Observable<TaskResponse> {
     return this.http.post<TaskResponse>('/api/tasks', request);
+  }
+
+  /**
+   * Actualiza una tarea entera. `PUT`, no `PATCH`: el backend reemplaza el
+   * recurso, así que el `TaskUpdateRequest` viaja completo — ver el modelo.
+   *
+   * Devuelve el `TaskResponse` ya desenvuelto, igual que `get()` y
+   * `create()`. Merece la pena consumirlo en vez de descartarlo: trae el
+   * `updatedAt` nuevo y los campos tal como quedaron en el servidor, que es
+   * la única versión fiable si algún día el backend normaliza algo al
+   * guardar.
+   */
+  update(id: string, request: TaskUpdateRequest): Observable<TaskResponse> {
+    return this.http.put<TaskResponse>(`/api/tasks/${id}`, request);
   }
 
   /**
