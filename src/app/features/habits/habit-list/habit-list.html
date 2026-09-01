@@ -146,7 +146,9 @@
     <ul class="habit-grid">
       @for (habit of sorted(); track habit.id) {
         <li class="card habit-card" [class.is-done]="isDone(habit)">
-          <h2 class="habit-card__name">{{ habit.name }}</h2>
+          <h2 class="habit-card__name">
+            <a class="habit-card__link" [routerLink]="['/habits', habit.id]">{{ habit.name }}</a>
+          </h2>
 
           <div class="habit-card__footer">
             <!--
@@ -188,6 +190,15 @@
               <span class="habit-streak__value" aria-hidden="true">{{ habit.currentStreak }}</span>
               <span class="habit-streak__unit" aria-hidden="true">{{ streakUnit(habit) }}</span>
             </p>
+
+            <a
+              class="btn btn-ghost btn-icon habit-card__edit"
+              [routerLink]="['/habits', habit.id, 'edit']"
+              [attr.aria-label]="'Editar: ' + habit.name"
+              [title]="'Editar ' + habit.name"
+            >
+              <app-icon name="bi:pencil" />
+            </a>
           </div>
         </li>
       }

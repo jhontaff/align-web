@@ -12,15 +12,14 @@ import {
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { PushService } from '../../../core/notifications/push.service';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { HabitRequest, HabitResponse } from '../models/habit.model';
+import { HABIT_NAME_MAX_LENGTH } from '../habit-rules';
 import { HabitService } from '../habit.service';
-
-/** Tope de `HabitRequest.name` segun `/v3/api-docs`. */
-const NAME_MAX_LENGTH = 100;
 
 /**
  * Listado de habitos: una tarjeta por habito, con alta en linea.
@@ -61,7 +60,7 @@ const NAME_MAX_LENGTH = 100;
  */
 @Component({
   selector: 'app-habit-list',
-  imports: [ReactiveFormsModule, Icon],
+  imports: [ReactiveFormsModule, RouterLink, Icon],
   templateUrl: './habit-list.html',
   styleUrl: './habit-list.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -123,7 +122,7 @@ export class HabitList implements OnInit {
    * `form.invalid` no seria cierto.
    */
   protected readonly form = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(NAME_MAX_LENGTH)]]
+    name: ['', [Validators.required, Validators.maxLength(HABIT_NAME_MAX_LENGTH)]]
   });
 
   /**
@@ -192,7 +191,7 @@ export class HabitList implements OnInit {
    * Que el tope viva en una sola constante evita que el atributo y el validador
    * digan cosas distintas.
    */
-  protected readonly nameMaxLength = NAME_MAX_LENGTH;
+  protected readonly nameMaxLength = HABIT_NAME_MAX_LENGTH;
 
   protected isDone(habit: HabitResponse): boolean {
     return habit.isCompletedToday;
