@@ -23,8 +23,14 @@ export class AppHeader {
   private readonly authState = inject(AuthStateService);
   private readonly router = inject(Router);
 
-  protected onLogout(): void {
-    this.authState.logout();
+  /**
+   * Se espera a que termine el logout antes de navegar. Dos motivos: la baja
+   * del push necesita el token todavía puesto, y navegar antes dejaría /login
+   * pintado un instante con el header y el panel de chat encima, que siguen
+   * montados mientras la sesión existe.
+   */
+  protected async onLogout(): Promise<void> {
+    await this.authState.logout();
     this.router.navigate(['/login']);
   }
 }

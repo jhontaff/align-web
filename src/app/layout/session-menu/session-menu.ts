@@ -91,9 +91,10 @@ export class SessionMenu {
     }
   }
 
-  protected onLogout(): void {
+  /** Se espera al logout antes de navegar; ver `AppHeader.onLogout`. */
+  protected async onLogout(): Promise<void> {
     this.close();
-    this.authState.logout();
+    await this.authState.logout();
     this.router.navigate(['/login']);
   }
 }
