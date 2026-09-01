@@ -1,0 +1,102 @@
+<div class="page">
+  <div class="page-header">
+    <a class="btn btn-ghost habit-detail__back" routerLink="/habits">
+      <app-icon class="habit-detail__back-icon" name="bi:arrow-left" />
+      <span class="visually-hidden">Volver a&nbsp;</span>Hábitos
+    </a>
+
+    @if (habit(); as habit) {
+      <a class="btn btn-outlined habit-detail__edit" [routerLink]="['/habits', habit.id, 'edit']">
+        <app-icon class="habit-detail__edit-icon" name="bi:pencil" />
+        Editar<span class="visually-hidden">&nbsp;hábito</span>
+      </a>
+
+      <button
+        type="button"
+        class="btn btn-ghost btn-icon habit-detail__delete"
+        [disabled]="deleting()"
+        aria-label="Eliminar hábito"
+        title="Eliminar hábito"
+        (click)="onDeleteClick()"
+      >
+        <app-icon name="bi:trash3" />
+      </button>
+    }
+  </div>
+
+  @if (completeError(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+
+  @if (deleteError(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+
+  @if (errorMessage()) {
+    <p class="form-error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="empty-state">Cargando...</p>
+  } @else if (habit(); as habit) {
+    <article class="card habit-detail">
+      <header class="habit-detail__header">
+        <h1 class="habit-detail__title">{{ habit.name }}</h1>
+
+        <button
+          type="button"
+          class="btn habit-detail__complete"
+          [class.is-done]="habit.isCompletedToday"
+          [attr.aria-disabled]="habit.isCompletedToday || completing()"
+          (click)="onComplete()"
+        >
+          <app-icon class="habit-detail__complete-icon" name="bi:check-lg" />
+          @if (habit.isCompletedToday) {
+            Hecho hoy
+          } @else if (completing()) {
+            Marcando...
+          } @else {
+            Marcar hoy como hecho
+          }
+        </button>
+      </header>
+
+      <div class="habit-detail__streaks">
+        <div class="habit-detail__streak">
+          <span class="visually-hidden">Racha actual: {{ streakLabel(habit.currentStreak) }}</span>
+          <span class="habit-detail__streak-value" aria-hidden="true">{{ habit.currentStreak }}</span>
+          <span class="habit-detail__streak-label" aria-hidden="true">Racha actual</span>
+        </div>
+
+        <div class="habit-detail__streak">
+          <span class="visually-hidden">Mejor racha: {{ streakLabel(habit.longestStreak) }}</span>
+          <span class="habit-detail__streak-value" aria-hidden="true">{{ habit.longestStreak }}</span>
+          <span class="habit-detail__streak-label" aria-hidden="true">Mejor racha</span>
+        </div>
+      </div>
+
+      <dl class="habit-detail__fields">
+        <div class="habit-detail__field">
+          <dt>Creado</dt>
+          <dd>{{ timestampLabel(habit.createdAt) }}</dd>
+        </div>
+
+        <div class="habit-detail__field">
+          <dt>Última actualización</dt>
+          <dd>{{ timestampLabel(habit.updatedAt) }}</dd>
+        </div>
+      </dl>
+    </article>
+  }
+
+  <p class="visually-hidden" role="status">{{ statusMessage() }}</p>
+
+  <app-confirm-dialog
+    [(open)]="confirmOpen"
+    heading="Eliminar hábito"
+    [message]="confirmMessage()"
+    confirmLabel="Eliminar"
+    tone="danger"
+    (confirm)="onConfirmDelete()"
+  />
+</div>
