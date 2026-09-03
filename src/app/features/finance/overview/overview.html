@@ -1,6 +1,19 @@
 <div class="page">
+  <!--
+    El selector va en la cabecera de la pagina y no dentro del bloque del
+    resumen: acota TODO lo que hay debajo (las tres cifras y los ultimos
+    movimientos salen de la misma peticion), asi que colgarlo de una de las dos
+    secciones sugeriria que la otra no le hace caso.
+  -->
   <div class="page-header">
     <h1>Finanzas</h1>
+
+    <app-date-range-picker
+      label="Periodo"
+      [range]="range()"
+      [presets]="presets"
+      (rangeChange)="onRangeChange($event)"
+    />
   </div>
 
   @if (errorMessage()) {
@@ -10,7 +23,13 @@
   @let totals = summary();
 
   <section aria-labelledby="summary-heading" [attr.aria-busy]="loading()">
-    <h2 class="section-heading" id="summary-heading">Resumen de {{ rangeLabel }}</h2>
+    <!--
+      "Resumen · septiembre" y no "Resumen de Septiembre": la etiqueta viene
+      capitalizada porque encabeza el boton del selector, donde va suelta, y en
+      español el mes en mitad de una frase va en minuscula. El separador evita
+      tener que elegir entre dos capitalizaciones de la misma cadena.
+    -->
+    <h2 class="section-heading" id="summary-heading">Resumen &middot; {{ rangeLabel() }}</h2>
 
     <!--
       La lista se pinta SIEMPRE, también mientras carga, con un guion en el
@@ -75,7 +94,7 @@
         llamada a la acción que no lleva a ninguna parte es peor que ninguna.
         Entra con la etapa 4.
       -->
-      <p class="empty-state">Todavía no hay movimientos en {{ rangeLabel }}.</p>
+      <p class="empty-state">Todavía no hay movimientos en este periodo.</p>
     } @else {
       <ul class="movements">
         @for (movement of recent(); track movement.id) {

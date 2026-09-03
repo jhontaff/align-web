@@ -12,8 +12,10 @@ import { CurrencyPipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { DataRefreshService } from '../../../core/data/data-refresh.service';
+import { DateRange, formatDateRange, parseIsoDate } from '../../../core/date/date-range';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
-import { currentMonth } from '../date-ranges';
+import { DateRangePicker } from '../../../shared/ui/date-range-picker/date-range-picker';
+import { DATE_RANGE_PRESETS, currentMonth } from '../date-ranges';
 import { CATEGORY_LABELS, TYPE_LABELS } from '../transaction-labels';
 import {
   FinancialSummaryResponse,
@@ -33,11 +35,11 @@ import { TransactionService } from '../transaction.service';
 const RECENT_SIZE = 5;
 
 /**
- * Resumen de Finanzas: los totales del rango y un vistazo a lo último.
+ * Resumen de Finanzas: los totales del rango elegido y un vistazo a lo último.
  */
 @Component({
   selector: 'app-finance-overview',
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, DateRangePicker],
   templateUrl: './overview.html',
   styleUrl: './overview.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -55,19 +57,24 @@ export class Overview implements OnInit {
   private readonly locale = inject(LOCALE_ID);
 
   /**
-   * El mes en curso, resuelto una vez al construir la pantalla.
+   * El rango consultado. **Signal, no constante**: hasta que existió el
+   * selector esto se resolvía una vez al construir la pantalla y no había forma
+   * de cambiarlo.
    *
-   * `GET /api/transactions/summary` **sin filtro devuelve el histórico
-   * completo**, que es un número que solo crece y no responde a la pregunta que
-   * el usuario se hace ("¿cuánto llevo este mes?"). El endpoint ya acepta
-   * `from`/`to`, así que acotar no cuesta nada.
+   * Arranca en el mes en curso porque `GET /api/transactions/summary` **sin
+   * filtro devuelve el histórico completo**, que es un número que solo crece y
+   * no responde a la pregunta que el usuario se hace ("¿cuánto llevo este
+   * mes?"). El endpoint ya acepta `from`/`to`, así que acotar no cuesta nada.
    *
-   * Fijo, no reactivo: el selector de rango llega con `activity/`. La única
-   * consecuencia de resolverlo al construir es que una pestaña abierta al
-   * cruzar la medianoche del día 1 seguiría mostrando el mes anterior hasta
-   * que se navegue — aceptable frente a montar un temporizador para eso.
+   * El estado vive aquí y no en un servicio con estado: es el patrón por
+   * defecto del repo —servicio sin estado, la pantalla posee lo suyo— y hoy
+   * nadie más necesita este rango. Sube a un servicio el día que `activity/`
+   * tenga que compartirlo entre navegaciones, no antes.
    */
-  protected readonly range = currentMonth();
+  protected readonly range = signal<DateRange>(currentMonth());
+
+  /** Los atajos que ofrece el selector. Constante, no hace falta signal. */
+  protected readonly presets = DATE_RANGE_PRESETS;
 
   /**
    * `digitsInfo` de `CurrencyPipe`: sin decimales.
@@ -88,8 +95,13 @@ export class Overview implements OnInit {
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
 
-  /** "agosto de 2026". */
-  protected readonly rangeLabel = this.formatMonth(this.range.from);
+  /**
+   * "Septiembre de 2026" para un mes natural, "12 – 20 sep 2026" para un rango
+   * cualquiera. La lógica está en `core/date/` porque el botón del selector
+   * pinta exactamente la misma cadena, y dos formatos distintos para el mismo
+   * rango en la misma pantalla se leen como un fallo.
+   */
+  protected readonly rangeLabel = computed(() => formatDateRange(this.range(), this.locale));
 
   /**
    * El balance es la única de las tres cifras cuyo color depende del dato: los
@@ -111,6 +123,24 @@ export class Overview implements OnInit {
   }
 
   /**
+   * Cambiar de periodo **sí** vacía la pantalla mientras llega la respuesta, al
+   * revés que la revalidación del agente.
+   *
+   * No es una inconsistencia: son dos cosas distintas. La revalidación vuelve a
+   * pedir lo mismo, así que lo que hay en pantalla sigue siendo válido y
+   * vaciarlo sería ruido. Un cambio de rango es otra pregunta, y dejar las
+   * cifras de agosto bajo un encabezado que ya dice "septiembre" es afirmar
+   * algo falso durante todo lo que tarde la petición.
+   */
+  protected onRangeChange(range: DateRange): void {
+    this.range.set(range);
+    this.summary.set(null);
+    this.recent.set([]);
+    this.loading.set(true);
+    this.load();
+  }
+
+  /**
    * Las dos peticiones van en un `forkJoin` y no en dos `subscribe` sueltos.
    *
    * No es por ahorrar código: es que las cifras de arriba y las filas de abajo
@@ -118,16 +148,17 @@ export class Overview implements OnInit {
    * recién creado aparecería en la lista un instante antes de que el balance se
    * enterase, y durante ese instante la pantalla se contradice a sí misma.
    *
-   * La revalidación no vuelve a poner `loading` en true, igual que en
-   * `TaskList`: vaciar la pantalla para pintar un "Cargando" de 200ms es más
-   * ruido que información cuando los datos ya están ahí.
+   * Nunca pone `loading` a true por su cuenta: quien llama decide si este fetch
+   * merece vaciar la pantalla (ver `onRangeChange`) o no (la revalidación del
+   * agente, igual que en `TaskList`).
    */
   private load(): void {
     this.errorMessage.set(null);
+    const range = this.range();
 
     forkJoin({
-      summary: this.transactions.summary(this.range),
-      recent: this.transactions.list(this.range, { page: 0, size: RECENT_SIZE, sort: 'date,desc' })
+      summary: this.transactions.summary(range),
+      recent: this.transactions.list(range, { page: 0, size: RECENT_SIZE, sort: 'date,desc' })
     }).subscribe({
       next: ({ summary, recent }) => {
         this.summary.set(summary);
@@ -162,28 +193,15 @@ export class Overview implements OnInit {
     return CATEGORY_LABELS[category];
   }
 
-  /** "12 ago". */
+  /**
+   * "12 ago". `parseIsoDate` viene de `core/date/`: era un método privado de
+   * esta clase, y subió cuando el selector necesitó exactamente la misma
+   * corrección de zona horaria.
+   */
   protected dateLabel(transaction: TransactionResponse): string {
-    return this.parseIsoDate(transaction.date).toLocaleDateString(this.locale, {
+    return parseIsoDate(transaction.date).toLocaleDateString(this.locale, {
       day: 'numeric',
       month: 'short'
     });
-  }
-
-  private formatMonth(isoDate: string): string {
-    return this.parseIsoDate(isoDate).toLocaleDateString(this.locale, {
-      month: 'long',
-      year: 'numeric'
-    });
-  }
-
-  /**
-   * `new Date('2026-08-12')` se interpreta como medianoche **UTC**, no local:
-   * en cualquier zona al oeste de Greenwich la fecha mostrada sería la del día
-   * anterior. Añadir la hora fuerza la lectura local, que es lo que quiere
-   * decir una fecha sin hora. Mismo apaño que `dueLabel()` en `task-list.ts`.
-   */
-  private parseIsoDate(isoDate: string): Date {
-    return new Date(`${isoDate}T00:00:00`);
   }
 }

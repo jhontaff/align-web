@@ -165,3 +165,14 @@
     font-size: var(--text-h2);
   }
 }
+
+// -----------------------------------------------------------------------------
+// La cabecera de pagina es global y no envuelve: con el titulo mas el selector
+// de rango, un rango largo ("1 dic 2025 - 15 ene 2026") no cabe junto a
+// "Finanzas" en un movil estrecho y el boton se comprime hasta cortar el texto.
+// Se permite envolver solo aqui, que es la unica pantalla con dos piezas en la
+// cabecera.
+// -----------------------------------------------------------------------------
+.page-header {
+  flex-wrap: wrap;
+}
