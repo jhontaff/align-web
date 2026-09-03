@@ -85,8 +85,22 @@ interface Weekday {
   }
 })
 export class DateRangePicker {
-  /** El rango aplicado. El componente no lo muta: propone y emite. */
-  readonly range = input.required<DateRange>();
+  /**
+   * El rango aplicado, o `null` cuando no hay ninguno.
+   *
+   * **`null` es un estado de primera clase, no la ausencia de valor** — la
+   * misma distinción que hace `ThemePreference` con `'system'`. "Sin filtro" no
+   * es un rango más: se expresa quitando `from`/`to` de la petición, y
+   * `date-ranges.ts` ya rechazó meterlo como preset por eso mismo. El input
+   * sigue siendo `required` para que quien monta el componente tenga que
+   * decidir explícitamente, en vez de heredar un `undefined` por olvido.
+   *
+   * Este es el ajuste de API que el comentario de la clase anunciaba para el
+   * segundo consumidor: `finance/transaction-history/` arranca sin filtro, y
+   * con un `DateRange` obligatorio la única salida era pasarle un rango que no
+   * está aplicado — o sea, un botón que miente sobre lo que se está viendo.
+   */
+  readonly range = input.required<DateRange | null>();
 
   /** Atajos opcionales. Sin ellos el popover es solo el calendario. */
   readonly presets = input<readonly DateRangePreset[]>([]);
@@ -99,12 +113,34 @@ export class DateRangePicker {
   readonly label = input('Periodo');
 
   /**
+   * Qué dice el botón cuando no hay rango. Se pasa desde fuera porque lo que
+   * significa "sin filtro" depende de la pantalla: aquí es "todo el historial",
+   * en otra podría ser "cualquier fecha".
+   */
+  readonly emptyLabel = input('Todo el periodo');
+
+  /**
+   * Si el popover ofrece quitar el filtro. Apagado por defecto: en el resumen
+   * no hay estado sin rango al que volver —siempre hay un periodo aplicado— y
+   * ofrecer la acción ahí prometería algo que la pantalla no sabe hacer.
+   */
+  readonly clearable = input(false);
+
+  /**
    * Se emite **solo con un rango completo**: al pulsar un atajo, o al cerrar
    * los dos extremos en el calendario. Nunca a medias — quien escucha esto
    * dispara una petición, y un rango con un solo extremo no es una pregunta
    * que se le pueda hacer al backend.
    */
   readonly rangeChange = output<DateRange>();
+
+  /**
+   * Quitar el filtro. Evento aparte y no un `rangeChange` con `null` porque
+   * son dos acciones distintas —acotar y dejar de acotar—, y fundirlas
+   * obligaría al resumen, que no puede quitar el filtro, a escribir un guard
+   * para un caso que en su pantalla no ocurre nunca.
+   */
+  readonly clear = output<void>();
 
   /**
    * El locale se inyecta en vez de escribir `'es-ES'` a mano: ya está declarado
@@ -158,7 +194,10 @@ export class DateRangePicker {
    */
   private shouldFocusDay = false;
 
-  protected readonly triggerLabel = computed(() => formatDateRange(this.range(), this.locale));
+  protected readonly triggerLabel = computed(() => {
+    const range = this.range();
+    return range ? formatDateRange(range, this.locale) : this.emptyLabel();
+  });
 
   protected readonly monthLabel = computed(() => {
     const text = this.visibleMonth().toLocaleDateString(this.locale, {
@@ -176,7 +215,7 @@ export class DateRangePicker {
    * sin eso, quien recorre el calendario con las flechas elige el segundo
    * extremo a ciegas.
    */
-  protected readonly preview = computed<DateRange>(() => {
+  protected readonly preview = computed<DateRange | null>(() => {
     const anchor = this.anchor();
     if (!anchor) {
       return this.range();
@@ -186,7 +225,10 @@ export class DateRangePicker {
 
   protected readonly selecting = computed(() => this.anchor() !== null);
 
-  protected readonly previewLabel = computed(() => formatDateRange(this.preview(), this.locale));
+  protected readonly previewLabel = computed(() => {
+    const preview = this.preview();
+    return preview ? formatDateRange(preview, this.locale) : this.emptyLabel();
+  });
 
   /**
    * Las cabeceras, derivadas del locale y no escritas a mano.
@@ -302,9 +344,13 @@ export class DateRangePicker {
     // inicio y el foco cae sobre él, no sobre hoy. Abrir en el mes en curso
     // cuando el rango aplicado es de marzo obligaría a navegar hasta allí para
     // ver qué hay seleccionado.
+    //
+    // Sin rango aplicado no hay de dónde partir, y ahí sí es hoy: es el único
+    // punto de referencia que la pantalla y el usuario comparten.
     const range = this.range();
-    this.visibleMonth.set(startOfMonth(parseIsoDate(range.from)));
-    this.focusedIso.set(range.from);
+    const start = range ? parseIsoDate(range.from) : new Date();
+    this.visibleMonth.set(startOfMonth(start));
+    this.focusedIso.set(range ? range.from : toIsoDate(start));
     this.anchor.set(null);
     this.hovered.set(null);
     this.shouldFocusDay = true;
@@ -356,6 +402,16 @@ export class DateRangePicker {
     if (next && !this.host.nativeElement.contains(next)) {
       this.close({ returnFocus: false });
     }
+  }
+
+  /**
+   * Quitar el filtro cierra el popover igual que aplicarlo: las dos son
+   * decisiones completas sobre qué periodo se consulta, y dejar el calendario
+   * abierto después sugeriría que falta un paso.
+   */
+  protected onClear(): void {
+    this.clear.emit();
+    this.close();
   }
 
   protected applyPreset(preset: DateRangePreset): void {
@@ -463,17 +519,17 @@ export class DateRangePicker {
   }
 
   protected isStart(iso: string): boolean {
-    return iso === this.preview().from;
+    return iso === this.preview()?.from;
   }
 
   protected isEnd(iso: string): boolean {
-    return iso === this.preview().to;
+    return iso === this.preview()?.to;
   }
 
   /** Estrictamente entre los dos extremos: las cadenas ISO se ordenan solas. */
   protected isBetween(iso: string): boolean {
-    const { from, to } = this.preview();
-    return iso > from && iso < to;
+    const preview = this.preview();
+    return preview !== null && iso > preview.from && iso < preview.to;
   }
 
   protected isSelected(iso: string): boolean {

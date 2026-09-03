@@ -111,7 +111,33 @@
   </section>
 
   <section aria-labelledby="recent-heading">
-    <h2 class="section-heading" id="recent-heading">Últimos movimientos</h2>
+    <div class="section-bar">
+      <h2 class="section-heading" id="recent-heading">Últimos movimientos</h2>
+
+      <!--
+        El contador va DENTRO del enlace y no en el encabezado: es lo que
+        convierte "Ver todo" en una promesa concreta ("hay 83, aquí ves 5") y lo
+        que explica por qué la lista de abajo se queda corta — que era justo la
+        duda de no ver todos los gastos registrados.
+
+        Sale de `totalElements` del periodo actual, así que sube y baja con el
+        selector de la cabecera.
+
+        La palabra oculta al final es por WCAG 2.5.3: el nombre accesible tiene
+        que CONTENER el texto visible, así que se añade detrás en vez de
+        sustituirlo por un `aria-label` como "Ver todos los movimientos", que
+        dejaría fuera el "(83)" que se ve en pantalla.
+
+        Solo se pinta con datos ya cargados y con al menos un movimiento: un
+        "Ver todo (0)" enlazaría a una pantalla vacía.
+      -->
+      @if (!loading() && totalCount() > 0) {
+        <a class="btn btn-ghost btn-sm" routerLink="/finance/history">
+          Ver todo ({{ totalCount() }})<span class="visually-hidden"> movimientos</span>
+          <app-icon name="bi:arrow-right" />
+        </a>
+      }
+    </div>
 
     @if (loading()) {
       <p class="empty-state">Cargando...</p>
@@ -123,34 +149,16 @@
       -->
       <p class="empty-state">Todavía no hay movimientos en este periodo.</p>
     } @else {
+      <!--
+        La fila se fue a `components/transaction-row/` en su segundo uso: el
+        historial pinta exactamente la misma, y duplicar el marcado habría
+        duplicado también las tres copias del importe (color, signo y tipo
+        oculto) y la corrección de zona horaria de la fecha.
+      -->
       <ul class="movements">
         @for (movement of recent(); track movement.id) {
-          <li class="card movement">
-            <div class="movement__main">
-              <span class="movement__category">{{ categoryLabel(movement.category) }}</span>
-              @if (movement.description) {
-                <span class="movement__description">{{ movement.description }}</span>
-              }
-            </div>
-
-            <div class="movement__meta">
-              <span
-                class="movement__amount"
-                [class.movement__amount--income]="movement.type === 'INCOME'"
-              >
-                <!--
-                  El color y el signo dicen lo mismo dos veces a propósito: el
-                  color solo no vale para quien no lo distingue. Pero ninguno de
-                  los dos llega a un lector de pantalla — el signo &minus; no se
-                  anuncia de forma fiable — así que el tipo va además escrito,
-                  oculto en pantalla. Es la tercera copia, y es la que hace que
-                  la fila se entienda sin verla.
-                -->
-                <span class="visually-hidden">{{ typeLabel(movement.type) }}: </span>
-                @if (movement.type === 'INCOME') { + } @else { &minus; }{{ absAmount(movement) | currency: undefined : 'symbol' : moneyDigits }}
-              </span>
-              <span class="movement__date">{{ dateLabel(movement) }}</span>
-            </div>
+          <li>
+            <app-transaction-row [transaction]="movement" />
           </li>
         }
       </ul>

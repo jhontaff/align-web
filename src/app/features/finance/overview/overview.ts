@@ -9,31 +9,34 @@ import {
   signal
 } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { DataRefreshService } from '../../../core/data/data-refresh.service';
-import { DateRange, formatDateRange, parseIsoDate } from '../../../core/date/date-range';
+import { DateRange, formatDateRange } from '../../../core/date/date-range';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { DateRangePicker } from '../../../shared/ui/date-range-picker/date-range-picker';
+import { Icon } from '../../../shared/ui/icon/icon';
 import { ExpenseByCategory } from '../components/expense-by-category/expense-by-category';
+import { TransactionRow } from '../components/transaction-row/transaction-row';
 import { DATE_RANGE_PRESETS, currentMonth } from '../date-ranges';
 import { MONEY_DIGITS } from '../money';
-import { CATEGORY_LABELS, TYPE_LABELS } from '../transaction-labels';
 import {
   CategoryExpense,
   FinancialSummaryResponse,
-  TransactionCategory,
-  TransactionResponse,
-  TransactionType
+  TransactionResponse
 } from '../models/transaction.model';
 import { TransactionService } from '../transaction.service';
 
 /**
  * Cuántos movimientos recientes muestra el resumen.
  *
- * Cinco y no diez: esto es un vistazo, no el listado. El listado completo llega
- * con `activity/`, y hasta entonces esta pantalla no ofrece "ver todos" porque
- * no habría dónde ir — un enlace muerto es peor que la ausencia del enlace.
+ * Cinco y no diez: esto es un vistazo, no el listado. El listado completo vive
+ * en `transaction-history/`, y el "Ver todo" de la cabecera de la sección es
+ * cómo se llega — con el número de movimientos del periodo escrito dentro, que
+ * es lo que hace evidente que aquí solo se ve una muestra. Hasta que esa
+ * pantalla existió no había enlace, porque un enlace muerto es peor que su
+ * ausencia.
  */
 const RECENT_SIZE = 5;
 
@@ -42,7 +45,7 @@ const RECENT_SIZE = 5;
  */
 @Component({
   selector: 'app-finance-overview',
-  imports: [CurrencyPipe, DateRangePicker, ExpenseByCategory],
+  imports: [CurrencyPipe, RouterLink, DateRangePicker, Icon, ExpenseByCategory, TransactionRow],
   templateUrl: './overview.html',
   styleUrl: './overview.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -98,6 +101,18 @@ export class Overview implements OnInit {
   protected readonly byCategory = signal<CategoryExpense[] | null>(null);
 
   protected readonly recent = signal<TransactionResponse[]>([]);
+
+  /**
+   * Cuántos movimientos tiene el periodo **en el servidor**, no cuántos se
+   * pintan aquí.
+   *
+   * Sale de `totalElements` de la misma respuesta paginada que ya trae los
+   * cinco recientes, así que no cuesta ninguna petición extra — el mismo truco
+   * que usa el contador de pendientes del resumen de Inicio. Es el número
+   * honesto: `recent().length` está topado a cinco y diría "Ver todo (5)" con
+   * ochenta gastos registrados.
+   */
+  protected readonly totalCount = signal(0);
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
 
@@ -143,6 +158,7 @@ export class Overview implements OnInit {
     this.summary.set(null);
     this.byCategory.set(null);
     this.recent.set([]);
+    this.totalCount.set(0);
     this.loading.set(true);
     this.load();
   }
@@ -184,6 +200,7 @@ export class Overview implements OnInit {
         this.summary.set(summary);
         this.byCategory.set(byCategory);
         this.recent.set(recent.content);
+        this.totalCount.set(recent.totalElements);
         this.loading.set(false);
       },
       error: err => {
@@ -193,36 +210,4 @@ export class Overview implements OnInit {
     });
   }
 
-  protected typeLabel(type: TransactionType): string {
-    return TYPE_LABELS[type];
-  }
-
-  /**
-   * El signo lo pone la plantilla a partir de `type`, así que el importe se
-   * pinta en valor absoluto.
-   *
-   * Hoy el backend devuelve `amount` como magnitud positiva y el sentido lo
-   * lleva `type`, con lo cual esto no cambia nada. Está por si algún día
-   * devolviera los gastos en negativo: entonces la fila diría "−-12,00 €" en
-   * vez de fallar, que es el tipo de error que nadie mira.
-   */
-  protected absAmount(transaction: TransactionResponse): number {
-    return Math.abs(transaction.amount);
-  }
-
-  protected categoryLabel(category: TransactionCategory): string {
-    return CATEGORY_LABELS[category];
-  }
-
-  /**
-   * "12 ago". `parseIsoDate` viene de `core/date/`: era un método privado de
-   * esta clase, y subió cuando el selector necesitó exactamente la misma
-   * corrección de zona horaria.
-   */
-  protected dateLabel(transaction: TransactionResponse): string {
-    return parseIsoDate(transaction.date).toLocaleDateString(this.locale, {
-      day: 'numeric',
-      month: 'short'
-    });
-  }
 }
