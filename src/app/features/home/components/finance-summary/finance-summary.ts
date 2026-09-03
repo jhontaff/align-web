@@ -14,6 +14,7 @@ import { DataRefreshService } from '../../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../../core/http/extract-error-message';
 import { SummaryCard } from '../summary-card/summary-card';
 import { currentMonth } from '../../../finance/date-ranges';
+import { MONEY_DIGITS } from '../../../finance/money';
 import { FinancialSummaryResponse } from '../../../finance/models/transaction.model';
 import { TransactionService } from '../../../finance/transaction.service';
 
@@ -54,14 +55,8 @@ export class FinanceSummary implements OnInit {
    */
   private readonly range = currentMonth();
 
-  /**
-   * Sin decimales: el peso colombiano no usa centimos en la practica y
-   * arrastrarlos cuesta tres glifos por cifra, que es lo que hace que los
-   * importes no quepan. `undefined` como codigo de moneda para no pisar
-   * `DEFAULT_CURRENCY_CODE` — el formato de digitos y la divisa son decisiones
-   * distintas.
-   */
-  protected readonly moneyDigits = '1.0-0';
+  /** Ver `finance/money.ts`: la constante subió allí en su tercer consumidor. */
+  protected readonly moneyDigits = MONEY_DIGITS;
 
   protected readonly summary = signal<FinancialSummaryResponse | null>(null);
   protected readonly loading = signal(true);

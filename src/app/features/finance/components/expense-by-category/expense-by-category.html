@@ -1,0 +1,41 @@
+@if (isEmpty()) {
+  <p class="empty-state">No hay gastos registrados en este periodo.</p>
+} @else {
+  <!--
+    Una lista y no una tabla: cada fila es un dato con su etiqueta, no una
+    interseccion de fila y columna. Con `<table>` habria que inventar
+    encabezados ("Categoria", "Importe", "Peso") que en pantalla no aparecen, y
+    un lector de pantalla los anunciaria en cada celda.
+
+    La plantilla solo lee propiedades: todo el calculo esta en el `computed`
+    `bars`, no en llamadas a metodos desde el `@for`.
+  -->
+  <ul class="chart card">
+    @for (bar of bars(); track bar.category) {
+      <li class="chart__row">
+        <span class="chart__label">{{ bar.label }}</span>
+
+        <span class="chart__value">
+          {{ bar.total | currency: undefined : 'symbol' : moneyDigits }}
+          <!--
+            El sufijo va dentro del mismo nodo y solo para lectores de pantalla:
+            en voz alta "$ 850.000, 34%" no dice de que es ese 34, y escribirlo
+            entero en pantalla junto a nueve filas es ruido. Un nodo, sin
+            duplicar el numero.
+          -->
+          <span class="chart__share">{{ bar.share }}<span class="visually-hidden"> del gasto del periodo</span></span>
+        </span>
+
+        <!--
+          La barra es `aria-hidden` a proposito: no aporta ni un dato que no
+          este escrito ya en la misma fila. Un `role="progressbar"` aqui
+          anunciaria "34 por ciento" por segunda vez y convertiria cada fila en
+          dos.
+        -->
+        <span class="chart__track" aria-hidden="true">
+          <span class="chart__fill" [style.width.%]="bar.width"></span>
+        </span>
+      </li>
+    }
+  </ul>
+}
