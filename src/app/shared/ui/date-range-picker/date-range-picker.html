@@ -36,7 +36,7 @@
     página sigue siendo alcanzable.
   -->
   <div class="drp__panel" [id]="panelId" role="dialog" [attr.aria-label]="label()">
-    @if (presets().length > 0) {
+    @if (presets().length > 0 || clearable()) {
       <!--
         Los atajos son navegación entre periodos, no un formulario: van en su
         propia fila y emiten directamente. Es el camino de un clic para el caso
@@ -46,6 +46,26 @@
         @for (preset of presets(); track preset.id) {
           <button class="btn btn-ghost btn-sm" type="button" (click)="applyPreset(preset)">
             {{ preset.label }}
+          </button>
+        }
+
+        @if (clearable()) {
+          <!--
+            Quitar el filtro va con los atajos y no en el pie: para quien mira,
+            "todo el historial" es un periodo más de la misma fila, aunque por
+            dentro sea la ausencia de `from`/`to`.
+
+            Se deshabilita cuando ya no hay filtro. Un botón que no puede hacer
+            nada y aun así se pulsa es peor que uno apagado: el usuario no sabe
+            si la pantalla le ignoró o si ya estaba en ese estado.
+          -->
+          <button
+            class="btn btn-ghost btn-sm drp__clear"
+            type="button"
+            [disabled]="range() === null"
+            (click)="onClear()"
+          >
+            {{ emptyLabel() }}
           </button>
         }
       </div>

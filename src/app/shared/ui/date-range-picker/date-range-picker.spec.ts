@@ -20,6 +20,7 @@ describe('DateRangePicker', () => {
   let fixture: ComponentFixture<DateRangePicker>;
   let host: HTMLElement;
   let emitidos: DateRange[];
+  let limpiados: number;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -28,7 +29,7 @@ describe('DateRangePicker', () => {
     }).compileComponents();
   });
 
-  async function montar(range: DateRange = SEPTIEMBRE): Promise<void> {
+  async function montar(range: DateRange | null = SEPTIEMBRE): Promise<void> {
     fixture = TestBed.createComponent(DateRangePicker);
     fixture.componentRef.setInput('range', range);
     fixture.componentRef.setInput('presets', PRESETS);
@@ -36,7 +37,9 @@ describe('DateRangePicker', () => {
     host = fixture.nativeElement as HTMLElement;
 
     emitidos = [];
+    limpiados = 0;
     fixture.componentInstance.rangeChange.subscribe(r => emitidos.push(r));
+    fixture.componentInstance.clear.subscribe(() => (limpiados += 1));
 
     fixture.detectChanges();
     await fixture.whenStable();
@@ -218,6 +221,60 @@ describe('DateRangePicker', () => {
 
     expect(mesVisible()).toBe('Octubre de 2026');
     expect(dia('2026-10-01')!.tabIndex).toBe(0);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Sin rango aplicado. `null` es un estado de primera clase, no un valor que
+  // falta: es como se expresa "sin filtro", que es con lo que arranca el
+  // historial de movimientos.
+  // ---------------------------------------------------------------------------
+
+  it('sin rango, el boton dice la etiqueta de vacio y no un rango cualquiera', async () => {
+    await montar(null);
+    fixture.componentRef.setInput('emptyLabel', 'Todo el historial');
+    await estabilizar();
+
+    expect(disparador().textContent).toContain('Todo el historial');
+  });
+
+  it('sin rango, el calendario abre en el mes EN CURSO y no marca nada', async () => {
+    await montar(null);
+    await abrir();
+
+    const hoy = new Date();
+    const mesEnCurso = hoy.toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' });
+    expect(mesVisible().toLowerCase()).toBe(mesEnCurso.toLowerCase());
+
+    // Nada seleccionado: no hay rango que pintar.
+    expect(host.querySelectorAll('.drp__day--start, .drp__day--end, .drp__day--between').length)
+      .toBe(0);
+  });
+
+  it('el boton de limpiar solo aparece con `clearable`, y emite `clear`', async () => {
+    await montar();
+    await abrir();
+    expect(host.querySelector('.drp__clear')).toBeNull();
+
+    fixture.componentRef.setInput('clearable', true);
+    await estabilizar();
+
+    host.querySelector<HTMLButtonElement>('.drp__clear')!.click();
+    await estabilizar();
+
+    // `clear` y no un `rangeChange` con null: son dos acciones distintas, y el
+    // resumen —que no puede limpiar— no deberia tener que distinguirlas.
+    expect(limpiados).toBe(1);
+    expect(emitidos).toEqual([]);
+    expect(panel()).toBeNull();
+  });
+
+  it('limpiar esta deshabilitado cuando ya no hay filtro', async () => {
+    await montar(null);
+    fixture.componentRef.setInput('clearable', true);
+    await estabilizar();
+    await abrir();
+
+    expect(host.querySelector<HTMLButtonElement>('.drp__clear')!.disabled).toBe(true);
   });
 
   it('Inicio y Fin van a los extremos de la semana, con el lunes como primer dia', async () => {

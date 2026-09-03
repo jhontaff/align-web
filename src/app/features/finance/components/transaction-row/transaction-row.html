@@ -1,0 +1,21 @@
+<div class="row__main">
+  <span class="row__category">{{ categoryLabel() }}</span>
+  @if (transaction().description) {
+    <span class="row__description">{{ transaction().description }}</span>
+  }
+</div>
+
+<div class="row__meta">
+  <span class="row__amount" [class.row__amount--income]="isIncome()">
+    <!--
+      El color y el signo dicen lo mismo dos veces a propósito: el color solo no
+      vale para quien no lo distingue. Pero ninguno de los dos llega a un lector
+      de pantalla — el signo &minus; no se anuncia de forma fiable — así que el
+      tipo va además escrito, oculto en pantalla. Es la tercera copia, y es la
+      que hace que la fila se entienda sin verla.
+    -->
+    <span class="visually-hidden">{{ typeLabel() }}: </span>
+    @if (isIncome()) { + } @else { &minus; }{{ amount() | currency: undefined : 'symbol' : moneyDigits }}
+  </span>
+  <span class="row__date">{{ dateLabel() }}</span>
+</div>

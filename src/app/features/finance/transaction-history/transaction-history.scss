@@ -1,0 +1,119 @@
+@use '../../../../styles/layout';
+
+.history__back {
+  margin: 0 0 var(--space-2);
+
+  // El enlace es `inline` por defecto y el `<p>` ocupa toda la línea: sin esto,
+  // el área pulsable se extiende a lo ancho de la página y el hover se enciende
+  // lejos del texto.
+  display: flex;
+}
+
+.history__count {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+
+  // Reserva su línea aunque esté vacío mientras carga. Sin el alto mínimo, la
+  // lista entera salta hacia arriba en el instante en que llega la respuesta,
+  // justo cuando el usuario está mirando.
+  min-height: 1.25rem;
+}
+
+// -----------------------------------------------------------------------------
+// Los meses
+// -----------------------------------------------------------------------------
+.history__group {
+  margin-bottom: var(--space-6);
+}
+
+// El encabezado se queda pegado arriba al recorrer la lista: con trescientos
+// movimientos, saber en qué mes se está mirando es la mitad de la información
+// de la fila, y sin esto se pierde en cuanto se hace scroll.
+//
+// `top` es el alto de la cabecera del shell, que es `sticky` a su vez: sin
+// descontarlo, el mes se pegaría DEBAJO de ella y quedaría tapado.
+.history__month {
+  position: sticky;
+  top: layout.$header-height;
+
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+
+  padding: var(--space-2) 0;
+  margin-bottom: var(--space-2);
+
+  // Fondo opaco obligatorio: es lo único que impide que las filas se vean por
+  // debajo del encabezado mientras pasan bajo él.
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+
+  // Por encima de las filas, y muy por debajo del cromo del shell (cabecera 30,
+  // nav inferior 60): un encabezado de sección que tapara la navegación estaría
+  // mal, no mejor.
+  z-index: 1;
+}
+
+.history__month-label {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+
+// El balance del mes no lleva signo escrito a mano: puede ir en cualquier
+// dirección, así que lo pone `CurrencyPipe` cuando el número es negativo.
+// Escribirlo aquí además daría "-−12,00 €", el mismo caso que el balance del
+// resumen.
+.history__month-balance {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-success);
+}
+
+.history__month-balance--negative {
+  color: var(--color-danger);
+}
+
+.history__movements {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+// -----------------------------------------------------------------------------
+// Cargar más
+// -----------------------------------------------------------------------------
+.history__more {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4) 0 var(--space-8);
+}
+
+// -----------------------------------------------------------------------------
+// Los bloques de media query van al FINAL de la hoja, nunca junto a la regla
+// que modifican: una media query no añade especificidad, solo decide el orden,
+// así que puesta arriba la pisa cualquier declaración posterior.
+// -----------------------------------------------------------------------------
+@include layout.below-tablet {
+  // La cabecera de página envuelve para que el selector ocupe su propia línea,
+  // igual que en el resumen: con el título más un rango largo ("1 dic 2025 –
+  // 15 ene 2026") no caben los dos y el botón se comprime hasta cortar el texto.
+  .page-header {
+    flex-wrap: wrap;
+  }
+
+  // El encabezado del mes deja de pegarse en móvil. La cabecera del shell ya se
+  // lleva su franja de pantalla ahí arriba, y un segundo elemento fijo sobre un
+  // viewport corto deja demasiado poco alto para la lista, que es lo que se
+  // vino a leer.
+  .history__month {
+    position: static;
+  }
+}

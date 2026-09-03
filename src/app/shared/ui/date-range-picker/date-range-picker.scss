@@ -305,3 +305,13 @@
     box-shadow: none;
   }
 }
+
+// -----------------------------------------------------------------------------
+// Quitar el filtro
+// -----------------------------------------------------------------------------
+// Empujado al final de la fila de atajos: es la acción que deshace a las demás,
+// no una más de la serie, y agruparla con ellas invitaría a pulsarla por error
+// al recorrer los periodos de izquierda a derecha.
+.drp__clear {
+  margin-inline-start: auto;
+}
