@@ -41,7 +41,9 @@ const ICON_NAMES = [
   'bi:send',
   'bi:bell',
   'bi:bell-slash',
-  'bi:pencil'
+  'bi:calendar3',
+  'bi:chevron-left',
+  'bi:chevron-right'
 ];
 
 const OUT = 'src/app/shared/ui/icon/icon-set.ts';
@@ -77,7 +79,7 @@ function resolve(fullName) {
   return { body: icon.body, viewBox: `0 0 ${width} ${height}` };
 }
 
-const entries = [...ICON_NAMES].sort().map(fullName => {
+const entries = [...new Set(ICON_NAMES)].sort().map(fullName => {
   const { body, viewBox } = resolve(fullName);
   return `  '${fullName}': { viewBox: '${viewBox}', body: '${body.replace(/'/g, "\'")}' }`;
 });

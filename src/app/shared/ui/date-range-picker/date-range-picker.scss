@@ -1,0 +1,307 @@
+@use '../../../../styles/layout';
+
+// El anfitrión es el marco de referencia del popover: `position: absolute`
+// dentro busca el ancestro posicionado más cercano, y si no hubiera ninguno se
+// anclaría al viewport y quedaría suelto al hacer scroll.
+:host {
+  position: relative;
+  display: inline-block;
+}
+
+.drp__trigger-label {
+  white-space: nowrap;
+}
+
+// -----------------------------------------------------------------------------
+// El popover
+// -----------------------------------------------------------------------------
+.drp__panel {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+
+  // Alineado por el borde final y no por el inicial: el disparador vive en el
+  // extremo derecho de `.page-header`, así que abrir hacia la izquierda es lo
+  // único que lo mantiene dentro de la pantalla en móvil.
+  inset-inline-end: 0;
+
+  // Por encima del contenido de la pagina, y por DEBAJO del cromo del shell a
+  // proposito: la cabecera pegajosa va en 30 y la nav inferior en 60. Un
+  // popover que tapara la navegacion estaria mal, no mejor.
+  z-index: 20;
+
+  // `min()` y no un ancho fijo: 19rem es lo que piden siete columnas cómodas,
+  // pero en una pantalla estrecha eso se sale y arrastra scroll horizontal a
+  // toda la página.
+  width: min(19rem, calc(100vw - var(--space-8)));
+
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+
+  // En tema oscuro la sombra apenas se lee y es el borde lo que separa el panel
+  // del fondo, igual que en `.card`. Por eso lleva los dos.
+  box-shadow: var(--shadow-lg);
+
+  animation: drp-enter var(--transition-fast) ease-out;
+}
+
+@keyframes drp-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Atajos
+// -----------------------------------------------------------------------------
+.drp__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+// -----------------------------------------------------------------------------
+// Cabecera de mes
+// -----------------------------------------------------------------------------
+.drp__month {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.drp__month-label {
+  flex: 1;
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+
+// `.btn-icon` mide 40px, que es el tamaño de una acción de página. Dentro del
+// popover compite con la cabecera y desequilibra la fila; 32px es el mismo
+// escalón que `.btn-sm`.
+.drp__nav {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+// -----------------------------------------------------------------------------
+// La rejilla
+// -----------------------------------------------------------------------------
+.drp__grid {
+  width: 100%;
+
+  // Las siete columnas miden lo mismo pase lo que pase con el contenido. Sin
+  // esto la columna de los días de dos cifras sería más ancha que la del 1 al 9
+  // y el calendario saldría torcido.
+  table-layout: fixed;
+
+  // Sin separación entre celdas: es lo que permite que el tramo seleccionado se
+  // vea como una banda continua y no como casillas sueltas con huecos.
+  border-collapse: collapse;
+}
+
+.drp__weekday {
+  padding-block: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-muted);
+}
+
+.drp__cell {
+  padding: 0;
+}
+
+.drp__day {
+  width: 100%;
+
+  // Casillas cuadradas sin fijar altura a mano: así el calendario escala con la
+  // tipografía en vez de recortarse si el usuario sube el tamaño de fuente.
+  aspect-ratio: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 0;
+  background: transparent;
+  color: var(--color-text-body);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+// Los días de los meses vecinos siguen siendo seleccionables, solo se apagan.
+// Va ANTES de las reglas de selección para que un día de relleno dentro del
+// rango se pinte como seleccionado y no como apagado: una media query no añade
+// especificidad y estas tampoco, así que aquí manda el orden.
+.drp__day--outside {
+  color: var(--color-text-muted);
+  opacity: 0.55;
+}
+
+// El hover normal se excluye EXPLICITAMENTE de los dias seleccionados.
+//
+// No es defensivo: `.drp__day:hover` es clase + pseudoclase (0,2,0) y
+// `.drp__day--between` es una sola clase (0,1,0), asi que sin el `:not()` el
+// hover gana y cada dia del rango parpadea al gris del fondo justo al pasar el
+// raton por encima — que es exactamente el gesto con el que se elige el
+// segundo extremo.
+.drp__day:not(.drp__day--between, .drp__day--start, .drp__day--end):hover {
+  background: var(--color-surface-muted);
+}
+
+// El tramo intermedio sube un escalon en lugar de apagarse.
+.drp__day--between:hover {
+  background: var(--color-primary-soft);
+  filter: brightness(0.96);
+}
+
+// Hoy, cuando no está seleccionado: un aro por dentro en vez de un color de
+// fondo, que competiría con el del rango.
+.drp__day--today {
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+  font-weight: var(--weight-semibold);
+}
+
+// -----------------------------------------------------------------------------
+// El rango
+// -----------------------------------------------------------------------------
+// El tramo intermedio va en el tono suave y los dos extremos en el saturado:
+// es el mismo mapeo dominio → semántica que usan los badges, sin un solo hex.
+.drp__day--between {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-soft-text);
+  opacity: 1;
+
+  // Cuadrado, para que la banda sea continua entre casillas contiguas.
+  border-radius: 0;
+}
+
+.drp__day--start,
+.drp__day--end {
+  background: var(--color-primary);
+  color: var(--color-text-on-accent);
+  font-weight: var(--weight-semibold);
+  opacity: 1;
+
+  // El aro de "hoy" sobra en cuanto el día está pintado de color sólido.
+  box-shadow: none;
+}
+
+.drp__day--start:hover,
+.drp__day--end:hover {
+  background: var(--color-primary-hover);
+}
+
+// Cada extremo se redondea solo por su lado y queda recto hacia el interior del
+// rango, así el conjunto se lee como una sola pastilla alargada.
+.drp__day--start {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.drp__day--end {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+// Rango de un solo día: es a la vez inicio y fin, y ahí vuelve a ser un círculo.
+.drp__day--start.drp__day--end {
+  border-radius: var(--radius-full);
+}
+
+// -----------------------------------------------------------------------------
+// Pie
+// -----------------------------------------------------------------------------
+.drp__footer {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.drp__hint {
+  color: var(--color-primary);
+}
+
+// -----------------------------------------------------------------------------
+// Un panel que aparece desplazándose es justo el movimiento que molesta a quien
+// pide menos animación. Se quita el recorrido, no el panel.
+// -----------------------------------------------------------------------------
+@media (prefers-reduced-motion: reduce) {
+  .drp__panel {
+    animation: none;
+  }
+
+  .drp__day {
+    transition: none;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Movil: el panel deja de flotar y entra en el FLUJO
+// -----------------------------------------------------------------------------
+// Este bloque va al final de la hoja, como el resto de media queries del repo:
+// no anaden especificidad, solo orden, asi que puestas junto a la regla que
+// modifican las pisa cualquier declaracion posterior.
+//
+// El cambio de fondo es una sola linea —`position: static`— y de ella salen los
+// tres comportamientos que se pedian, sin una linea de JavaScript ni una rama
+// nueva en el componente:
+//
+//   1. Ocupa el ancho completo y ya no puede salirse por el lado: un elemento
+//      en flujo esta limitado por su contenedor, mientras que uno absoluto se
+//      posiciona contra el ancestro posicionado y se desborda sin avisar. El
+//      `min(19rem, 100vw - ...)` de arriba evitaba el scroll horizontal, pero
+//      no impedia que el panel quedara pegado al borde y recortado.
+//   2. Empuja hacia abajo el resumen y los movimientos, porque ahora ocupa
+//      alto real dentro de `.page-header`.
+//   3. Al aplicarse el rango el `@if` retira el panel, el alto desaparece y
+//      todo vuelve solo a su sitio. No hay estado que restaurar.
+//
+// Es el mismo principio que el shell responsive: la forma se decide en CSS, no
+// intercambiando componentes. El arbol, los roles ARIA y el teclado son
+// identicos en las dos presentaciones — cambia donde se pinta, no que es.
+@include layout.below-tablet {
+  :host {
+    // Deja de ser una accion suelta a la derecha del titulo y pasa a ocupar su
+    // propia linea. Lo que la hace bajar de linea es el `flex-wrap: wrap` de
+    // `.page-header`, que sin este `width` no tendria motivo para envolver.
+    display: block;
+    width: 100%;
+  }
+
+  .drp__trigger {
+    width: 100%;
+  }
+
+  .drp__panel {
+    position: static;
+    width: 100%;
+
+    // `top` e `inset-inline-end` quedan inertes sin posicionamiento, asi que la
+    // separacion con el boton hay que devolverla como margen.
+    margin-top: var(--space-2);
+
+    // Ya no flota sobre nada: se apoya en la pagina como una `.card` mas, y es
+    // el borde el que lo delimita. Una sombra de elevacion sobre un elemento
+    // que no esta elevado se lee como suciedad.
+    box-shadow: none;
+  }
+}
