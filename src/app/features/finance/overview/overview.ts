@@ -15,9 +15,12 @@ import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { DateRange, formatDateRange, parseIsoDate } from '../../../core/date/date-range';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { DateRangePicker } from '../../../shared/ui/date-range-picker/date-range-picker';
+import { ExpenseByCategory } from '../components/expense-by-category/expense-by-category';
 import { DATE_RANGE_PRESETS, currentMonth } from '../date-ranges';
+import { MONEY_DIGITS } from '../money';
 import { CATEGORY_LABELS, TYPE_LABELS } from '../transaction-labels';
 import {
+  CategoryExpense,
   FinancialSummaryResponse,
   TransactionCategory,
   TransactionResponse,
@@ -39,7 +42,7 @@ const RECENT_SIZE = 5;
  */
 @Component({
   selector: 'app-finance-overview',
-  imports: [CurrencyPipe, DateRangePicker],
+  imports: [CurrencyPipe, DateRangePicker, ExpenseByCategory],
   templateUrl: './overview.html',
   styleUrl: './overview.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -77,20 +80,23 @@ export class Overview implements OnInit {
   protected readonly presets = DATE_RANGE_PRESETS;
 
   /**
-   * `digitsInfo` de `CurrencyPipe`: sin decimales.
-   *
-   * El peso colombiano no usa céntimos en la práctica — nadie escribe
-   * "$ 3.500.000,00" — y arrastrarlos cuesta tres glifos por cifra, que es
-   * justo lo que hacía que los importes no cupieran en la tarjeta. Se pasa
-   * `undefined` como código de moneda para no pisar `DEFAULT_CURRENCY_CODE`:
-   * el formato de dígitos y la divisa son decisiones distintas.
-   *
-   * Vive aquí y no en una constante compartida porque hoy hay un solo
-   * consumidor; sube cuando `activity/` sea el segundo.
+   * Ya no vive aquí: subió a `finance/money.ts` en su tercer consumidor —esta
+   * pantalla, la tarjeta de Inicio y el gráfico de gastos por categoría—, que
+   * es justo lo que este comentario anunciaba que pasaría. La justificación
+   * (por qué sin decimales, por qué `undefined` como divisa) se fue con la
+   * constante; aquí solo queda exponerla a la plantilla.
    */
-  protected readonly moneyDigits = '1.0-0';
+  protected readonly moneyDigits = MONEY_DIGITS;
 
   protected readonly summary = signal<FinancialSummaryResponse | null>(null);
+
+  /**
+   * El desglose del gasto por categoría. `null` mientras no hay datos, y no un
+   * array vacío: "todavía no ha llegado" y "en este periodo no hubo gastos" son
+   * dos cosas distintas y el gráfico pinta un estado vacío para la segunda.
+   */
+  protected readonly byCategory = signal<CategoryExpense[] | null>(null);
+
   protected readonly recent = signal<TransactionResponse[]>([]);
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
@@ -135,18 +141,26 @@ export class Overview implements OnInit {
   protected onRangeChange(range: DateRange): void {
     this.range.set(range);
     this.summary.set(null);
+    this.byCategory.set(null);
     this.recent.set([]);
     this.loading.set(true);
     this.load();
   }
 
   /**
-   * Las dos peticiones van en un `forkJoin` y no en dos `subscribe` sueltos.
+   * Las tres lecturas van en un `forkJoin` y no en tres `subscribe` sueltos.
    *
-   * No es por ahorrar código: es que las cifras de arriba y las filas de abajo
-   * describen el mismo conjunto de datos. Resueltas por separado, un gasto
-   * recién creado aparecería en la lista un instante antes de que el balance se
-   * enterase, y durante ese instante la pantalla se contradice a sí misma.
+   * No es por ahorrar código: es que las cifras de arriba, las barras del medio
+   * y las filas de abajo describen el mismo conjunto de datos. Resueltas por
+   * separado, un gasto recién creado aparecería en la lista un instante antes
+   * de que el balance se enterase, y durante ese instante la pantalla se
+   * contradice a sí misma.
+   *
+   * Con el gráfico dentro, el argumento se vuelve literal: las nueve barras
+   * **suman** el `totalExpense` que está justo encima. Dejar que lleguen por su
+   * cuenta es garantizar una ventana en la que el usuario puede ver un total y
+   * un desglose que no cuadran, y ese es el tipo de descuadre que hace dudar de
+   * toda la pantalla.
    *
    * Nunca pone `loading` a true por su cuenta: quien llama decide si este fetch
    * merece vaciar la pantalla (ver `onRangeChange`) o no (la revalidación del
@@ -158,10 +172,17 @@ export class Overview implements OnInit {
 
     forkJoin({
       summary: this.transactions.summary(range),
+      // Once peticiones en paralelo, de las cuales nueve son este desglose. El
+      // navegador solo abre seis conexiones por origen sobre HTTP/1.1 —que es
+      // lo que da el proxy de desarrollo—, así que salen en dos tandas. Es el
+      // precio de que el backend no agregue por categoría, y está anotado en
+      // `expenseByCategory()`; no es algo que se arregle moviendo código aquí.
+      byCategory: this.transactions.expenseByCategory(range),
       recent: this.transactions.list(range, { page: 0, size: RECENT_SIZE, sort: 'date,desc' })
     }).subscribe({
-      next: ({ summary, recent }) => {
+      next: ({ summary, byCategory, recent }) => {
         this.summary.set(summary);
+        this.byCategory.set(byCategory);
         this.recent.set(recent.content);
         this.loading.set(false);
       },

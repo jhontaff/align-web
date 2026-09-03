@@ -1,9 +1,9 @@
 <div class="page">
   <!--
     El selector va en la cabecera de la pagina y no dentro del bloque del
-    resumen: acota TODO lo que hay debajo (las tres cifras y los ultimos
-    movimientos salen de la misma peticion), asi que colgarlo de una de las dos
-    secciones sugeriria que la otra no le hace caso.
+    resumen: acota TODO lo que hay debajo (las tres cifras, el grafico y los
+    ultimos movimientos salen de la misma peticion), asi que colgarlo de una de
+    las tres secciones sugeriria que las otras no le hacen caso.
   -->
   <div class="page-header">
     <h1>Finanzas</h1>
@@ -81,6 +81,33 @@
         </span>
       </li>
     </ul>
+  </section>
+
+  <!--
+    El grafico va DEBAJO del resumen y ENCIMA de los movimientos, y ese orden es
+    el argumento: desglosa exactamente la cifra de "Gastos" que tiene justo
+    arriba —las barras suman ese numero—, asi que cualquier otra posicion
+    obligaria a saltar de un lado a otro de la pagina para relacionarlos.
+
+    No lleva selector propio: el de la cabecera acota toda la pagina, y un
+    segundo control de periodo aqui sugeriria que este bloque puede ir por su
+    cuenta cuando en realidad sale de la misma peticion.
+  -->
+  <section aria-labelledby="by-category-heading">
+    <h2 class="section-heading" id="by-category-heading">Gastos por categoría</h2>
+
+    @if (loading()) {
+      <!--
+        Aqui SI se pinta "Cargando" y no un esqueleto con guiones como en el
+        resumen: alli el numero de filas se sabe de antemano (siempre tres) y el
+        hueco se puede reservar, pero cuantas categorias tuvieron gasto depende
+        del periodo, asi que un esqueleto tendria que adivinar el alto y
+        provocaria el salto que pretende evitar.
+      -->
+      <p class="empty-state">Cargando...</p>
+    } @else if (byCategory(); as expenses) {
+      <app-expense-by-category [expenses]="expenses" />
+    }
   </section>
 
   <section aria-labelledby="recent-heading">
