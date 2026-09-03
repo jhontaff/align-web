@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, LOCALE_ID, computed, inject, input } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { parseIsoDate } from '../../../../core/date/date-range';
 import { MONEY_DIGITS } from '../../money';
 import { TransactionResponse } from '../../models/transaction.model';
@@ -27,7 +28,7 @@ import { CATEGORY_LABELS, TYPE_LABELS } from '../../transaction-labels';
  */
 @Component({
   selector: 'app-transaction-row',
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, RouterLink],
   templateUrl: './transaction-row.html',
   styleUrl: './transaction-row.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

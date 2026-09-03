@@ -7,7 +7,9 @@ import {
   CategoryExpense,
   FinancialSummaryResponse,
   TransactionFilter,
-  TransactionResponse
+  TransactionRequest,
+  TransactionResponse,
+  TransactionUpdateRequest
 } from './models/transaction.model';
 import { EXPENSE_CATEGORIES } from './transaction-labels';
 
@@ -19,9 +21,8 @@ import { EXPENSE_CATEGORIES } from './transaction-labels';
  * quita el `ApiResponse` antes de que el servicio vea el cuerpo. Nunca se
  * declara `Observable<ApiResponse<T>>`.
  *
- * Solo están los dos endpoints de lectura: son los que consumen las pantallas
- * que existen. El alta, la edición y el borrado entran cuando entre el
- * formulario, no antes.
+ * El alta, la edición y el borrado entraron con `transaction-form/` y
+ * `transaction-detail/`, que son las pantallas que los consumen.
  */
 @Injectable({ providedIn: 'root' })
 export class TransactionService {
@@ -38,6 +39,22 @@ export class TransactionService {
     return this.http.get<Page<TransactionResponse>>('/api/transactions', {
       params: toHttpParams(filter, pageable)
     });
+  }
+
+  get(id: string): Observable<TransactionResponse> {
+    return this.http.get<TransactionResponse>(`/api/transactions/${id}`);
+  }
+
+  create(request: TransactionRequest): Observable<TransactionResponse> {
+    return this.http.post<TransactionResponse>('/api/transactions', request);
+  }
+
+  update(id: string, request: TransactionUpdateRequest): Observable<TransactionResponse> {
+    return this.http.put<TransactionResponse>(`/api/transactions/${id}`, request);
+  }
+
+  remove(id: string): Observable<void> {
+    return this.http.delete<void>(`/api/transactions/${id}`);
   }
 
   /** Totales del mismo conjunto que devolvería `list()` con ese filtro. */

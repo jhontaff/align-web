@@ -43,10 +43,30 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'finance/new',
+    loadComponent: () =>
+      import('./features/finance/transaction-form/transaction-form').then(m => m.TransactionForm),
+    canActivate: [authGuard]
+  },
+  {
     path: 'finance/history',
     loadComponent: () =>
       import('./features/finance/transaction-history/transaction-history').then(
         m => m.TransactionHistory
+      ),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'finance/:id/edit',
+    loadComponent: () =>
+      import('./features/finance/transaction-form/transaction-form').then(m => m.TransactionForm),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'finance/:id',
+    loadComponent: () =>
+      import('./features/finance/transaction-detail/transaction-detail').then(
+        m => m.TransactionDetail
       ),
     canActivate: [authGuard]
   },

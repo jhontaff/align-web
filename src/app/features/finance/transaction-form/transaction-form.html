@@ -1,0 +1,73 @@
+<div class="page">
+  <div class="page-header">
+    <h1>{{ editing ? 'Editar movimiento' : 'Nuevo movimiento' }}</h1>
+  </div>
+
+  @if (loadError()) {
+    <p class="form-error" role="alert">{{ loadError() }}</p>
+    <p class="form-footer"><a routerLink="/finance">Volver a Finanzas</a></p>
+  } @else if (loading()) {
+    <p class="empty-state">Cargando...</p>
+  } @else {
+    <div class="card form-card form-card--wide">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        @if (errorMessage()) {
+          <p class="form-error" role="alert">{{ errorMessage() }}</p>
+        }
+
+        <div class="field">
+          <label for="amount">Importe</label>
+          <input id="amount" type="number" min="0" step="0.01" formControlName="amount" />
+        </div>
+
+        <div class="field">
+          <label for="category">Categoría</label>
+          <select id="category" formControlName="category">
+            <option value="" disabled>Elige una categoría</option>
+            <optgroup label="Gastos">
+              @for (option of expenseOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </optgroup>
+            <optgroup label="Ingresos">
+              @for (option of incomeOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </optgroup>
+          </select>
+
+          @if (typeHint(); as hint) {
+            <p class="transaction-form__hint" role="status">
+              Se registrará como
+              <span class="badge" [class]="typeIsIncome() ? 'badge--success' : 'badge--danger'">
+                {{ hint }}
+              </span>
+            </p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="date">Fecha</label>
+          <input id="date" type="date" formControlName="date" />
+        </div>
+
+        <div class="field">
+          <label for="description">Descripción</label>
+          <textarea
+            id="description"
+            formControlName="description"
+            rows="3"
+            [maxlength]="descriptionMaxLength"
+          ></textarea>
+        </div>
+
+        <div class="form-actions">
+          <a class="btn btn-ghost" [routerLink]="cancelLink()">Cancelar</a>
+          <button class="btn btn-primary" type="submit" [disabled]="submitting()">
+            {{ editing ? 'Guardar cambios' : 'Crear movimiento' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</div>

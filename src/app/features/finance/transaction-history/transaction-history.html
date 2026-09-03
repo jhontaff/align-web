@@ -60,13 +60,14 @@
         escondiendo sus datos — que es exactamente la duda que originó esta
         pantalla.
 
-        Sin botón de crear: el formulario de alta todavía no existe, y una
-        llamada a la acción que no lleva a ninguna parte es peor que ninguna.
       -->
       @if (range()) {
         <p class="empty-state">No hay movimientos en este periodo.</p>
       } @else {
-        <p class="empty-state">Todavía no has registrado ningún movimiento.</p>
+        <p class="empty-state">
+          Todavía no has registrado ningún movimiento.
+          <a routerLink="/finance/new">Registra el primero</a>.
+        </p>
       }
     } @else {
       @for (group of groups(); track group.key) {
