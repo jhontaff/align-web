@@ -1,6 +1,7 @@
 // El anfitrión ya lleva `.card` por el `host` del componente: aquí solo va el
 // reparto interno, no la pintura de la tarjeta.
 :host {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -25,6 +26,25 @@
 .row__category {
   font-weight: var(--weight-medium);
   color: var(--color-text);
+}
+
+.row__link {
+  text-decoration: none;
+  color: inherit;
+  overflow-wrap: anywhere;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+}
+
+:host(:has(.row__link:hover)),
+:host(:has(.row__link:focus-visible)) {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
 }
 
 .row__description {

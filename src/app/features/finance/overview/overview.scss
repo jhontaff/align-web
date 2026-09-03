@@ -139,3 +139,21 @@
 .page-header {
   flex-wrap: wrap;
 }
+
+.page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+@include layout.below-tablet {
+  .page-header__actions {
+    width: 100%;
+  }
+
+  .page-header__actions .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -8,12 +8,19 @@
   <div class="page-header">
     <h1>Finanzas</h1>
 
-    <app-date-range-picker
-      label="Periodo"
-      [range]="range()"
-      [presets]="presets"
-      (rangeChange)="onRangeChange($event)"
-    />
+    <div class="page-header__actions">
+      <app-date-range-picker
+        label="Periodo"
+        [range]="range()"
+        [presets]="presets"
+        (rangeChange)="onRangeChange($event)"
+      />
+
+      <a class="btn btn-primary" routerLink="/finance/new">
+        <app-icon name="bi:plus-lg" />
+        Nuevo movimiento
+      </a>
+    </div>
   </div>
 
   @if (errorMessage()) {
@@ -142,12 +149,10 @@
     @if (loading()) {
       <p class="empty-state">Cargando...</p>
     } @else if (recent().length === 0) {
-      <!--
-        Sin botón de "crear": el formulario de alta todavía no existe, y una
-        llamada a la acción que no lleva a ninguna parte es peor que ninguna.
-        Entra con la etapa 4.
-      -->
-      <p class="empty-state">Todavía no hay movimientos en este periodo.</p>
+      <p class="empty-state">
+        Todavía no hay movimientos en este periodo.
+        <a routerLink="/finance/new">Registra el primero</a>.
+      </p>
     } @else {
       <!--
         La fila se fue a `components/transaction-row/` en su segundo uso: el

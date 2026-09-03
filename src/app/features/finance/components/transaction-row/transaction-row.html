@@ -1,5 +1,7 @@
 <div class="row__main">
-  <span class="row__category">{{ categoryLabel() }}</span>
+  <a class="row__category row__link" [routerLink]="['/finance', transaction().id]">
+    {{ categoryLabel() }}
+  </a>
   @if (transaction().description) {
     <span class="row__description">{{ transaction().description }}</span>
   }

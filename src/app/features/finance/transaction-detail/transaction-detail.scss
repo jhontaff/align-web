@@ -1,0 +1,138 @@
+@use '../../../../styles/layout';
+
+.transaction-detail__back {
+  margin-right: auto;
+  margin-left: calc(var(--space-5) * -1);
+  gap: var(--space-1);
+
+  @include layout.below-tablet {
+    min-height: 44px;
+  }
+}
+
+.transaction-detail__back-icon {
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+  transition: translate var(--transition-fast);
+}
+
+.transaction-detail__back:hover .transaction-detail__back-icon,
+.transaction-detail__back:focus-visible .transaction-detail__back-icon {
+  translate: -2px 0;
+}
+
+.transaction-detail__edit,
+.transaction-detail__delete {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+
+  @include layout.below-tablet {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+.transaction-detail__edit:hover,
+.transaction-detail__edit:focus-visible {
+  color: var(--color-primary);
+}
+
+.transaction-detail__delete:hover:not(:disabled),
+.transaction-detail__delete:focus-visible {
+  color: var(--color-danger);
+}
+
+.transaction-detail__delete:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.transaction-detail__action-icon {
+  font-size: var(--text-lg);
+}
+
+.transaction-detail__icon--close {
+  display: none;
+}
+
+.transaction-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.transaction-detail__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.transaction-detail__amount {
+  margin: 0;
+  font-size: var(--text-h1);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-danger);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.transaction-detail__amount--income {
+  color: var(--color-success);
+}
+
+.transaction-detail__fields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.transaction-detail__field--wide {
+  grid-column: 1 / -1;
+}
+
+.transaction-detail__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+
+  dt {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transaction-detail__back-icon {
+    transition: none;
+  }
+
+  .transaction-detail__back:hover .transaction-detail__back-icon,
+  .transaction-detail__back:focus-visible .transaction-detail__back-icon {
+    translate: none;
+  }
+}
+
+@include layout.below-tablet {
+  .transaction-detail__icon--trash {
+    display: none;
+  }
+
+  .transaction-detail__icon--close {
+    display: block;
+  }
+
+  .transaction-detail__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
