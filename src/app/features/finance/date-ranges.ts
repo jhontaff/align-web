@@ -1,5 +1,7 @@
+import { DateRange, DateRangePreset, toIsoDate } from '../../core/date/date-range';
+
 /**
- * Rangos de fechas para los filtros de Finanzas.
+ * Los periodos que ofrece Finanzas.
  *
  * Existe porque `GET /api/transactions/summary` sin filtro devuelve el
  * **histórico completo**, y en una app de finanzas personales ese número solo
@@ -7,31 +9,13 @@
  * real es "¿cuánto llevo gastado este mes?". El endpoint ya acepta `from`/`to`,
  * así que arrancar en el mes en curso no cuesta nada.
  *
- * Lo consumen el resumen y el listado de movimientos, así que no puede vivir
- * dentro de ninguno de los dos. Funciones puras, sin DI: mismo tipo de módulo
- * que `transaction-labels.ts`.
- */
-
-export interface DateRange {
-  /** ISO `yyyy-MM-dd`, inclusivo. */
-  from: string;
-  /** ISO `yyyy-MM-dd`, inclusivo. */
-  to: string;
-}
-
-/**
- * Formatea una fecha **local** como `yyyy-MM-dd`.
+ * `DateRange`, `toIsoDate` y `DateRangePreset` se fueron a `core/date/` cuando
+ * `shared/ui/date-range-picker/` los necesitó: `shared/` no importa de una
+ * feature. Lo que queda aquí es lo que sí es una decisión de Finanzas — qué
+ * periodos se ofrecen y cómo se llaman.
  *
- * No usa `toISOString()`, que es la trampa clásica: convierte a UTC antes de
- * formatear, así que a partir de las 22:00 en España (23:00 en verano) devuelve
- * el día siguiente. Un gasto registrado por la noche acabaría fuera del rango
- * "este mes" el último día del mes, que es justo cuando se mira.
+ * Funciones puras, sin DI: mismo tipo de módulo que `transaction-labels.ts`.
  */
-export function toIsoDate(date: Date): string {
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
 
 export function today(): string {
   return toIsoDate(new Date());
@@ -63,14 +47,6 @@ export function currentYear(reference: Date = new Date()): DateRange {
     from: toIsoDate(new Date(year, 0, 1)),
     to: toIsoDate(new Date(year, 11, 31))
   };
-}
-
-export type DateRangePresetId = 'currentMonth' | 'lastMonth' | 'currentYear';
-
-export interface DateRangePreset {
-  readonly id: DateRangePresetId;
-  readonly label: string;
-  readonly range: (reference?: Date) => DateRange;
 }
 
 /**

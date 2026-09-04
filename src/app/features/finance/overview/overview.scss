@@ -66,6 +66,10 @@
 // -----------------------------------------------------------------------------
 // Últimos movimientos
 // -----------------------------------------------------------------------------
+// La pintura de cada fila se fue con `components/transaction-row/`: la usan dos
+// pantallas y vivía en un `.scss` con encapsulación, así que la alternativa era
+// copiar sesenta líneas. Aquí solo queda el reparto de la lista, que sí es de
+// esta pantalla.
 .movements {
   list-style: none;
   margin: 0;
@@ -75,61 +79,20 @@
   gap: var(--space-2);
 }
 
-.movement {
+// -----------------------------------------------------------------------------
+// Cabecera de sección con acción a la derecha
+// -----------------------------------------------------------------------------
+// Sigue sin subir a `shared/ui/section-header/`: hay un solo consumidor con
+// acción, y la regla del segundo uso está para que la API no se adivine. El
+// `align-items: baseline` es lo que hace que el enlace se apoye en la línea
+// base del `h2` en vez de centrarse contra su caja, que con dos tamaños de
+// texto distintos se ve descuadrado.
+.section-bar {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-}
-
-.movement__main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-
-  // Deja que la descripción se recorte en vez de empujar al importe fuera de la
-  // tarjeta: un `flex` no baja de su tamaño de contenido sin esto.
-  min-width: 0;
-  flex: 1;
-}
-
-.movement__category {
-  font-weight: var(--weight-medium);
-  color: var(--color-text);
-}
-
-.movement__description {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.movement__meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-1);
-  flex-shrink: 0;
-}
-
-.movement__amount {
-  font-weight: var(--weight-medium);
-  font-variant-numeric: tabular-nums;
-  color: var(--color-danger);
-}
-
-// El gasto es el caso mayoritario en una app de gastos personales, así que el
-// rojo es el valor por defecto y solo el ingreso lleva modificador.
-.movement__amount--income {
-  color: var(--color-success);
-}
-
-.movement__date {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 // -----------------------------------------------------------------------------
@@ -163,5 +126,34 @@
 
   .summary__value {
     font-size: var(--text-h2);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// La cabecera de pagina es global y no envuelve: con el titulo mas el selector
+// de rango, un rango largo ("1 dic 2025 - 15 ene 2026") no cabe junto a
+// "Finanzas" en un movil estrecho y el boton se comprime hasta cortar el texto.
+// Se permite envolver solo aqui, que es la unica pantalla con dos piezas en la
+// cabecera.
+// -----------------------------------------------------------------------------
+.page-header {
+  flex-wrap: wrap;
+}
+
+.page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+@include layout.below-tablet {
+  .page-header__actions {
+    width: 100%;
+  }
+
+  .page-header__actions .btn-primary {
+    width: 100%;
+    justify-content: center;
   }
 }

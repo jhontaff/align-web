@@ -46,3 +46,6 @@ Thumbs.db
 
 # Servidor local para probar la PWA en el movil (no forma parte del build)
 /serve-pwa.mjs
+
+# Certificado local para servir el build por HTTPS (npm run serve:pwa)
+/.certs

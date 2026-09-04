@@ -1,13 +1,15 @@
 <app-summary-card
   heading="Hábitos"
   icon="bi:calendar-check"
+  tone="warning"
+  badge="En curso"
   link="/habits"
   linkLabel="Ver todos los hábitos"
 >
   @if (errorMessage(); as message) {
     <p class="form-error" role="alert">{{ message }}</p>
   } @else if (loading()) {
-    <p class="habits-summary__count">&mdash;</p>
+    <p class="card-metric" aria-busy="true">&mdash;</p>
   } @else if (count() === 0) {
     <!--
       Sin llamada a la accion: el alta de habitos no tiene pantalla todavia, y
@@ -16,18 +18,45 @@
     -->
     <p class="empty-state">Todavía no hay hábitos.</p>
   } @else {
-    <p class="habits-summary__count">{{ countLabel(count()) }}</p>
+    <p class="card-metric">{{ doneLabel() }}</p>
+    <p class="card-note">{{ streakSummary() }}</p>
 
-    <ul class="habits-summary__list">
+    <ul class="card-list">
       @for (habit of top(); track habit.id) {
-        <li class="habits-summary__item">
-          <span class="habits-summary__name">{{ habit.name }}</span>
+        <li class="card-row">
+          <!--
+            El check dice si el habito esta hecho HOY, y ese dato lo trae el
+            backend en `isCompletedToday` — no se deduce aqui de ninguna fecha.
+            Dos iconos distintos y no el mismo teñido: el estado no puede
+            depender solo del color.
+          -->
+          <app-icon
+            class="habits-summary__check"
+            [class.habits-summary__check--done]="habit.isCompletedToday"
+            [name]="habit.isCompletedToday ? 'bi:check-circle-fill' : 'bi:circle'"
+          />
+
+          <span class="card-row__label">
+            {{ habit.name }}
+            <span class="visually-hidden">
+              . {{ habit.isCompletedToday ? 'Hecho hoy' : 'Pendiente hoy' }}
+            </span>
+          </span>
+
           <!--
             La racha va escrita en palabras ("5 días") y no como un numero
-            suelto junto a un icono: sin la unidad, un "5" al lado de un nombre
+            suelto junto a la llama: sin la unidad, un "5" al lado de un nombre
             no dice si son dias, veces o pendientes.
           -->
-          <span class="habits-summary__streak">{{ streakLabel(habit) }}</span>
+          <span
+            class="badge habits-summary__streak"
+            [class.badge--warning]="habit.currentStreak > 0"
+          >
+            @if (habit.currentStreak > 0) {
+              <app-icon name="bi:fire" />
+            }
+            {{ streakLabel(habit) }}
+          </span>
         </li>
       }
     </ul>

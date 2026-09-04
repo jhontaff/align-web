@@ -15,10 +15,11 @@ export type TransactionType = 'INCOME' | 'EXPENSE';
  * pintar el signo antes de que el servidor conteste.
  *
  * Partiendo la unión, esa pertenencia la conoce el compilador: los arrays de
- * `transaction-labels.ts` se tipan `readonly ExpenseCategory[]` y
- * `readonly IncomeCategory[]`, y olvidarse de meter una categoría nueva en su
- * array es un error de compilación. Con una unión plana y un `Record` de
- * categoría a tipo, el mismo olvido pasa desapercibido hasta producción.
+ * `transaction-labels.ts` se declaran `as const satisfies readonly
+ * ExpenseCategory[]` y una aserción de exhaustividad al lado convierte el
+ * olvido de una categoría en un error de compilación. Con una unión plana y un
+ * `Record` de categoría a tipo, el mismo olvido pasa desapercibido hasta
+ * producción.
  */
 export type ExpenseCategory =
   | 'FOOD'
@@ -109,4 +110,26 @@ export interface FinancialSummaryResponse {
   totalIncome: number;
   totalExpense: number;
   balance: number;
+}
+
+/**
+ * El gasto acumulado de **una** categoría en un rango.
+ *
+ * **No es un contrato del backend, y por eso lleva esta advertencia en un
+ * archivo que solo tiene contratos verificados.** No existe ningún endpoint
+ * agregado por categoría: `GET /api/transactions/summary` devuelve tres
+ * escalares (`totalIncome`, `totalExpense`, `balance`) y acepta `category` como
+ * filtro, así que el desglose se compone en el cliente pidiendo el resumen una
+ * vez por categoría — ver `TransactionService.expenseByCategory()`.
+ *
+ * Vive aquí y no junto al componente que lo pinta porque es la forma en que
+ * viajan los datos entre el servicio y la pantalla, igual que los demás DTO. Y
+ * está deliberadamente modelado como lo devolvería el endpoint que falta
+ * (`GET /api/transactions/summary/by-category`): el día que exista, cambia el
+ * cuerpo de un método y ni este tipo ni ningún componente se enteran.
+ */
+export interface CategoryExpense {
+  category: ExpenseCategory;
+  /** Magnitud positiva, como `amount`: el signo lo pone la presentación. */
+  total: number;
 }

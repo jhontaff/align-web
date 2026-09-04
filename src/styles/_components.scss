@@ -297,6 +297,73 @@
 }
 
 // -----------------------------------------------------------------------------
+// Anatomía del cuerpo de una tarjeta de resumen
+// -----------------------------------------------------------------------------
+// Sube a global por la misma razón que `.menu-item`: son declaraciones de
+// pintura sobre elementos que el consumidor ya escribe, y los consumidores son
+// componentes **con encapsulación distinta** (las tres tarjetas de Inicio). La
+// alternativa era triplicar el mismo bloque en tres hojas o perforar la
+// encapsulación con `::ng-deep`, que está deprecado.
+//
+// `.card-metric` NO declara `color` a propósito. Finanzas lo tiñe según el
+// signo del balance desde su propia hoja, y si aquí hubiera un `color` las dos
+// reglas empatarían en especificidad (0,1,0): quién gana dependería del orden
+// de inyección de los estilos, que no está garantizado.
+
+.card-metric {
+  margin: 0;
+  font-size: var(--text-h1);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+
+  // Cifras de ancho fijo: sin esto el número baila al revalidar y el ojo lo lee
+  // como un parpadeo.
+  font-variant-numeric: tabular-nums;
+}
+
+.card-note {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.card-list {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.card-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  font-size: var(--text-sm);
+}
+
+// `min-width: 0` es lo que deja que el texto se recorte en vez de empujar al
+// dato de la derecha fuera de la tarjeta: un ítem flex no baja de su tamaño de
+// contenido sin él, y `text-overflow` nunca llega a aplicarse.
+.card-row__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-row__meta {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+// -----------------------------------------------------------------------------
 // Estados de carga y vacío
 // -----------------------------------------------------------------------------
 .empty-state {
