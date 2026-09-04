@@ -233,6 +233,10 @@ El criterio de corte, para que `_components.scss` no se convierta en un framewor
 - **Clase global** si es solo pintura sobre un elemento que el consumidor ya escribe (`.btn`, `.badge`, `.field`, `.card`, `.menu-item`).
 
 `.menu-item` / `.menu-divider` (2026-08-20) son el caso de libro y además ilustran la segunda razón para subir algo a global: la usan dos componentes con **encapsulación distinta** (`session-menu` y la variante `menu` de `theme-toggle`), y la alternativa era perforar la encapsulación con `::ng-deep` —deprecado— para compartir cuatro declaraciones.
+`.card-metric` / `.card-note` / `.card-list` / `.card-row` (+ `__label` y `__meta`, 2026-09-04) son el mismo caso con tres consumidores: las tres tarjetas de Inicio, cada una con su propia encapsulación. Son la anatomía del cuerpo de una tarjeta de resumen — cifra grande, subtítulo, lista de filas en cajas.
+
+  **`.card-metric` no declara `color` a propósito.** Finanzas tiñe el balance según su signo desde su propia hoja, y si la clase global pusiera un `color` las dos reglas empatarían en especificidad (0,1,0): quién gana dependería del orden de inyección de los estilos, que no está garantizado. Misma trampa que el orden de las media queries, con otro disfraz.
+
 - **Componente en `shared/ui/`** si tiene estructura interna, estado o variantes que se expresarían mejor con inputs (`stat-card`, `section-header`, `empty-state` con acción).
 
 Y la regla anti-abstracción-prematura: `shared/ui/` se puebla **al segundo uso**, no al primero. Con un solo caso de uso la API del componente se adivina; con dos se deduce.

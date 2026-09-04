@@ -17,6 +17,35 @@
   align-items: stretch;
 }
 
+// Entre la celda de la rejilla y la tarjeta hay DOS hosts: `<app-tasks-summary>`
+// y, dentro, `<app-summary-card>`. La celda se estira sola —los items de una
+// rejilla lo hacen por defecto—, pero ese estirado muere ahi: el host interior
+// es un bloque de alto automatico, asi que se queda con el alto de su
+// contenido y la tarjeta nunca llega al fondo de la fila.
+//
+// `display: grid` en la celda convierte a `<app-summary-card>` en item de
+// rejilla, y por tanto lo estira igual. Se elige sobre `height: 100%` porque no
+// hay ningun porcentaje que resolver: la cadena entera se sostiene por
+// estirado, no por herencia de un alto definido.
+//
+// Tiene que ir aqui y no en las tres tarjetas: `<app-tasks-summary>` esta en la
+// plantilla de Home, asi que es esta hoja la que lo alcanza. Lo que Home NO
+// alcanza es `<app-summary-card>`, que vive dentro de otra plantilla — por eso
+// el otro extremo de la cadena se resuelve en `summary-card.scss`.
+.home-grid > * {
+  display: grid;
+
+  // Y la columna implicita de esa rejilla anidada tiene que ser `minmax(0, 1fr)`
+  // por la MISMA razon que la de arriba, un nivel mas abajo: por defecto es
+  // `auto`, cuyo minimo es el min-content de la tarjeta, asi que una tarjeta
+  // mas ancha que su pista no se encoge — se sale por la derecha y se come el
+  // hueco de la siguiente. Medido: 410,7px de tarjeta en una columna de 400.
+  //
+  // Se ve como una separacion desigual entre tarjetas, no como texto cortado, y
+  // por eso cuesta atribuirlo a la rejilla que lo causa.
+  grid-template-columns: minmax(0, 1fr);
+}
+
 // -----------------------------------------------------------------------------
 // Los bloques de media query van al FINAL de la hoja, nunca junto a la regla
 // que modifican: una media query no anade especificidad, solo decide el orden,

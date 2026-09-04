@@ -1,12 +1,28 @@
+// El otro extremo de la cadena de altos que empieza en `home.scss`: alli la
+// celda de la rejilla estira a este host, y aqui el host estira a la
+// `<section>`. Sin este tramo la tarjeta se queda con el alto de su contenido y
+// las tres de la fila acaban a alturas distintas.
+//
+// `flex: 1` y no `height: 100%`: un porcentaje exige que el padre tenga un alto
+// definido, y el de un item estirado depende de detalles de la especificacion
+// que los motores no siempre resuelven igual. Estirar no exige nada.
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
 }
 
 .summary-card {
-  height: 100%;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.summary-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .summary-card__heading {
@@ -16,13 +32,28 @@
   margin: 0;
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
+
+  // El titulo se recorta antes que el distintivo: el distintivo son dos
+  // palabras y el titulo puede crecer, asi que quien cede es el titulo.
+  min-width: 0;
 }
 
 // El tamano del icono se fija con `font-size` y nunca con `width`: el SVG mide
 // `1em`, asi que hereda del texto igual que cualquier glifo y se alinea solo.
+// El color lo pone el tono de la tarjeta, no el propio icono: `currentColor`
+// es lo que hace que el tema oscuro salga gratis.
 .summary-card__icon {
-  font-size: var(--text-lg);
-  color: var(--color-text-muted);
+  flex-shrink: 0;
+  font-size: var(--text-h2);
+  color: var(--color-primary);
+}
+
+.summary-card--success .summary-card__icon {
+  color: var(--color-success);
+}
+
+.summary-card--warning .summary-card__icon {
+  color: var(--color-warning);
 }
 
 // Empuja el pie al fondo de la tarjeta. Sin esto, tres tarjetas de altos
@@ -32,11 +63,15 @@
   min-width: 0;
 }
 
+.summary-card__footer {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
 .summary-card__link {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  align-self: flex-start;
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--color-primary);
@@ -45,4 +80,24 @@
 
 .summary-card__link:hover {
   text-decoration: underline;
+}
+
+// La flecha avanza al pasar por encima. Solo la flecha: mover el texto haria
+// bailar la linea entera y el enlace se leeria como inestable.
+.summary-card__link app-icon {
+  transition: transform var(--transition-fast);
+}
+
+.summary-card__link:hover app-icon {
+  transform: translateX(2px);
+}
+
+// Un desplazamiento lateral es exactamente el tipo de movimiento que se pide
+// no hacer cuando el sistema lo dice.
+@media (prefers-reduced-motion: reduce) {
+  .summary-card__link app-icon,
+  .summary-card__link:hover app-icon {
+    transition: none;
+    transform: none;
+  }
 }
