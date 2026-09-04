@@ -43,7 +43,12 @@ const ICON_NAMES = [
   'bi:bell-slash',
   'bi:calendar3',
   'bi:chevron-left',
-  'bi:chevron-right'
+  'bi:chevron-right',
+  'bi:arrow-up',
+  'bi:arrow-down',
+  'bi:fire',
+  'bi:check-circle-fill',
+  'bi:circle'
 ];
 
 const OUT = 'src/app/shared/ui/icon/icon-set.ts';
