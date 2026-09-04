@@ -1,6 +1,8 @@
 <app-summary-card
   heading="Tareas"
   icon="bi:check2-circle"
+  tone="primary"
+  badge="Pendientes"
   link="/tasks"
   linkLabel="Ver todas las tareas"
 >
@@ -18,7 +20,7 @@
       tiene debajo justo cuando el usuario esta leyendo — mismo criterio que la
       lista de cifras del resumen de Finanzas.
     -->
-    <p class="tasks-summary__count" [attr.aria-busy]="loading()">
+    <p class="card-metric" [attr.aria-busy]="loading()">
       @if (pendingCount(); as count) {
         {{ countLabel(count) }}
       } @else if (loading()) {
@@ -28,13 +30,32 @@
       }
     </p>
 
+    <!--
+      El subtitulo dice de que son las filas de abajo, y no cuantas hay de
+      prioridad alta: `GET /api/tasks` no acepta filtro de prioridad, asi que
+      ese recuento solo podria salir de las tres cargadas y mentiria en cuanto
+      hubiera una cuarta. Mismo motivo por el que el buscador de tareas sigue
+      sin construirse.
+    -->
     @if (!loading() && upcoming().length > 0) {
-      <ul class="tasks-summary__list">
+      <p class="card-note">Las próximas por vencer</p>
+
+      <ul class="card-list">
         @for (task of upcoming(); track task.id) {
-          <li class="tasks-summary__item">
-            <span class="tasks-summary__title">{{ task.title }}</span>
+          <li class="card-row">
+            <span
+              class="tasks-summary__dot"
+              [class.tasks-summary__dot--high]="task.priority === 'HIGH'"
+              [class.tasks-summary__dot--medium]="task.priority === 'MEDIUM'"
+            ></span>
+
+            <span class="card-row__label">
+              {{ task.title }}
+              <span class="visually-hidden">. {{ priorityLabel(task.priority) }}</span>
+            </span>
+
             @if (dueLabel(task); as due) {
-              <span class="tasks-summary__due">{{ due }}</span>
+              <span class="card-row__meta">{{ due }}</span>
             }
           </li>
         }

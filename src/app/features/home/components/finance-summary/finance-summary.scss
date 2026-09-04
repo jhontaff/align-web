@@ -1,49 +1,23 @@
-.finance-summary__range {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-
-  // Los meses llegan en minuscula del formateador ("agosto de 2026") y en
-  // espanol asi es correcto; se deja tal cual y no se capitaliza a mano.
+// Mapeo dominio -> semantica, igual que los badges de Tareas y las cifras de
+// `finance/overview`: ingreso apunta a `success`, gasto a `danger`. Ningun hex.
+//
+// `.card-metric` no declara `color` a proposito, asi que estas dos reglas no
+// compiten con nada: si lo declarara, las dos empatarian en especificidad
+// (0,1,0) y quien ganara dependeria del orden de inyeccion de los estilos.
+.finance-summary__balance--positive {
+  color: var(--color-success);
 }
 
-.finance-summary__balance {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-h1);
-  font-weight: var(--weight-semibold);
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text);
-}
-
-// Mapeo dominio -> semantica, igual que los badges de Tareas y las cifras del
-// resumen de Finanzas: ingreso apunta a `success`, gasto a `danger`. Ningun hex.
 .finance-summary__balance--negative {
   color: var(--color-danger);
 }
 
-.finance-summary__breakdown {
-  margin: var(--space-3) 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: var(--text-sm);
-}
-
-.finance-summary__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.finance-summary__row dt {
-  color: var(--color-text-muted);
-}
-
+// `<dd>` trae `margin-inline-start: 40px` del user agent. Sin este reset el
+// importe se separa del borde derecho y las dos filas dejan de alinearse con
+// las de Tareas y Habitos, que no son listas de definicion.
 .finance-summary__amount {
   margin: 0;
   font-weight: var(--weight-medium);
-  font-variant-numeric: tabular-nums;
 }
 
 .finance-summary__amount--income {
@@ -51,5 +25,21 @@
 }
 
 .finance-summary__amount--expense {
+  color: var(--color-danger);
+}
+
+// El tamano del icono se fija con `font-size` y nunca con `width`: el SVG mide
+// `1em`. El color se hereda con `currentColor`, asi que basta con teñir aqui.
+.finance-summary__arrow--income,
+.finance-summary__arrow--expense {
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+}
+
+.finance-summary__arrow--income {
+  color: var(--color-success);
+}
+
+.finance-summary__arrow--expense {
   color: var(--color-danger);
 }
