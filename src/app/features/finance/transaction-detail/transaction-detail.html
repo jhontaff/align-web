@@ -1,0 +1,97 @@
+<div class="page">
+  <div class="page-header">
+    <a class="btn btn-ghost transaction-detail__back" routerLink="/finance">
+      <app-icon class="transaction-detail__back-icon" name="bi:arrow-left" />
+      <span class="visually-hidden">Volver a&nbsp;</span>Finanzas
+    </a>
+
+    @if (transaction(); as transaction) {
+      <a
+        class="btn btn-ghost btn-icon transaction-detail__edit"
+        [routerLink]="['/finance', transaction.id, 'edit']"
+        aria-label="Editar movimiento"
+        title="Editar movimiento"
+      >
+        <app-icon class="transaction-detail__action-icon" name="bi:pencil" />
+      </a>
+
+      <button
+        type="button"
+        class="btn btn-ghost btn-icon transaction-detail__delete"
+        [disabled]="deleting()"
+        aria-label="Eliminar movimiento"
+        title="Eliminar movimiento"
+        (click)="onDeleteClick()"
+      >
+        <app-icon class="transaction-detail__action-icon transaction-detail__icon--trash" name="bi:trash3" />
+        <app-icon class="transaction-detail__action-icon transaction-detail__icon--close" name="bi:x-lg" />
+      </button>
+    }
+  </div>
+
+  @if (deleteError()) {
+    <p class="form-error" role="alert">{{ deleteError() }}</p>
+  }
+
+  @if (errorMessage()) {
+    <p class="form-error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="empty-state">Cargando...</p>
+  } @else if (transaction(); as transaction) {
+    <article class="card transaction-detail">
+      <header class="transaction-detail__header">
+        <h1
+          class="transaction-detail__amount"
+          [class.transaction-detail__amount--income]="isIncome()"
+        >
+          <span class="visually-hidden">{{ typeLabel() }}: </span>
+          @if (isIncome()) { + } @else { &minus; }{{ amount() | currency: undefined : 'symbol' : moneyDigits }}
+        </h1>
+
+        <span class="badge" [class]="isIncome() ? 'badge--success' : 'badge--danger'">
+          {{ typeLabel() }}
+        </span>
+      </header>
+
+      <dl class="transaction-detail__fields">
+        <div class="transaction-detail__field">
+          <dt>Categoría</dt>
+          <dd>{{ categoryLabel() }}</dd>
+        </div>
+
+        <div class="transaction-detail__field">
+          <dt>Fecha</dt>
+          <dd>{{ dateLabel() }}</dd>
+        </div>
+
+        @if (transaction.description) {
+          <div class="transaction-detail__field transaction-detail__field--wide">
+            <dt>Descripción</dt>
+            <dd>{{ transaction.description }}</dd>
+          </div>
+        }
+
+        <div class="transaction-detail__field">
+          <dt>Registrado</dt>
+          <dd>{{ timestampLabel(transaction.createdAt) }}</dd>
+        </div>
+
+        <div class="transaction-detail__field">
+          <dt>Última actualización</dt>
+          <dd>{{ timestampLabel(transaction.updatedAt) }}</dd>
+        </div>
+      </dl>
+    </article>
+  }
+
+  <app-confirm-dialog
+    [(open)]="confirmOpen"
+    heading="Eliminar movimiento"
+    [message]="confirmMessage()"
+    confirmLabel="Eliminar"
+    tone="danger"
+    (confirm)="onConfirmDelete()"
+  />
+</div>

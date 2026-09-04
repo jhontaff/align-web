@@ -1,0 +1,143 @@
+<div class="page">
+  <!--
+    La vuelta al resumen va ARRIBA del título y no en la cabecera junto al
+    selector: es navegación, no una acción sobre lo que se está viendo, y
+    mezclarla con el control de periodo haría dudar de si "Volver" descarta el
+    filtro. Es además la única salida de esta pantalla — no está en la nav
+    principal, porque se llega a ella desde el resumen.
+  -->
+  <p class="history__back">
+    <a class="btn btn-ghost btn-sm" routerLink="/finance">
+      <app-icon name="bi:arrow-left" />
+      Volver al resumen
+    </a>
+  </p>
+
+  <div class="page-header">
+    <h1>Historial</h1>
+
+    <!--
+      `emptyLabel` es lo que dice el botón sin filtro, y `clearable` lo que
+      permite volver a ese estado desde el propio popover. El resumen no pasa
+      ninguna de las dos: allí siempre hay un periodo aplicado y no existe un
+      "sin filtro" al que regresar.
+    -->
+    <app-date-range-picker
+      label="Periodo"
+      emptyLabel="Todo el historial"
+      [range]="range()"
+      [presets]="presets"
+      [clearable]="true"
+      (rangeChange)="onRangeChange($event)"
+      (clear)="onClearRange()"
+    />
+  </div>
+
+  <!--
+    `role="status"` porque al cambiar el periodo esta línea es la única
+    confirmación de que la petición se hizo y de cuántos movimientos tiene el
+    nuevo rango: la lista de abajo cambia entera, pero un lector de pantalla no
+    anuncia que un montón de nodos se sustituyeron.
+  -->
+  <p class="history__count" role="status">
+    @if (!loading()) {
+      {{ countLabel() }}
+    }
+  </p>
+
+  @if (errorMessage()) {
+    <p class="form-error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  <div [attr.aria-busy]="loading()">
+    @if (loading()) {
+      <p class="empty-state">Cargando...</p>
+    } @else if (groups().length === 0) {
+      <!--
+        Dos mensajes distintos, y la diferencia importa: "no hay nada en este
+        periodo" invita a ampliar el rango, "no has registrado nada" invita a
+        crear. Un texto único dejaría al usuario sin saber si el filtro le está
+        escondiendo sus datos — que es exactamente la duda que originó esta
+        pantalla.
+
+      -->
+      @if (range()) {
+        <p class="empty-state">No hay movimientos en este periodo.</p>
+      } @else {
+        <p class="empty-state">
+          Todavía no has registrado ningún movimiento.
+          <a routerLink="/finance/new">Registra el primero</a>.
+        </p>
+      }
+    } @else {
+      @for (group of groups(); track group.key) {
+        <!--
+          Una `<section>` por mes con su `<h2>`: los encabezados son la forma en
+          que un lector de pantalla recorre una lista larga, y una lista plana de
+          trescientas filas no se puede saltar por meses sin ellos.
+        -->
+        <section class="history__group" [attr.aria-labelledby]="'month-' + group.key">
+          <div class="history__month">
+            <h2 class="history__month-label" [id]="'month-' + group.key">{{ group.label }}</h2>
+
+            <!--
+              El balance del mes SOLO si el mes está entero en memoria. Mientras
+              queden páginas, el último grupo está a medias y su suma sería la
+              de un trozo arbitrario — un número que parece el balance del mes,
+              está mal, y encima cambia solo al pulsar "cargar más".
+            -->
+            @if (group.complete) {
+              <span
+                class="history__month-balance"
+                [class.history__month-balance--negative]="group.balance < 0"
+              >
+                <span class="visually-hidden">Balance del mes: </span>
+                {{ group.balance | currency: undefined : 'symbol' : moneyDigits }}
+              </span>
+            }
+          </div>
+
+          <ul class="history__movements">
+            @for (movement of group.items; track movement.id) {
+              <li>
+                <!--
+                  Sin el mes en la fecha: el encabezado de arriba ya lo dice, y
+                  repetirlo treinta veces compite con el importe, que es lo que
+                  se viene a leer.
+                -->
+                <app-transaction-row [transaction]="movement" [showMonth]="false" />
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (hasMore()) {
+        <div class="history__more">
+          <!--
+            "Cargar más" y no scroll infinito: con scroll infinito no se puede
+            llegar al final de la lista ni saber cuánto queda, y aquí el final
+            es un sitio al que se va (el primer movimiento registrado). El
+            contador de restantes sale de `totalElements`, o sea del servidor,
+            no de lo que hay en pantalla.
+
+            Se deshabilita mientras carga en vez de ocultarse: ocultarlo movería
+            la página bajo el cursor justo después de pulsarlo.
+          -->
+          <button
+            class="btn btn-outlined"
+            type="button"
+            [disabled]="loadingMore()"
+            (click)="loadMore()"
+          >
+            @if (loadingMore()) {
+              Cargando...
+            } @else {
+              Cargar más ({{ remaining() }} restantes)
+            }
+          </button>
+        </div>
+      }
+    }
+  </div>
+</div>

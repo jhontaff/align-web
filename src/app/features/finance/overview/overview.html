@@ -1,6 +1,26 @@
 <div class="page">
+  <!--
+    El selector va en la cabecera de la pagina y no dentro del bloque del
+    resumen: acota TODO lo que hay debajo (las tres cifras, el grafico y los
+    ultimos movimientos salen de la misma peticion), asi que colgarlo de una de
+    las tres secciones sugeriria que las otras no le hacen caso.
+  -->
   <div class="page-header">
     <h1>Finanzas</h1>
+
+    <div class="page-header__actions">
+      <app-date-range-picker
+        label="Periodo"
+        [range]="range()"
+        [presets]="presets"
+        (rangeChange)="onRangeChange($event)"
+      />
+
+      <a class="btn btn-primary" routerLink="/finance/new">
+        <app-icon name="bi:plus-lg" />
+        Nuevo movimiento
+      </a>
+    </div>
   </div>
 
   @if (errorMessage()) {
@@ -10,7 +30,13 @@
   @let totals = summary();
 
   <section aria-labelledby="summary-heading" [attr.aria-busy]="loading()">
-    <h2 class="section-heading" id="summary-heading">Resumen de {{ rangeLabel }}</h2>
+    <!--
+      "Resumen · septiembre" y no "Resumen de Septiembre": la etiqueta viene
+      capitalizada porque encabeza el boton del selector, donde va suelta, y en
+      español el mes en mitad de una frase va en minuscula. El separador evita
+      tener que elegir entre dos capitalizaciones de la misma cadena.
+    -->
+    <h2 class="section-heading" id="summary-heading">Resumen &middot; {{ rangeLabel() }}</h2>
 
     <!--
       La lista se pinta SIEMPRE, también mientras carga, con un guion en el
@@ -64,47 +90,80 @@
     </ul>
   </section>
 
+  <!--
+    El grafico va DEBAJO del resumen y ENCIMA de los movimientos, y ese orden es
+    el argumento: desglosa exactamente la cifra de "Gastos" que tiene justo
+    arriba —las barras suman ese numero—, asi que cualquier otra posicion
+    obligaria a saltar de un lado a otro de la pagina para relacionarlos.
+
+    No lleva selector propio: el de la cabecera acota toda la pagina, y un
+    segundo control de periodo aqui sugeriria que este bloque puede ir por su
+    cuenta cuando en realidad sale de la misma peticion.
+  -->
+  <section aria-labelledby="by-category-heading">
+    <h2 class="section-heading" id="by-category-heading">Gastos por categoría</h2>
+
+    @if (loading()) {
+      <!--
+        Aqui SI se pinta "Cargando" y no un esqueleto con guiones como en el
+        resumen: alli el numero de filas se sabe de antemano (siempre tres) y el
+        hueco se puede reservar, pero cuantas categorias tuvieron gasto depende
+        del periodo, asi que un esqueleto tendria que adivinar el alto y
+        provocaria el salto que pretende evitar.
+      -->
+      <p class="empty-state">Cargando...</p>
+    } @else if (byCategory(); as expenses) {
+      <app-expense-by-category [expenses]="expenses" />
+    }
+  </section>
+
   <section aria-labelledby="recent-heading">
-    <h2 class="section-heading" id="recent-heading">Últimos movimientos</h2>
+    <div class="section-bar">
+      <h2 class="section-heading" id="recent-heading">Últimos movimientos</h2>
+
+      <!--
+        El contador va DENTRO del enlace y no en el encabezado: es lo que
+        convierte "Ver todo" en una promesa concreta ("hay 83, aquí ves 5") y lo
+        que explica por qué la lista de abajo se queda corta — que era justo la
+        duda de no ver todos los gastos registrados.
+
+        Sale de `totalElements` del periodo actual, así que sube y baja con el
+        selector de la cabecera.
+
+        La palabra oculta al final es por WCAG 2.5.3: el nombre accesible tiene
+        que CONTENER el texto visible, así que se añade detrás en vez de
+        sustituirlo por un `aria-label` como "Ver todos los movimientos", que
+        dejaría fuera el "(83)" que se ve en pantalla.
+
+        Solo se pinta con datos ya cargados y con al menos un movimiento: un
+        "Ver todo (0)" enlazaría a una pantalla vacía.
+      -->
+      @if (!loading() && totalCount() > 0) {
+        <a class="btn btn-ghost btn-sm" routerLink="/finance/history">
+          Ver todo ({{ totalCount() }})<span class="visually-hidden"> movimientos</span>
+          <app-icon name="bi:arrow-right" />
+        </a>
+      }
+    </div>
 
     @if (loading()) {
       <p class="empty-state">Cargando...</p>
     } @else if (recent().length === 0) {
-      <!--
-        Sin botón de "crear": el formulario de alta todavía no existe, y una
-        llamada a la acción que no lleva a ninguna parte es peor que ninguna.
-        Entra con la etapa 4.
-      -->
-      <p class="empty-state">Todavía no hay movimientos en {{ rangeLabel }}.</p>
+      <p class="empty-state">
+        Todavía no hay movimientos en este periodo.
+        <a routerLink="/finance/new">Registra el primero</a>.
+      </p>
     } @else {
+      <!--
+        La fila se fue a `components/transaction-row/` en su segundo uso: el
+        historial pinta exactamente la misma, y duplicar el marcado habría
+        duplicado también las tres copias del importe (color, signo y tipo
+        oculto) y la corrección de zona horaria de la fecha.
+      -->
       <ul class="movements">
         @for (movement of recent(); track movement.id) {
-          <li class="card movement">
-            <div class="movement__main">
-              <span class="movement__category">{{ categoryLabel(movement.category) }}</span>
-              @if (movement.description) {
-                <span class="movement__description">{{ movement.description }}</span>
-              }
-            </div>
-
-            <div class="movement__meta">
-              <span
-                class="movement__amount"
-                [class.movement__amount--income]="movement.type === 'INCOME'"
-              >
-                <!--
-                  El color y el signo dicen lo mismo dos veces a propósito: el
-                  color solo no vale para quien no lo distingue. Pero ninguno de
-                  los dos llega a un lector de pantalla — el signo &minus; no se
-                  anuncia de forma fiable — así que el tipo va además escrito,
-                  oculto en pantalla. Es la tercera copia, y es la que hace que
-                  la fila se entienda sin verla.
-                -->
-                <span class="visually-hidden">{{ typeLabel(movement.type) }}: </span>
-                @if (movement.type === 'INCOME') { + } @else { &minus; }{{ absAmount(movement) | currency: undefined : 'symbol' : moneyDigits }}
-              </span>
-              <span class="movement__date">{{ dateLabel(movement) }}</span>
-            </div>
+          <li>
+            <app-transaction-row [transaction]="movement" />
           </li>
         }
       </ul>

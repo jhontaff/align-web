@@ -1,0 +1,85 @@
+// El anfitrión ya lleva `.card` por el `host` del componente: aquí solo va el
+// reparto interno, no la pintura de la tarjeta.
+:host {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+
+  // `.card` trae 24px de relleno, que en una fila de lista es demasiado alto:
+  // con veinte movimientos en pantalla se convierte en scroll.
+  padding: var(--space-3) var(--space-4);
+}
+
+.row__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+
+  // Deja que la descripción se recorte en vez de empujar al importe fuera de la
+  // tarjeta: un `flex` no baja de su tamaño de contenido sin esto.
+  min-width: 0;
+  flex: 1;
+}
+
+.row__category {
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+}
+
+.row__link {
+  text-decoration: none;
+  color: inherit;
+  overflow-wrap: anywhere;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+}
+
+:host(:has(.row__link:hover)),
+:host(:has(.row__link:focus-visible)) {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.row__description {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.row__amount {
+  font-weight: var(--weight-medium);
+
+  // Cifras de ancho fijo: sin esto los importes bailan de una fila a otra según
+  // los dígitos que toquen, y comparar dos cantidades de un vistazo deja de ser
+  // posible — que es justo lo que se hace recorriendo una lista de gastos.
+  font-variant-numeric: tabular-nums;
+  color: var(--color-danger);
+}
+
+// El gasto es el caso mayoritario en una app de gastos personales, así que el
+// rojo es el valor por defecto y solo el ingreso lleva modificador.
+.row__amount--income {
+  color: var(--color-success);
+}
+
+.row__date {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

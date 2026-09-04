@@ -3,21 +3,43 @@
   una region con nombre, y quien navega con lector de pantalla puede saltar
   entre "Tareas", "Finanzas" y "Habitos" en vez de recorrer el panel entero de
   corrido.
+
+  El tono va con enlaces booleanos y no con `[class]`: aqui SI hay clases
+  estaticas (`card summary-card`), y una cadena calculada obligaria a
+  reescribirlas dentro del computed para no perderlas.
 -->
-<section class="card summary-card" [attr.aria-labelledby]="headingId">
-  <h2 class="summary-card__heading" [id]="headingId">
-    <app-icon class="summary-card__icon" [name]="icon()" />
-    {{ heading() }}
-  </h2>
+<section
+  class="card summary-card"
+  [class.summary-card--success]="tone() === 'success'"
+  [class.summary-card--warning]="tone() === 'warning'"
+  [attr.aria-labelledby]="headingId"
+>
+  <header class="summary-card__header">
+    <h2 class="summary-card__heading" [id]="headingId">
+      <app-icon class="summary-card__icon" [name]="icon()" />
+      {{ heading() }}
+    </h2>
+
+    @if (badge(); as label) {
+      <span [class]="badgeClass()">{{ label }}</span>
+    }
+  </header>
 
   <div class="summary-card__body">
     <ng-content />
   </div>
 
   @if (link(); as target) {
-    <a class="summary-card__link" [routerLink]="target">
-      {{ linkLabel() }}
-      <app-icon name="bi:arrow-right" />
-    </a>
+    <!--
+      El pie va separado por una linea. No es adorno: sin ella el enlace queda
+      pegado al ultimo item de la lista y se lee como una fila mas de la lista
+      en vez de como la salida de la tarjeta.
+    -->
+    <footer class="summary-card__footer">
+      <a class="summary-card__link" [routerLink]="target">
+        {{ linkLabel() }}
+        <app-icon name="bi:arrow-right" />
+      </a>
+    </footer>
   }
 </section>

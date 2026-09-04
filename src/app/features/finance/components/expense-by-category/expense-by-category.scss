@@ -1,0 +1,132 @@
+@use '../../../../../styles/layout';
+
+.chart {
+  list-style: none;
+  margin: 0;
+  // El relleno horizontal lo pone `.card`; el vertical se reduce porque cada
+  // fila ya trae su propio aire por el `gap`.
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+// -----------------------------------------------------------------------------
+// La fila
+// -----------------------------------------------------------------------------
+// Rejilla de dos áreas en una línea: etiqueta a la izquierda, importe a la
+// derecha, barra ocupando el ancho completo debajo.
+//
+// Se eligió sobre poner la barra ENTRE la etiqueta y el importe (`[label][bar]
+// [value]`) por dos razones que se ven con datos reales: con nueve etiquetas en
+// español ("Entretenimiento", "Suministros") la columna de texto se lleva un
+// tercio del ancho y la barra se queda sin recorrido para comparar; y el
+// importe en pesos no cabe a la derecha de la barra en un móvil sin comprimir
+// una de las dos. Así la barra siempre tiene el ancho entero de la tarjeta,
+// que es lo único que la hace comparable de un vistazo.
+.chart__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'label value'
+    'track track';
+  align-items: baseline;
+  column-gap: var(--space-3);
+  row-gap: var(--space-2);
+}
+
+.chart__label {
+  grid-area: label;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+
+  // Una etiqueta larga se recorta antes que empujar al importe fuera de la
+  // tarjeta: sin `min-width: 0` un elemento de rejilla no baja de su tamaño de
+  // contenido, igual que le pasaba a `.movement__main`.
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart__value {
+  grid-area: value;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+
+  // El texto NUNCA lleva el color del dato: la barra es la que va en rojo, y el
+  // importe se queda en tinta normal. Un valor escrito en el color de la serie
+  // deja de leerse como texto y pierde contraste sin ganar nada — la identidad
+  // ya la da la barra que tiene al lado.
+  color: var(--color-text);
+
+  // Cifras de ancho fijo: sin esto la columna de importes baila de una fila a
+  // otra según los dígitos que toquen, que es justo lo que impide compararlas.
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chart__share {
+  margin-inline-start: var(--space-2);
+  font-weight: var(--weight-regular);
+  color: var(--color-text-muted);
+}
+
+// -----------------------------------------------------------------------------
+// La barra
+// -----------------------------------------------------------------------------
+.chart__track {
+  grid-area: track;
+
+  // Un paso por debajo de la superficie de la tarjeta, no un gris inventado:
+  // el carril tiene que ser recesivo, su trabajo es marcar el 100% sin
+  // competir con el relleno.
+  background: var(--color-surface-muted);
+
+  // Redondeado solo por la derecha, igual que el relleno. Con el radio
+  // completo, el `overflow: hidden` de abajo recortaba tambien el arranque de
+  // la barra y la dejaba con forma de pastilla: el borde izquierdo es la LINEA
+  // BASE que comparten las nueve, y curvarlo desdibuja justo el punto desde el
+  // que se comparan — en las categorias pequenas la barra se convertia en un
+  // ovalo sin origen visible. Se vio renderizando, no leyendo el codigo.
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+
+  // Fina a propósito. El color de la barra es el `danger` de la app —el mismo
+  // de la cifra de "Gastos" que este gráfico desglosa— y nueve bloques gruesos
+  // de ese rojo se leen como una alarma en vez de como un dato. A 10px el color
+  // identifica sin gritar.
+  block-size: 10px;
+  overflow: hidden;
+}
+
+.chart__fill {
+  display: block;
+  block-size: 100%;
+  background: var(--color-danger);
+
+  // Extremo del dato redondeado, arranque cuadrado: el lado izquierdo es la
+  // línea base compartida por las nueve barras, y redondearlo la desdibujaría
+  // justo donde empieza la comparación.
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+
+  // Una categoría con un gasto residual (0,3% del máximo) daría una barra de
+  // menos de un píxel: invisible, y una fila con importe pero sin barra se lee
+  // como un fallo de pintura, no como "casi nada". El mínimo la mantiene
+  // presente sin mentir sobre su tamaño relativo.
+  min-inline-size: 2px;
+}
+
+// -----------------------------------------------------------------------------
+// Los bloques de media query van al FINAL de la hoja, nunca junto a la regla
+// que modifican: no añaden especificidad, solo orden.
+// -----------------------------------------------------------------------------
+@include layout.below-tablet {
+  .chart {
+    gap: var(--space-3);
+  }
+
+  // El relleno de `.card` (24px) se come el ancho útil justo donde menos sobra.
+  .chart.card {
+    padding: var(--space-4);
+  }
+}

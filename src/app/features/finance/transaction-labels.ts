@@ -23,7 +23,7 @@ import {
  * registra. `OTHER_*` cierra cada grupo porque es el cajón de sastre y ponerlo
  * arriba invita a usarlo sin mirar el resto.
  */
-export const EXPENSE_CATEGORIES: readonly ExpenseCategory[] = [
+export const EXPENSE_CATEGORIES = [
   'FOOD',
   'TRANSPORT',
   'HOUSING',
@@ -33,15 +33,52 @@ export const EXPENSE_CATEGORIES: readonly ExpenseCategory[] = [
   'ENTERTAINMENT',
   'EDUCATION',
   'OTHER_EXPENSE'
-];
+] as const satisfies readonly ExpenseCategory[];
 
-export const INCOME_CATEGORIES: readonly IncomeCategory[] = [
+export const INCOME_CATEGORIES = [
   'SALARY',
   'FREELANCE',
   'INVESTMENT',
   'GIFT',
   'OTHER_INCOME'
-];
+] as const satisfies readonly IncomeCategory[];
+
+/**
+ * Los dos arrays cubren su unión entera, comprobado por el compilador.
+ *
+ * **No salía gratis con `readonly ExpenseCategory[]`**, que es como estaban
+ * declarados: ese tipo dice que todo elemento *pertenece* a la unión, no que la
+ * unión esté *cubierta*. Olvidar una categoría compilaba sin una queja.
+ *
+ * Dejó de ser un detalle en cuanto el gráfico de gastos por categoría empezó a
+ * recorrer `EXPENSE_CATEGORIES` para pedir un total por cada una: una categoría
+ * ausente del array no pinta barra y, peor, sus gastos desaparecen de la suma —
+ * las barras dejan de sumar el total de "Gastos" que está tres centímetros más
+ * arriba en la misma pantalla, y nada falla de forma visible.
+ *
+ * `as const satisfies` es lo que lo hace posible: `satisfies` valida que cada
+ * elemento sea de la unión (lo que daba la anotación de tipo) sin ensanchar el
+ * tipo inferido, así que `[number]` sigue siendo la unión de literales escritos
+ * y `Exclude` puede restarla de la unión completa. Si el resto no es `never`,
+ * no se cumple la restricción de `AssertEmpty` y el compilador nombra la
+ * categoría que falta: "Type 'UTILITIES' does not satisfy the constraint
+ * 'never'".
+ *
+ * **La comprobación va en la restricción de un tipo, no en una asignación.**
+ * El primer intento fue `const _x: [Missing] = [undefined as never]`, y no
+ * comprobaba nada: `never` es asignable a cualquier tipo, así que la
+ * asignación pasaba también con una categoría ausente. Se descubrió borrando
+ * `UTILITIES` del array a propósito y viendo que `tsc` seguía limpio — que es
+ * la única forma de saber que una aserción de este tipo funciona.
+ */
+type AssertEmpty<T extends never> = T;
+
+type _ExpenseCategoriesAreExhaustive = AssertEmpty<
+  Exclude<ExpenseCategory, (typeof EXPENSE_CATEGORIES)[number]>
+>;
+type _IncomeCategoriesAreExhaustive = AssertEmpty<
+  Exclude<IncomeCategory, (typeof INCOME_CATEGORIES)[number]>
+>;
 
 /**
  * `Record` completo y no un objeto suelto: así, añadir una variante a la unión

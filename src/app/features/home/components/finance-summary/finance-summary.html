@@ -1,6 +1,8 @@
 <app-summary-card
   heading="Finanzas"
   icon="bi:wallet2"
+  tone="success"
+  badge="Este mes"
   link="/finance"
   linkLabel="Ver el detalle de finanzas"
 >
@@ -9,8 +11,6 @@
   } @else {
     @let totals = summary();
 
-    <p class="finance-summary__range">{{ rangeLabel }}</p>
-
     <!--
       El balance va arriba y en grande porque es la respuesta a la pregunta con
       la que se abre Inicio; ingresos y gastos quedan debajo como el desglose
@@ -18,7 +18,8 @@
       porque alli el usuario ya viene a mirar cuentas.
     -->
     <p
-      class="finance-summary__balance"
+      class="card-metric finance-summary__balance"
+      [class.finance-summary__balance--positive]="balancePositive()"
       [class.finance-summary__balance--negative]="balanceNegative()"
       [attr.aria-busy]="loading()"
     >
@@ -33,10 +34,25 @@
       }
     </p>
 
-    <dl class="finance-summary__breakdown">
-      <div class="finance-summary__row">
-        <dt>Ingresos</dt>
-        <dd class="finance-summary__amount finance-summary__amount--income">
+    <!--
+      El mes va debajo de la cifra y no encima. Encima se lee como el titulo de
+      la tarjeta y compite con "Finanzas"; debajo hace lo que tiene que hacer,
+      que es decir de que periodo es el numero que acaba de leerse. El
+      distintivo "Este mes" de la cabecera dice lo mismo en corto para quien
+      solo barre la pagina con la vista.
+    -->
+    <p class="card-note">Balance de {{ rangeLabel }}</p>
+
+    <dl class="card-list">
+      <div class="card-row">
+        <!--
+          La flecha es decorativa: `<app-icon>` lleva `aria-hidden` fijo y el
+          dato ya lo dicen el `<dt>` y el signo del importe. Existe para que la
+          direccion se lea de un vistazo sin depender solo del color.
+        -->
+        <app-icon class="finance-summary__arrow--income" name="bi:arrow-up" />
+        <dt class="card-row__label">Ingresos</dt>
+        <dd class="card-row__meta finance-summary__amount finance-summary__amount--income">
           @if (totals) {
             +{{ totals.totalIncome | currency: undefined : 'symbol' : moneyDigits }}
           } @else {
@@ -45,9 +61,10 @@
         </dd>
       </div>
 
-      <div class="finance-summary__row">
-        <dt>Gastos</dt>
-        <dd class="finance-summary__amount finance-summary__amount--expense">
+      <div class="card-row">
+        <app-icon class="finance-summary__arrow--expense" name="bi:arrow-down" />
+        <dt class="card-row__label">Gastos</dt>
+        <dd class="card-row__meta finance-summary__amount finance-summary__amount--expense">
           @if (totals) {
             &minus;{{ totals.totalExpense | currency: undefined : 'symbol' : moneyDigits }}
           } @else {

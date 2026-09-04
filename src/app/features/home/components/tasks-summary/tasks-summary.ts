@@ -11,7 +11,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DataRefreshService } from '../../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../../core/http/extract-error-message';
 import { SummaryCard } from '../summary-card/summary-card';
-import { TaskResponse } from '../../../tasks/models/task.model';
+import { TaskPriority, TaskResponse } from '../../../tasks/models/task.model';
 import { TaskService } from '../../../tasks/task.service';
 
 /**
@@ -102,14 +102,35 @@ export class TasksSummary implements OnInit {
   }
 
   /**
-   * "3 pendientes" / "1 pendiente".
+   * "3 tareas pendientes" / "1 tarea pendiente".
    *
-   * El singular se escribe porque el plural en `-s` no vale para "pendiente" a
-   * secas y una cadena tipo "1 pendiente(s)" es la marca de que nadie miro la
+   * La frase entera y no un numero suelto: la cifra grande es lo primero que
+   * se lee de la tarjeta, y un "3" a solas no dice de que. El singular se
+   * escribe porque el plural en `-s` no vale para "tarea pendiente" y una
+   * cadena tipo "1 tarea(s) pendiente(s)" es la marca de que nadie miro la
    * pantalla.
    */
   protected countLabel(count: number): string {
-    return count === 1 ? '1 pendiente' : `${count} pendientes`;
+    return count === 1 ? '1 tarea pendiente' : `${count} tareas pendientes`;
+  }
+
+  /**
+   * Nombre de la prioridad, para acompanar al punto de color.
+   *
+   * El punto solo excluye a quien no distingue los colores, asi que la
+   * prioridad va ademas escrita en un `visually-hidden`. Es el mismo criterio
+   * que el resumen de Finanzas ya aplica al signo de los importes: tres copias
+   * del mismo dato, cada una para un usuario distinto.
+   */
+  protected priorityLabel(priority: TaskPriority): string {
+    switch (priority) {
+      case 'HIGH':
+        return 'Prioridad alta';
+      case 'MEDIUM':
+        return 'Prioridad media';
+      case 'LOW':
+        return 'Prioridad baja';
+    }
   }
 
   /**
