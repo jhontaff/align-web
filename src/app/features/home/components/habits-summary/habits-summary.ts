@@ -10,6 +10,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DataRefreshService } from '../../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../../core/http/extract-error-message';
+import { Icon } from '../../../../shared/ui/icon/icon';
 import { SummaryCard } from '../summary-card/summary-card';
 import { HabitResponse } from '../../../habits/models/habit.model';
 import { HabitService } from '../../../habits/habit.service';
@@ -31,7 +32,7 @@ const PREVIEW_SIZE = 3;
  */
 @Component({
   selector: 'app-habits-summary',
-  imports: [SummaryCard],
+  imports: [SummaryCard, Icon],
   templateUrl: './habits-summary.html',
   styleUrl: './habits-summary.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -52,6 +53,23 @@ export class HabitsSummary implements OnInit {
   protected readonly errorMessage = signal<string | null>(null);
 
   protected readonly count = computed(() => this.all().length);
+
+  /**
+   * Cuantos estan hechos hoy, segun el reloj del **servidor**.
+   *
+   * Sale de `isCompletedToday`, que el backend calcula con la misma frontera de
+   * dia que usa para la racha. Derivarlo aqui a partir de una fecha abriria la
+   * puerta a que la cifra grande y las rachas de abajo se contradigan dentro de
+   * la misma tarjeta a partir de medianoche.
+   */
+  protected readonly doneToday = computed(
+    () => this.all().filter(habit => habit.isCompletedToday).length
+  );
+
+  /** Cuantos sostienen una racha viva. Es el subtitulo de la tarjeta. */
+  protected readonly withStreak = computed(
+    () => this.all().filter(habit => habit.currentStreak > 0).length
+  );
 
   /**
    * Los de racha mas alta primero: en un vistazo de tres, lo que interesa es
@@ -90,9 +108,26 @@ export class HabitsSummary implements OnInit {
     });
   }
 
-  protected countLabel(count: number): string {
-    return count === 1 ? '1 habito' : `${count} habitos`;
-  }
+  /**
+   * "2 de 5 hechos hoy".
+   *
+   * La frase entera y no un numero suelto, igual que en Tareas: la cifra grande
+   * es lo primero que se lee y "2" a solas no dice de que. Con las dos partes
+   * dentro se evita ademas la concordancia de singular, que en "1 de 5 hecho
+   * hoy" obligaria a una segunda cadena.
+   */
+  protected readonly doneLabel = computed(() => `${this.doneToday()} de ${this.count()} hechos hoy`);
+
+  /** "1 con racha activa" / "Ninguno con racha activa". */
+  protected readonly streakSummary = computed(() => {
+    const withStreak = this.withStreak();
+
+    if (withStreak === 0) {
+      return 'Ninguno con racha activa';
+    }
+
+    return withStreak === 1 ? '1 con racha activa' : `${withStreak} con racha activa`;
+  });
 
   /**
    * "5 dias" / "1 dia" / "sin racha".

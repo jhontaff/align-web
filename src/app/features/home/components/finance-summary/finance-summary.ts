@@ -12,6 +12,7 @@ import { CurrencyPipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DataRefreshService } from '../../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../../core/http/extract-error-message';
+import { Icon } from '../../../../shared/ui/icon/icon';
 import { SummaryCard } from '../summary-card/summary-card';
 import { currentMonth } from '../../../finance/date-ranges';
 import { MONEY_DIGITS } from '../../../finance/money';
@@ -33,7 +34,7 @@ import { TransactionService } from '../../../finance/transaction.service';
  */
 @Component({
   selector: 'app-finance-summary',
-  imports: [SummaryCard, CurrencyPipe],
+  imports: [SummaryCard, CurrencyPipe, Icon],
   templateUrl: './finance-summary.html',
   styleUrl: './finance-summary.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -72,7 +73,12 @@ export class FinanceSummary implements OnInit {
    * El balance es la unica de las tres cifras cuyo color depende del dato: los
    * ingresos siempre suman y los gastos siempre restan, pero el balance puede
    * ir en cualquier direccion.
+   *
+   * Son dos computed y no uno con tres valores porque el cero no es ninguno de
+   * los dos: un balance clavado en cero no es una buena noticia teñida de verde
+   * ni una mala teñida de rojo, y se queda con el color de texto por defecto.
    */
+  protected readonly balancePositive = computed(() => (this.summary()?.balance ?? 0) > 0);
   protected readonly balanceNegative = computed(() => (this.summary()?.balance ?? 0) < 0);
 
   ngOnInit(): void {
