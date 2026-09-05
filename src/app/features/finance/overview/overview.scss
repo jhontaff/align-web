@@ -129,10 +129,12 @@
 // Una tarjeta de contenido tiene dos formas de relacionarse con su celda, y hay
 // que elegir una explícitamente:
 //
-// - **alto automático** (`byCategory`, `recent`): manda el contenido y la celda
-//   se ajusta a él. Ver `observeAutoHeight()`.
-// - **`--fill`** (los gráficos): manda la celda y el contenido se reparte el
-//   alto que haya.
+// - **alto automático** (`recent`): manda el contenido y la celda se ajusta a
+//   él. Ver `observeAutoHeight()`.
+// - **`--fill`** (`byCategory`, `pace`, `flow`): manda la celda y el contenido
+//   se reparte el alto que haya. Hasta el 2026-09-05 `byCategory` era también de
+//   alto automático; pasó a `--fill` para que redimensionarla sirva de algo, ver
+//   `expense-by-category.scss`.
 //
 // El `:not()` es lo que hace que no compitan: sube la especificidad a (0,2,0)
 // frente a (0,1,0), así que cuál gana no depende de cuál esté antes en el
@@ -152,34 +154,37 @@
 // **No lleva `overflow`**, y es deliberado: `monthly-flow` deja su área de
 // trazado en `overflow: visible` para que el emergente de cada columna pueda
 // salirse por arriba, y un contenedor de scroll aquí lo cortaría. Si la celda se
-// queda pequeña, quien recorta es el `overflow: hidden` del `gridster-item`; el
-// seguro contra llegar ahí es el `minItemRows` de la tarjeta.
+// queda pequeña, quien recorta es el `overflow: hidden` del `gridster-item` —o,
+// en `expense-by-category`, el `overflow-y: auto` que la propia lista pone sobre
+// sí misma—; el seguro contra llegar ahí es el `minItemRows` de la tarjeta.
 //
-// **Nunca se pone sobre una tarjeta de alto automático.** `block-size: 100%`
-// haría que el `ResizeObserver` midiera el alto que la rejilla acaba de imponer
-// en vez del del contenido, y eso es el bucle de realimentación que
-// `dashboard-layout.ts` documenta.
+// **Nunca se pone sobre la tarjeta de alto automático** (`recent`).
+// `block-size: 100%` haría que el `ResizeObserver` midiera el alto que la
+// rejilla acaba de imponer en vez del del contenido, y eso es el bucle de
+// realimentación que `dashboard-layout.ts` documenta.
 .dashboard__card--fill {
   display: flex;
   flex-direction: column;
   block-size: 100%;
 }
 
-// El gráfico se queda con todo el alto que sobre después del encabezado.
+// El contenido se queda con todo el alto que sobre después del encabezado.
 //
-// Las cuatro declaraciones van AQUÍ y no en un `:host` del componente, y esa es
-// la decisión: `flex` solo llega hasta el hijo directo, así que para que la
+// Las cuatro declaraciones van AQUÍ y no en un `:host` de cada componente, y esa
+// es la decisión: `flex` solo llega hasta el hijo directo, así que para que la
 // cadena continúe hacia dentro hay que poner al host en columna flexible — pero
 // eso es una afirmación sobre dónde está montado, no sobre lo que el componente
-// es. `spending-pace` solo sabe repartirse el alto que reciba; quién se lo da lo
-// decide el sitio donde se monta. Montado en otro lado sin esta regla, se
-// comporta como siempre.
+// es. Ninguno de los tres da por hecho dónde vive; cada uno solo sabe repartirse
+// el alto que reciba. Montados en otro lado sin esta regla, se comportan como
+// siempre.
 //
 // `min-block-size: 0` porque un item flexible no baja de su alto de contenido
 // salvo que se le diga: sin él la tarjeta se desborda en vez de encogerse. Es el
 // equivalente vertical del `min-inline-size: 0` que ya llevan `.pace__plot` y
 // `.flow__column`.
-.dashboard__card--fill > app-spending-pace {
+.dashboard__card--fill > app-spending-pace,
+.dashboard__card--fill > app-monthly-flow,
+.dashboard__card--fill > app-expense-by-category {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -290,32 +295,23 @@
 }
 
 // -----------------------------------------------------------------------------
-// Por debajo de escritorio la rejilla se apila
+// Por debajo de escritorio: sin CSS
 // -----------------------------------------------------------------------------
-// La conmutación la hace gridster solo (`mobileBreakpoint`, ver `gridOptions`):
-// pone los items en `position: relative` y los deja caer en el orden del DOM,
-// que es el orden de lectura de siempre. Lo que NO resuelve bien es el alto —le
-// da a cada tarjeta el que tendría dentro de la rejilla, y en una sola columna
-// eso no significa nada: el resumen pasa de tres cifras en fila a tres apiladas
-// y se recortaría.
+// Hasta el 2026-09-05 había aquí un bloque `below-desktop` que forzaba
+// `height: auto !important` en cada celda y ocultaba `.dashboard-action`: la
+// idea era que gridster se "apagaba" en móvil (su propio modo `.mobile`, activado
+// por `mobileBreakpoint`) y dejaba caer los items en el orden del DOM, así que
+// había que devolverles el alto a mano y esconder un botón de personalizar que
+// no habría hecho nada.
 //
-// Con el alto en automático, la columna apilada es exactamente el flujo normal
-// que esta pantalla tenía antes de la rejilla. `!important` porque ese alto lo
-// escribe la librería en línea, igual que el ancho de `.dashboard`.
-@include layout.below-desktop {
-  .dashboard__cell {
-    height: auto !important;
-  }
-
-  // Personalizar no tiene sentido aquí, y no por falta de sitio: gridster
-  // desactiva arrastre y redimensionado por debajo de su `mobileBreakpoint`
-  // (`canBeDragged()` devuelve `false` en modo móvil), así que el botón estaría
-  // sin hacer nada. No hace falta recambio: en una sola columna no hay
-  // disposición que romper ni que recuperar.
-  .dashboard-action {
-    display: none;
-  }
-}
+// ESO es justo lo que apagaba el arrastre: en modo `.mobile`, `canBeDragged()`
+// de gridster devuelve `false` sin excepción. Ahora `Overview.applyColumnLayout()`
+// cambia `minCols`/`maxCols` a `DASHBOARD_MOBILE_COLUMNS` en vez de dejar que
+// gridster entre en su modo móvil (que se deja apagado para siempre, ver
+// `NEVER_MOBILE` en `overview.ts`), así que por debajo de escritorio la rejilla
+// sigue colocando de verdad — con una columna en vez de doce — y el arrastre para
+// reordenar sigue disponible. No hace falta ningún override de altura ni ocultar
+// el botón: son exactamente las mismas reglas de arriba, sin distinción de ancho.
 
 // El desplazamiento de las tarjetas al recolocarse es exactamente el movimiento
 // grande que provoca malestar vestibular. Se quita el recorrido, no la función:

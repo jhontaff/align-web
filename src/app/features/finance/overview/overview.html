@@ -145,22 +145,18 @@
       puede separarlos, pero la disposicion inicial deja los dos a la vista sin
       desplazarse.
 
-      Es una de las dos tarjetas de alto automatico: cuantas categorias tuvieron
-      gasto depende del periodo. El `#byCategoryCard` es lo que observa
-      `observeAutoHeight()`.
+      `dashboard__card--fill`, igual que "Ritmo de gasto" y "Flujo de los
+      ultimos meses" (2026-09-05): la lista de categorias se reparte el alto de
+      la celda en vez de imponerlo, y hace scroll dentro de si misma si no cabe
+      entera — ver `.chart` en `expense-by-category.scss`. Antes era la tarjeta
+      la que crecia con el numero de categorias; asi es la unica de las tres que
+      el usuario puede redimensionar y de verdad cambia algo.
     -->
     <gridster-item class="dashboard__cell" [item]="cards.byCategory">
-      <section class="dashboard__card" #byCategoryCard aria-labelledby="by-category-heading">
+      <section class="dashboard__card dashboard__card--fill" aria-labelledby="by-category-heading">
         <h2 class="section-heading" id="by-category-heading">Gastos por categoría</h2>
 
         @if (loading()) {
-          <!--
-            Aqui SI se pinta "Cargando" y no un esqueleto con guiones como en las
-            cifras: alli la linea que ocupara el importe se sabe de antemano,
-            pero cuantas categorias tuvieron gasto depende del periodo, asi que
-            un esqueleto tendria que adivinar el alto y provocaria el salto que
-            pretende evitar.
-          -->
           <p class="empty-state">Cargando...</p>
         } @else if (byCategory(); as expenses) {
           <app-expense-by-category [expenses]="expenses" />
@@ -208,9 +204,13 @@
       tendencia de una sola columna no es una tendencia—, y por eso el encabezado
       dice "Últimos meses" en vez del rango: prometer aquí el periodo de la
       cabecera sería falso. Ver `monthWindow()` en `date-ranges.ts`.
+
+      `dashboard__card--fill`: el gráfico se reparte el alto de la celda como
+      "Ritmo de gasto", en vez de quedarse fijo a 180px pase lo que pase con el
+      tamaño de la tarjeta.
     -->
     <gridster-item class="dashboard__cell" [item]="cards.flow">
-      <section class="dashboard__card" aria-labelledby="flow-heading">
+      <section class="dashboard__card dashboard__card--fill" aria-labelledby="flow-heading">
         <h2 class="section-heading" id="flow-heading">Flujo de los últimos meses</h2>
 
         @if (loading()) {
@@ -222,8 +222,9 @@
     </gridster-item>
 
     <!--
-      La segunda tarjeta de alto automatico: de cero a cinco filas, o un estado
-      vacio mas corto que cualquiera de las dos.
+      La única tarjeta de alto automático que queda: de cero a cinco filas, o un
+      estado vacío más corto. `#recentCard` es lo que observa
+      `observeAutoHeight()`.
     -->
     <gridster-item class="dashboard__cell" [item]="cards.recent">
       <section class="dashboard__card" #recentCard aria-labelledby="recent-heading">

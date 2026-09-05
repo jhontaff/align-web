@@ -1,7 +1,7 @@
 import { GridsterItem } from 'angular-gridster2';
 
 /**
- * Las cinco tarjetas del panel de Finanzas.
+ * Las siete tarjetas del panel de Finanzas.
  *
  * Es una unión cerrada y no `string` a propósito: el layout guardado en
  * `localStorage` se valida contra ella, así que renombrar una tarjeta invalida
@@ -19,8 +19,13 @@ export type DashboardCardId =
 /**
  * El mismo conjunto, iterable. Escrito a mano y no derivado: no hay forma de
  * enumerar los miembros de una unión en tiempo de ejecución. El compilador
- * vigila que no se separen — `defaultLayout()` devuelve un `Record` sobre la
- * unión, así que olvidar una tarjeta ahí es un error de compilación.
+ * vigila que no se separen — `desktopDefaultLayout()` devuelve un `Record`
+ * sobre la unión, así que olvidar una tarjeta ahí es un error de compilación.
+ *
+ * El orden de este array **es** el orden de lectura: encabeza la disposición
+ * de escritorio (leída en Z) y es literalmente la disposición de móvil, donde
+ * cada tarjeta se apila sobre la anterior en este mismo orden. Ver
+ * `mobileDefaultLayout()`.
  */
 export const DASHBOARD_CARD_IDS: readonly DashboardCardId[] = [
   'income',
@@ -46,11 +51,12 @@ export interface DashboardCard extends GridsterItem {
   /**
    * Si el alto lo decide el contenido en vez del usuario.
    *
-   * Solo dos tarjetas lo tienen: "Gastos por categoría" (depende de cuántas
-   * categorías tuvieron gasto en el periodo) y "Últimos movimientos" (de cero a
-   * cinco filas, o un estado vacío más corto). Las otras tres tienen alto
-   * determinista —los dos gráficos fijan su área de trazado en 180px— así que
-   * su alto es del usuario.
+   * Solo una tarjeta lo tiene: "Últimos movimientos" (de cero a cinco filas, o
+   * un estado vacío más corto, según el periodo). Las otras seis tienen alto
+   * determinista y su alto es del usuario — las tres cifras porque su
+   * contenido es una línea, y "Gastos por categoría" / "Ritmo de gasto" /
+   * "Flujo de los últimos meses" porque su gráfico se reparte el alto de la
+   * celda en vez de imponerlo (`.dashboard__card--fill` en `overview.scss`).
    *
    * **Una tarjeta automática no se redimensiona en vertical**, y no es una
    * limitación arbitraria: si pudiera, el usuario la estiraría, llegarían datos
@@ -68,18 +74,34 @@ export interface DashboardCard extends GridsterItem {
 export type DashboardCards = Record<DashboardCardId, DashboardCard>;
 
 /**
- * Doce columnas, como cualquier rejilla de maquetación: divisible entre 2, 3, 4
- * y 6, así que media pantalla, un tercio y un cuarto son todos números enteros.
+ * Doce columnas en escritorio, como cualquier rejilla de maquetación: divisible
+ * entre 2, 3, 4 y 6, así que media pantalla, un tercio y un cuarto son todos
+ * números enteros.
  */
 export const DASHBOARD_COLUMNS = 12;
+
+/**
+ * Una columna en móvil.
+ *
+ * No es una rejilla degenerada: sigue siendo gridster de verdad —con
+ * `minCols`/`maxCols` en 1 en vez de doce—, no la pila por CSS que había antes
+ * del 2026-09-05. Es lo que hace posible personalizar (arrastrar para
+ * reordenar) también en el teléfono, ver `Overview.applyColumnLayout()`.
+ */
+export const DASHBOARD_MOBILE_COLUMNS = 1;
 
 /**
  * Alto de fila, en píxeles.
  *
  * 48 y no 180 (el área de trazado de los gráficos): es la unidad en la que
- * crece una tarjeta automática, así que una fila grande haría que añadir una
- * categoría al desglose diera un salto de tarjeta entera. Con 48 el área de
- * trazado cae en cuatro filas y el crecimiento se ve continuo.
+ * crece la tarjeta automática, así que una fila grande haría que añadir un
+ * movimiento reciente diera un salto de tarjeta entera. Con 48 el área de
+ * trazado de un gráfico cae en cuatro filas y el crecimiento se ve continuo.
+ *
+ * No depende del número de columnas: una fila mide lo mismo en la rejilla de
+ * doce columnas del escritorio que en la de una columna del móvil, que es lo
+ * que permite que `mobileDefaultLayout()` reutilice el `rows` de la disposición
+ * de escritorio sin recalcular nada.
  */
 export const DASHBOARD_ROW_HEIGHT = 48;
 
@@ -107,15 +129,31 @@ export function rowsForHeight(height: number): number {
 }
 
 /**
- * La disposición de partida.
+ * La disposición de partida, en escritorio o en móvil.
+ *
+ * **Son dos disposiciones distintas y no la misma reescalada**, porque doce
+ * columnas y una columna no son la misma pregunta: en escritorio hay que
+ * decidir qué va al lado de qué, y en móvil solo en qué orden se apila. Cada
+ * una tiene su propio guardado en `localStorage` — ver
+ * `Overview.applyColumnLayout()`, que es quien elige cuál aplicar según el
+ * ancho de la ventana.
+ *
+ * Es una función y no una constante porque devuelve objetos mutables: una
+ * constante compartida se corrompería en cuanto gridster escribiera en ella, y
+ * "Restablecer" dejaría de restablecer nada.
+ */
+export function defaultLayout(variant: DashboardLayoutVariant): DashboardCards {
+  return variant === 'desktop' ? desktopDefaultLayout() : mobileDefaultLayout();
+}
+
+/**
+ * La disposición de escritorio: doce columnas.
  *
  * Reproduce el orden vertical que la pantalla tenía antes de la rejilla
  * —las cifras, desglose, ritmo, flujo, movimientos— leído en Z: las tres cifras
  * se reparten la fila de arriba a cuatro columnas cada una y el resto va por
  * parejas. Ese orden está argumentado en los comentarios de `overview.html`
- * ("de lo puntual a lo histórico"), y el DOM lo mantiene literalmente, así que
- * por debajo del umbral de escritorio, donde la rejilla se apila, la pantalla
- * queda idéntica a la de siempre.
+ * ("de lo puntual a lo histórico").
  *
  * **Ingresos, gastos y balance son tres tarjetas y no una.** Lo eran hasta el
  * 2026-09-05, agrupadas en un `<ul>`, y separarlas es lo que permite moverlas
@@ -124,32 +162,70 @@ export function rowsForHeight(height: number): number {
  * de un vistazo; a cambio, la disposición de fábrica las deja juntas y del
  * mismo tamaño, y volver a ella es un botón.
  *
- * Es una función y no una constante porque devuelve objetos mutables: una
- * constante compartida se corrompería en cuanto gridster escribiera en ella, y
- * "Restablecer" dejaría de restablecer nada.
+ * **"Gastos por categoría" pasó de alto automático a `--fill` el 2026-09-05**,
+ * junto con "Ritmo de gasto" y "Flujo de los últimos meses": las tres son ahora
+ * tarjetas de tamaño fijo y redimensionable cuyo gráfico se reparte el alto de
+ * la celda, en vez de que el número de categorías del periodo decida el alto de
+ * la tarjeta. El `minItemRows` de cada una es el punto en el que su gráfico
+ * llega a su suelo de legibilidad — por debajo, lo siguiente en ceder sería
+ * contenido que el `overflow: hidden` de la celda cortaría sin avisar.
  */
-export function defaultLayout(): DashboardCards {
+function desktopDefaultLayout(): DashboardCards {
   return {
     income: { id: 'income', autoHeight: false, x: 0, y: 0, cols: 4, rows: 2 },
     expense: { id: 'expense', autoHeight: false, x: 4, y: 0, cols: 4, rows: 2 },
     balance: { id: 'balance', autoHeight: false, x: 8, y: 0, cols: 4, rows: 2 },
-    byCategory: { id: 'byCategory', autoHeight: true, x: 0, y: 2, cols: 6, rows: 7 },
-    // El ritmo de gasto es la única tarjeta cuyo contenido se reparte el alto de
-    // la celda (`dashboard__card--fill`): su gráfico crece con ella. Por eso
-    // arranca con una fila más que el resto —para que el trazado nazca con algo
-    // más que su alto mínimo— y por eso lleva suelo propio: por debajo de seis
-    // filas, el gráfico llega a su tope de encogimiento y lo siguiente en ceder
-    // serían las cifras de abajo, que el `overflow: hidden` de la celda cortaría
-    // sin avisar.
+    byCategory: {
+      id: 'byCategory',
+      autoHeight: false,
+      x: 0,
+      y: 2,
+      cols: 6,
+      rows: 7,
+      minItemRows: 6
+    },
     pace: { id: 'pace', autoHeight: false, x: 6, y: 2, cols: 6, rows: 8, minItemRows: 6 },
-    flow: { id: 'flow', autoHeight: false, x: 0, y: 10, cols: 6, rows: 7 },
+    flow: { id: 'flow', autoHeight: false, x: 0, y: 10, cols: 6, rows: 7, minItemRows: 6 },
     recent: { id: 'recent', autoHeight: true, x: 6, y: 10, cols: 6, rows: 7 }
   };
 }
 
 /**
+ * La disposición de móvil: una columna.
+ *
+ * Reutiliza el `rows` de la disposición de escritorio — el alto de fila no
+ * depende del ancho de columna, así que una tarjeta de 7 filas mide lo mismo
+ * en una columna que en dos — y solo cambia `x` (siempre 0), `cols` (siempre 1)
+ * e `y`, que es la suma acumulada de lo que va antes en `DASHBOARD_CARD_IDS`.
+ * El resultado es el mismo orden de lectura que tenía la pantalla antes de la
+ * rejilla, ahora colocado por gridster de verdad y no por una pila de CSS —
+ * que es lo que hace falta para que arrastrar y reordenar funcione también
+ * aquí.
+ */
+function mobileDefaultLayout(): DashboardCards {
+  const cards = desktopDefaultLayout();
+
+  let y = 0;
+  for (const id of DASHBOARD_CARD_IDS) {
+    const card = cards[id];
+    card.x = 0;
+    card.cols = DASHBOARD_MOBILE_COLUMNS;
+    card.y = y;
+    y += card.rows;
+  }
+
+  return cards;
+}
+
+/**
  * Los tiradores de redimensionado de una tarjeta — ver `autoHeight`. Va por
  * item y no en la configuración de la rejilla porque gridster lo lee de ahí.
+ *
+ * En móvil no hace falta una variante propia: `Overview.applyColumnLayout()`
+ * apaga `resizable` para toda la rejilla —una columna no tiene ancho que
+ * repartir, y estirar en vertical ahí es "personalizar", no "redimensionar"—,
+ * así que estos tiradores simplemente no se activan nunca, sea cual sea su
+ * configuración.
  */
 export function handlesFor(card: DashboardCard): DashboardCard['resizableHandles'] {
   const vertical = !card.autoHeight;
@@ -165,13 +241,25 @@ export function handlesFor(card: DashboardCard): DashboardCard['resizableHandles
   };
 }
 
-const STORAGE_KEY = 'align_finance_layout';
+/**
+ * Escritorio y móvil son dos disposiciones independientes, con su propio
+ * guardado. Mover las tarjetas en el teléfono no debe tocar lo que el usuario
+ * ya colocó en la pantalla grande, ni al revés — son dos preguntas distintas
+ * ("qué va al lado de qué" contra "en qué orden se apila").
+ */
+export type DashboardLayoutVariant = 'desktop' | 'mobile';
+
+const STORAGE_KEYS: Record<DashboardLayoutVariant, string> = {
+  desktop: 'align_finance_layout',
+  mobile: 'align_finance_mobile_layout'
+};
 
 /**
  * Sube cuando cambie la forma de lo guardado. Un layout de una versión anterior
- * se descarta entero en vez de intentar migrarse: son cinco posiciones que el
+ * se descarta entero en vez de intentar migrarse: son pocas tarjetas que el
  * usuario recoloca en diez segundos, y una migración a medias deja tarjetas
- * solapadas que se leen como un fallo de la app.
+ * solapadas que se leen como un fallo de la app. Compartida por las dos
+ * variantes porque las dos guardan la misma forma de dato.
  */
 const LAYOUT_VERSION = 1;
 
@@ -189,18 +277,18 @@ interface StoredLayout {
 }
 
 /**
- * El layout del usuario, o el de fábrica si no hay ninguno o el guardado no
- * cuadra.
+ * El layout del usuario para esa variante, o el de fábrica si no hay ninguno o
+ * el guardado no cuadra.
  *
  * **Nunca lanza y nunca devuelve algo a medias.** `localStorage` puede fallar
  * entero (modo privado, cookies bloqueadas), traer JSON inválido o traer un
  * layout escrito por una versión anterior de la pantalla. Los tres casos acaban
- * en la disposición de fábrica, que es la única respuesta útil: una rejilla
- * medio poblada sería peor que ninguna.
+ * en la disposición de fábrica de esa variante, que es la única respuesta útil:
+ * una rejilla medio poblada sería peor que ninguna.
  */
-export function loadLayout(): DashboardCards {
-  const cards = defaultLayout();
-  const stored = readStored();
+export function loadLayout(variant: DashboardLayoutVariant): DashboardCards {
+  const cards = defaultLayout(variant);
+  const stored = readStored(variant);
   if (!stored) {
     return cards;
   }
@@ -210,7 +298,7 @@ export function loadLayout(): DashboardCards {
     target.x = card.x;
     target.y = card.y;
     target.cols = card.cols;
-    // El alto de una tarjeta automática NO se restaura: lo decide su contenido,
+    // El alto de la tarjeta automática NO se restaura: lo decide su contenido,
     // y el de hoy no tiene por qué ser el de cuando se guardó.
     if (!target.autoHeight) {
       target.rows = card.rows;
@@ -220,7 +308,7 @@ export function loadLayout(): DashboardCards {
   return cards;
 }
 
-export function saveLayout(cards: DashboardCards): void {
+export function saveLayout(variant: DashboardLayoutVariant, cards: DashboardCards): void {
   const payload: StoredLayout = {
     version: LAYOUT_VERSION,
     cards: DASHBOARD_CARD_IDS.map(id => {
@@ -230,25 +318,25 @@ export function saveLayout(cards: DashboardCards): void {
   };
 
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem(STORAGE_KEYS[variant], JSON.stringify(payload));
   } catch {
     // Guardar la disposición es una comodidad, no parte de la función de la
     // pantalla: si el navegador no deja escribir, se pierde al recargar y ya.
   }
 }
 
-export function clearLayout(): void {
+export function clearLayout(variant: DashboardLayoutVariant): void {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEYS[variant]);
   } catch {
     // Ver `saveLayout`.
   }
 }
 
-function readStored(): StoredLayout | null {
+function readStored(variant: DashboardLayoutVariant): StoredLayout | null {
   let raw: string | null;
   try {
-    raw = localStorage.getItem(STORAGE_KEY);
+    raw = localStorage.getItem(STORAGE_KEYS[variant]);
   } catch {
     return null;
   }
@@ -270,7 +358,9 @@ function readStored(): StoredLayout | null {
  *
  * No basta con que el JSON parsee: si mañana se añade una tarjeta, un layout
  * viejo dejaría la nueva sin colocar; si se renombra un id, resucitaría una
- * sección que ya no se pinta. Se exige la lista completa y sin sobrantes.
+ * sección que ya no se pinta. Se exige la lista completa y sin sobrantes. La
+ * misma validación sirve para las dos variantes: la forma de lo guardado es
+ * idéntica, solo cambia bajo qué clave vive.
  */
 function isValidLayout(value: unknown): value is StoredLayout {
   if (typeof value !== 'object' || value === null) {

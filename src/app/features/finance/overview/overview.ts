@@ -40,10 +40,11 @@ import {
   DASHBOARD_CARD_IDS,
   DASHBOARD_COLUMNS,
   DASHBOARD_MARGIN,
+  DASHBOARD_MOBILE_COLUMNS,
   DASHBOARD_ROW_HEIGHT,
   DashboardCard,
-  DashboardCardId,
   DashboardCards,
+  DashboardLayoutVariant,
   clearLayout,
   defaultLayout,
   handlesFor,
@@ -118,13 +119,19 @@ interface Pace {
 }
 
 /**
- * Los dos centinelas con los que se le quita a gridster la decisión de si está
- * en modo móvil. `checkIfMobile()` es `mobileBreakpoint > ancho`: con 0 nunca es
- * cierto y con un número imposible siempre lo es, así que el ancho que gridster
- * mida deja de importar. Ver `syncBreakpoint()`.
+ * El centinela con el que se le quita a gridster, PARA SIEMPRE, la decisión de
+ * si está en modo móvil. `checkIfMobile()` es `mobileBreakpoint > ancho`: con 0
+ * nunca es cierto, sea cual sea el ancho.
+ *
+ * Esto no es solo el arreglo del bug de "las tarjetas no se mueven" — es la
+ * precondición de que el móvil también se pueda personalizar. En modo móvil de
+ * gridster, `canBeDragged()` devuelve `false` sin excepción; si este centinelo
+ * se apagara en pantallas estrechas, arrastrar para reordenar en el teléfono
+ * volvería a ser imposible. El número de columnas para una pantalla estrecha lo
+ * decide `DASHBOARD_MOBILE_COLUMNS` vía `minCols`/`maxCols`, no este flag — ver
+ * `applyColumnLayout()`.
  */
 const NEVER_MOBILE = 0;
-const ALWAYS_MOBILE = Number.MAX_SAFE_INTEGER;
 
 /**
  * Resumen de Finanzas: los totales del rango elegido y un vistazo a lo último.
@@ -169,6 +176,18 @@ export class Overview implements OnInit {
   // ---------------------------------------------------------------------------
 
   /**
+   * Qué disposición corresponde al ancho actual.
+   *
+   * Un método y no un `computed`: no expone estado a la plantilla, es una
+   * lectura puntual que usan `resetLayout()`, `toggleEditing()` y el
+   * `itemChangeCallback` para saber DÓNDE guardar o restablecer. Un `computed`
+   * aquí sería una capa de indirección sin ningún consumidor reactivo detrás.
+   */
+  private layoutVariant(): DashboardLayoutVariant {
+    return this.breakpoint.isDesktop() ? 'desktop' : 'mobile';
+  }
+
+  /**
    * Las siete tarjetas con su posición.
    *
    * **Es un campo plano y no un `signal`, y va contra la regla general del
@@ -177,13 +196,20 @@ export class Overview implements OnInit {
    * `signal` no emitiría jamás: daría una falsa impresión de reactividad y
    * obligaría a un `.set([...])` defensivo que pelearía con la librería por
    * quién es el dueño del dato. Aquí el dueño es gridster, y se escribe siempre
-   * por su misma puerta — ver `applyRows()` y `resetLayout()`, que tocan tanto
-   * `card` como el `$item` del componente.
+   * por su misma puerta — ver `applyRows()`, `resetLayout()` y
+   * `applyColumnLayout()`, que tocan tanto `card` como el `$item` del
+   * componente.
    *
    * La plantilla tampoco lo lee de forma reactiva: las siete `<gridster-item>`
    * están escritas una a una, así que Angular no vuelve a evaluar nada.
+   *
+   * **Son los mismos siete objetos en escritorio y en móvil.** No hay un
+   * `cards` por variante: cambiar de ancho no cambia QUÉ objeto está enlazado a
+   * cada `<gridster-item>` (eso obligaría a que Angular reconociera el cambio
+   * de referencia y gridster reconstruyera cada item), sino los NÚMEROS que
+   * esos objetos contienen — ver `applyColumnLayout()`.
    */
-  protected readonly cards: DashboardCards = loadLayout();
+  protected readonly cards: DashboardCards = loadLayout(this.layoutVariant());
 
   /** Si el usuario está recolocando. Esto sí es estado de la pantalla. */
   protected readonly editing = signal(false);
@@ -206,57 +232,60 @@ export class Overview implements OnInit {
    *   ventana. (Efecto lateral que hay que compensar en CSS: `setGridSize`
    *   también fija el ANCHO en línea, y entonces la rejilla no vuelve a
    *   encogerse al estrechar la ventana. Ver `overview.scss`.)
-   * - **El umbral de móvil no lo decide gridster**, lo decide `matchMedia` a
-   *   través de `BreakpointService` — ver `syncBreakpoint()`, que explica por
-   *   qué dejar que lo midiera él era el bug de "las tarjetas no se mueven".
+   * - **`minCols`/`maxCols` reaccionan al ancho, `mobileBreakpoint` NUNCA.** Son
+   *   dos preguntas distintas: cuántas columnas hay (sí depende del ancho,
+   *   `DASHBOARD_COLUMNS` o `DASHBOARD_MOBILE_COLUMNS`) y si gridster se cree en
+   *   "modo móvil" (nunca — ver el comentario de `NEVER_MOBILE`, que es
+   *   literalmente el bug de "las tarjetas no se mueven" si se reactivara). Los
+   *   valores iniciales salen de `BreakpointService`, que se alimenta del mismo
+   *   `matchMedia` que el SCSS — ver `applyColumnLayout()`, que es quien los
+   *   mantiene sincronizados después.
    * - **`outerMargin: false`**: el aire exterior ya lo pone el `padding` de
    *   `.page`. Con los dos, el contenido quedaría a 40px del borde y descuadrado
    *   respecto a la cabecera.
-   * - **`dragHandleClass` + `ignoreContent`**: solo se arrastra desde el tirador.
-   *   Sin esto, seleccionar un importe o pulsar "Ver todo (83)" compite con el
-   *   arrastre y la tarjeta se mueve al intentar leerla.
+   * - **Se arrastra desde cualquier punto de la tarjeta**, no desde un tirador.
+   *   Una primera versión usaba `ignoreContent: true` + `dragHandleClass`, y con
+   *   eso la franja del tirador era el ÚNICO punto de agarre: si no dabas ahí,
+   *   la tarjeta no se movía y no había ninguna señal de por qué. Lo que sigue
+   *   siendo pulsable dentro de una tarjeta ("Ver todo (83)", las filas de
+   *   movimientos) lleva `dashboard__no-drag`, que es la clase que
+   *   `ignoreContentClass` mira para dejar pasar el evento.
    */
   protected readonly gridOptions: GridsterConfig = {
     gridType: GridType.VerticalFixed,
     fixedRowHeight: DASHBOARD_ROW_HEIGHT,
     setGridSize: true,
-    keepFixedHeightInMobile: true,
     margin: DASHBOARD_MARGIN,
     outerMargin: false,
-    minCols: DASHBOARD_COLUMNS,
-    maxCols: DASHBOARD_COLUMNS,
+    minCols: this.breakpoint.isDesktop() ? DASHBOARD_COLUMNS : DASHBOARD_MOBILE_COLUMNS,
+    maxCols: this.breakpoint.isDesktop() ? DASHBOARD_COLUMNS : DASHBOARD_MOBILE_COLUMNS,
     compactType: CompactType.CompactUp,
     pushItems: true,
     minItemRows: 2,
-    // Ver `syncBreakpoint()`: el umbral no se compara nunca contra un ancho que
-    // mida gridster, se fuerza desde fuera con estos dos centinelas.
-    useBodyForBreakpoint: false,
+    // Fijo para siempre — ver el comentario de `NEVER_MOBILE`. El concepto de
+    // "modo móvil" de gridster está permanentemente apagado; la pantalla
+    // estrecha se resuelve con una sola columna, no con ese modo.
     mobileBreakpoint: NEVER_MOBILE,
     // La retícula de fondo de gridster no se enciende nunca, ni siquiera al
-    // recolocar: son doce guías verticales que ensucian más de lo que orientan,
-    // y las pinta la librería en su propia plantilla —o sea, fuera del alcance
-    // de la encapsulación de esta pantalla, con bordes blancos literales que
-    // habría que corregir desde un archivo global. El borde discontinuo de cada
-    // celda en modo edición dice lo mismo y es nuestro.
+    // recolocar: son guías que ensucian más de lo que orientan, y las pinta la
+    // librería en su propia plantilla —o sea, fuera del alcance de la
+    // encapsulación de esta pantalla, con bordes blancos literales que habría
+    // que corregir desde un archivo global. El borde discontinuo de cada celda
+    // en modo edición dice lo mismo y es nuestro.
     displayGrid: DisplayGrid.None,
-    // **Se arrastra desde cualquier punto de la tarjeta**, no desde un tirador.
-    // La primera versión usaba `ignoreContent: true` + `dragHandleClass`, y con
-    // eso la franja del tirador era el ÚNICO punto de agarre: si no dabas ahí,
-    // la tarjeta no se movía y no había ninguna señal de por qué. Con siete
-    // tarjetas pequeñas, además, la franja se comía media tarjeta.
-    //
-    // No hay conflicto con seleccionar texto ni con pulsar enlaces porque el
-    // arrastre solo existe en modo edición; lo que sí lleva `ignoreContentClass`
-    // es lo que sigue siendo pulsable ahí dentro.
     draggable: { enabled: false, ignoreContent: false, ignoreContentClass: 'dashboard__no-drag' },
+    // Arranca deshabilitado igual que en escritorio; `applyColumnLayout()` lo
+    // deja así también en móvil aunque se entre en modo edición — ver ese
+    // método para el porqué.
     resizable: { enabled: false },
     // Se guarda en cada cambio y no solo al salir del modo edición: gridster
-    // avisa por item, y son cinco números en `localStorage`.
-    itemChangeCallback: () => saveLayout(this.cards)
+    // avisa por item. `layoutVariant()` decide si lo que acaba de cambiar es la
+    // disposición de escritorio o la de móvil.
+    itemChangeCallback: () => saveLayout(this.layoutVariant(), this.cards)
   };
 
   /**
-   * Las dos secciones de alto automático.
+   * La sección de alto automático.
    *
    * Se observa la `<section>` y no un envoltorio interior porque no hace falta
    * uno: la sección es hija directa del item, no lleva alto impuesto y su
@@ -265,8 +294,11 @@ export class Overview implements OnInit {
    * observarlo se realimentaría (crece el item, el observador lo ve más alto,
    * lo hace crecer otra vez) y ese es el bucle infinito clásico de
    * `ResizeObserver`.
+   *
+   * Hasta el 2026-09-05 había dos ("Gastos por categoría" también era
+   * automática); ahora esa se reparte el alto de su celda como los demás
+   * gráficos (`.dashboard__card--fill`), y esta es la única que queda.
    */
-  private readonly byCategoryCard = viewChild.required<ElementRef<HTMLElement>>('byCategoryCard');
   private readonly recentCard = viewChild.required<ElementRef<HTMLElement>>('recentCard');
 
   constructor() {
@@ -286,40 +318,72 @@ export class Overview implements OnInit {
   }
 
   /**
-   * Hace que "modo móvil" para gridster signifique **exactamente** lo mismo que
-   * para el CSS.
+   * Mantiene la rejilla sincronizada con el ancho de la ventana: cuántas
+   * columnas hay y qué disposición (escritorio o móvil) está activa.
    *
-   * Este es el arreglo de que las tarjetas no se dejaran mover. Gridster decide
-   * si está en modo móvil comparando `mobileBreakpoint` contra un ancho que mide
-   * él, y en modo móvil `canBeDragged()` devuelve `false` pase lo que pase. La
-   * configuración anterior (`useBodyForBreakpoint: true` + 1024) medía
-   * `document.body.clientWidth`, que **excluye la barra de scroll**, mientras
-   * que la media query de `_layout.scss` compara contra el ancho del viewport,
-   * que **la incluye**. Dos varas de medir para el mismo umbral: había una
-   * franja de ~15px en la que el CSS pintaba el escritorio —con su botón de
-   * "Personalizar"— y gridster seguía creyéndose móvil y no dejaba arrastrar
-   * nada, sin ningún aviso.
-   *
-   * La solución no es afinar el número, es quitarle la decisión a gridster: los
-   * dos centinelas hacen que `checkIfMobile()` no dependa de ninguna medida, y
-   * quien decide es `BreakpointService`, que se alimenta del **mismo**
-   * `matchMedia` que el SCSS. Así no pueden discrepar.
-   *
-   * Es un uso legítimo de `effect`: sincroniza un signal con una API imperativa
-   * de terceros, igual que el de `ThemeService` escribe `data-theme` en
-   * `<html>`. No propaga estado entre signals, que es lo que está prohibido.
+   * Es un uso legítimo de `effect`: sincroniza un signal (`isDesktop()`) con una
+   * API imperativa de terceros, igual que el de `ThemeService` escribe
+   * `data-theme` en `<html>`. No propaga estado entre signals, que es lo que
+   * está prohibido.
    */
   private syncBreakpoint(): void {
     effect(() => {
-      this.gridOptions.mobileBreakpoint = this.breakpoint.isDesktop()
-        ? NEVER_MOBILE
-        : ALWAYS_MOBILE;
-
-      // En el primer pase `api` todavía no existe (gridster la publica en su
-      // `ngOnChanges`), y no pasa nada: el valor ya está escrito en el objeto de
-      // opciones que va a leer.
-      this.gridOptions.api?.optionsChanged?.();
+      this.applyColumnLayout(this.breakpoint.isDesktop());
     });
+  }
+
+  /**
+   * Cambia entre la rejilla de doce columnas y la de una, y con ella entre la
+   * disposición de escritorio y la de móvil.
+   *
+   * **Esto reemplaza la pila por CSS que había antes del 2026-09-05**, y es la
+   * pieza que permite personalizar también en el teléfono. Con la pila por CSS,
+   * cruzar a móvil dejaba de importarle a gridster (`.dashboard__cell { height:
+   * auto !important }` fuera de su control) y el botón "Personalizar" se
+   * ocultaba: no había nada que reordenar porque no había disposición, solo el
+   * orden fijo del DOM. Ahora gridster coloca de verdad también ahí —con
+   * `minCols`/`maxCols` en `DASHBOARD_MOBILE_COLUMNS`—, así que arrastrar sigue
+   * funcionando y "en qué orden se apila" es una pregunta con respuesta propia,
+   * guardada aparte de la de escritorio (`DashboardLayoutVariant`).
+   *
+   * **El redimensionado se apaga en móvil aunque `editing()` esté activo.** Con
+   * una sola columna no hay ancho que repartir —ya vale el 100%— y estirar en
+   * vertical ahí sería una segunda forma de "personalizar" superpuesta al
+   * reordenar, con tiradores que en una columna estrecha son difíciles de
+   * acertar con el dedo. Se deja fuera del alcance de esta función: personalizar
+   * en móvil es reordenar, nada más.
+   *
+   * Corre en cada cambio de breakpoint, así que también corre en el montaje
+   * (primer valor del `effect`) — momento en el que `cards` ya trae cargada la
+   * disposición correcta desde su inicializador, y esta primera pasada solo la
+   * confirma. Redundante, no incorrecto: es el precio de un único punto de
+   * verdad en vez de duplicar la lógica de carga en el constructor.
+   */
+  private applyColumnLayout(desktop: boolean): void {
+    const columns = desktop ? DASHBOARD_COLUMNS : DASHBOARD_MOBILE_COLUMNS;
+    this.gridOptions.minCols = columns;
+    this.gridOptions.maxCols = columns;
+    this.gridOptions.resizable = { ...this.gridOptions.resizable, enabled: this.editing() && desktop };
+
+    const positions = loadLayout(desktop ? 'desktop' : 'mobile');
+    for (const id of DASHBOARD_CARD_IDS) {
+      const card = this.cards[id];
+      const from = positions[id];
+
+      card.x = from.x;
+      card.y = from.y;
+      card.cols = from.cols;
+      if (!card.autoHeight) {
+        card.rows = from.rows;
+      }
+
+      this.syncEngine(card);
+    }
+
+    // En el primer pase `api` todavía no existe (gridster la publica en su
+    // `ngOnChanges`), y no pasa nada: los valores ya están escritos en los
+    // objetos que va a leer en cuanto se inicialice.
+    this.gridOptions.api?.optionsChanged?.();
   }
 
   /**
@@ -464,6 +528,13 @@ export class Overview implements OnInit {
    * es también lo que enciende la retícula de fondo, que solo sirve mientras se
    * coloca.
    *
+   * **El redimensionado solo se enciende en escritorio**, aunque se esté
+   * editando: en móvil, con una sola columna, no hay ancho que repartir y
+   * personalizar es solo reordenar — ver `applyColumnLayout()`, que es quien
+   * mantiene esa misma condición cada vez que cambia el ancho de la ventana. Si
+   * se tocara solo aquí, cruzar el breakpoint con el modo edición ya abierto
+   * dejaría encendido un redimensionado que ya no debería estarlo.
+   *
    * Se reasignan `draggable` y `resizable` enteros en vez de tocar su `enabled`:
    * `setOptions()` de gridster mezcla estos objetos con los suyos por defecto, y
    * un objeto nuevo deja claro que lo que se manda es la configuración completa.
@@ -472,17 +543,22 @@ export class Overview implements OnInit {
     const editing = !this.editing();
     this.editing.set(editing);
 
+    const desktop = this.breakpoint.isDesktop();
     this.gridOptions.draggable = { ...this.gridOptions.draggable, enabled: editing };
-    this.gridOptions.resizable = { ...this.gridOptions.resizable, enabled: editing };
+    this.gridOptions.resizable = { ...this.gridOptions.resizable, enabled: editing && desktop };
     this.gridOptions.api?.optionsChanged?.();
 
     if (!editing) {
-      saveLayout(this.cards);
+      saveLayout(this.layoutVariant(), this.cards);
     }
   }
 
   /**
-   * Vuelve a la disposición de fábrica y olvida la guardada.
+   * Vuelve a la disposición de fábrica de la variante ACTIVA y olvida la
+   * guardada — la de escritorio si se ve en escritorio, la de móvil si se ve en
+   * móvil. La otra variante no se toca: son dos preguntas distintas (ver
+   * `DashboardLayoutVariant`), y restablecer una no tiene por qué opinar sobre
+   * la otra.
    *
    * No es solo una comodidad: **es el único camino de teclado de esta función.**
    * Arrastrar y redimensionar son gestos de puntero y gridster no trae
@@ -490,11 +566,12 @@ export class Overview implements OnInit {
    * roto —o que lo estropee sin querer con el ratón— no tendría forma de
    * recuperarse.
    *
-   * El alto de las tarjetas automáticas NO se restaura: lo decide su contenido,
-   * y el observador ya lo tiene bien calculado.
+   * El alto de la tarjeta automática NO se restaura: lo decide su contenido, y
+   * el observador ya lo tiene bien calculado.
    */
   protected resetLayout(): void {
-    const defaults = defaultLayout();
+    const variant = this.layoutVariant();
+    const defaults = defaultLayout(variant);
 
     for (const id of DASHBOARD_CARD_IDS) {
       const card = this.cards[id];
@@ -510,7 +587,7 @@ export class Overview implements OnInit {
       this.syncEngine(card);
     }
 
-    clearLayout();
+    clearLayout(variant);
     this.gridOptions.api?.optionsChanged?.();
   }
 
@@ -526,7 +603,6 @@ export class Overview implements OnInit {
    */
   private observeAutoHeight(): void {
     const targets = new Map<Element, DashboardCard>([
-      [this.byCategoryCard().nativeElement, this.cards.byCategory],
       [this.recentCard().nativeElement, this.cards.recent]
     ]);
 
@@ -576,7 +652,7 @@ export class Overview implements OnInit {
    *
    * El empujón es la parte que no se ve venir: `compactType: 'compactUp'` solo
    * mueve items hacia ARRIBA para tapar huecos, así que no resuelve un
-   * solapamiento. Si "Gastos por categoría" crece de siete a diez filas, sin
+   * solapamiento. Si "Últimos movimientos" crece de siete a diez filas, sin
    * esto se metería por debajo de la tarjeta que tenga debajo y las dos se
    * pintarían encima. `GridsterPush` es la misma pieza que usa la librería al
    * redimensionar con el ratón, y `fromNorth` es la dirección con la que el
