@@ -48,7 +48,9 @@ const ICON_NAMES = [
   'bi:arrow-down',
   'bi:fire',
   'bi:check-circle-fill',
-  'bi:circle'
+  'bi:circle',
+  'bi:arrows-move',
+  'bi:arrow-counterclockwise'
 ];
 
 const OUT = 'src/app/shared/ui/icon/icon-set.ts';
