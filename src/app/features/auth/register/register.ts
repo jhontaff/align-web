@@ -1,13 +1,53 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
+import { Icon } from '../../../shared/ui/icon/icon';
+
+/**
+ * Espejo de la política que el backend declara en `RegisterRequest`:
+ * `minLength 8`, `maxLength 25` y un patrón que exige minúscula, mayúscula y dígito.
+ *
+ * Una sola declaración para las dos cosas que salen de ella —la validez del control
+ * y la lista que ve el usuario— porque escribirlas por separado es cómo se acaba
+ * exigiendo una mayúscula y anunciando otra cosa.
+ */
+interface PasswordRule {
+  readonly id: string;
+  readonly label: string;
+  readonly test: (value: string) => boolean;
+}
+
+const PASSWORD_RULES: readonly PasswordRule[] = [
+  { id: 'length', label: 'Entre 8 y 25 caracteres', test: v => v.length >= 8 && v.length <= 25 },
+  { id: 'lowercase', label: 'Una letra minúscula', test: v => /[a-z]/.test(v) },
+  { id: 'uppercase', label: 'Una letra mayúscula', test: v => /[A-Z]/.test(v) },
+  { id: 'digit', label: 'Un número', test: v => /\d/.test(v) }
+];
+
+function passwordPolicy(control: AbstractControl): ValidationErrors | null {
+  const value: string = control.value ?? '';
+  const failed = PASSWORD_RULES.filter(rule => !rule.test(value)).map(rule => rule.id);
+  return failed.length > 0 ? { passwordPolicy: failed } : null;
+}
+
+/**
+ * Va en el grupo y no en el control: un validador de control no ve a su hermano, y
+ * colgado de `confirmPassword` no volvería a ejecutarse al cambiar `password` después.
+ */
+function passwordsMatch(group: AbstractControl): ValidationErrors | null {
+  const password = group.get('password')?.value;
+  const confirmPassword = group.get('confirmPassword')?.value;
+  return password === confirmPassword ? null : { passwordsMismatch: true };
+}
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, Icon],
   templateUrl: './register.html',
+  styleUrl: './register.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Register {
@@ -18,14 +58,68 @@ export class Register {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly submitting = signal(false);
 
-  protected readonly form = this.fb.nonNullable.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(8)]],
-    firstName: ['', [Validators.required]],
-    lastName: ['', [Validators.required]]
+  /**
+   * Abre y cierra la lista de requisitos. Se alimenta de `focus`/`blur` y no de `click`:
+   * un `click` dejaría sin requisitos a quien llega al campo con Tab o desde un gestor
+   * de contraseñas, que son justo los casos en los que nadie los ha leído todavía.
+   */
+  protected readonly passwordFocused = signal(false);
+  protected readonly confirmFocused = signal(false);
+
+  protected readonly form = this.fb.nonNullable.group(
+    {
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, passwordPolicy]],
+      confirmPassword: ['', [Validators.required]],
+      firstName: ['', [Validators.required]],
+      lastName: ['', [Validators.required]]
+    },
+    { validators: passwordsMatch }
+  );
+
+  private readonly passwordValue = toSignal(this.form.controls.password.valueChanges, { initialValue: '' });
+
+  /** Se recalcula en cada tecla: es lo que hace que la lista sea en vivo y no un mensaje de submit. */
+  protected readonly passwordChecks = computed(() => {
+    const value = this.passwordValue();
+    return PASSWORD_RULES.map(rule => ({ id: rule.id, label: rule.label, met: rule.test(value) }));
   });
 
+  private readonly confirmValue = toSignal(this.form.controls.confirmPassword.valueChanges, { initialValue: '' });
+
+  /**
+   * El check positivo de "coinciden". Exige contenido además de igualdad: dos campos
+   * vacíos son iguales, pero anunciar ahí que la confirmación es correcta sería mentir.
+   *
+   * No hay variante "sin cumplir" a propósito — el caso negativo ya tiene su propio
+   * mensaje de error, y pintar los dos a la vez se leería como una contradicción.
+   */
+  protected readonly showMatch = computed(() => {
+    const confirm = this.confirmValue();
+    return this.confirmFocused() && confirm.length > 0 && confirm === this.passwordValue();
+  });
+
+  private readonly submitAttempted = signal(false);
+
+  /**
+   * El aviso de que no coinciden NO sale al escribir ni al salir del campo: solo
+   * si se intenta enviar. Mientras se escribe la confirmación, "no coinciden" es
+   * cierto y completamente inútil — todavía no se ha terminado de teclear.
+   *
+   * Pero no puede desaparecer del todo: el botón no se deshabilita, así que sin
+   * este mensaje pulsar Crear cuenta con contraseñas distintas no haría nada
+   * visible y el usuario no sabría por qué.
+   *
+   * Es un método y no un `computed` porque `form.hasError()` no es reactivo:
+   * un computed encima del estado del FormGroup no se recalcularía nunca.
+   */
+  protected showMismatch(): boolean {
+    return this.submitAttempted() && this.form.hasError('passwordsMismatch');
+  }
+
   protected onSubmit(): void {
+    this.submitAttempted.set(true);
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -34,6 +128,7 @@ export class Register {
     this.submitting.set(true);
     this.errorMessage.set(null);
 
+    // `confirmPassword` SÍ viaja: el backend la exige y valida el cruce por su cuenta.
     this.authState.register(this.form.getRawValue()).subscribe({
       next: () => this.router.navigate(['/']),
       error: err => {
