@@ -7,6 +7,11 @@ services:
     restart: unless-stopped
     networks:
       - proxy
+    # El backend corre como jar suelto en el propio VPS, no en Docker, así que
+    # nginx.conf le habla por host.docker.internal en vez de por nombre de servicio.
+    # host-gateway lo resuelve a la IP real del host (Docker Engine 20.10+).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # Sin "ports": nadie entra directo, todo pasa por Nginx Proxy Manager.
     # En NPM apuntas el Proxy Host a  web:80
 
