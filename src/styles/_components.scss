@@ -364,6 +364,79 @@
 }
 
 // -----------------------------------------------------------------------------
+// Tabla de datos de un gráfico
+// -----------------------------------------------------------------------------
+// La representación textual que acompaña a un área de trazado marcada
+// `aria-hidden`. Sube a global en su **segundo** consumidor —`monthly-flow` y
+// `spending-pace`, dos componentes con encapsulación distinta— por el mismo
+// criterio que `.menu-item` y `.card-row`: es pintura sobre elementos que el
+// consumidor ya escribe (`<details>`, `<table>`), y la alternativa era el mismo
+// bloque duplicado en dos hojas.
+//
+// El desplazamiento va en el contenedor y NO en la página: que una tabla sea
+// ancha o larga no es razón para que se mueva el resto de la tarjeta.
+
+.chart-data {
+  font-size: var(--text-sm);
+
+  // Sin acotar el ancho: el `<summary>` ocupa la línea entera y toda ella es
+  // zona de clic, que es el comportamiento habitual de un desplegable.
+  summary {
+    cursor: pointer;
+    color: var(--color-text-muted);
+  }
+}
+
+.chart-data__scroll {
+  overflow: auto;
+
+  // Un mes son treinta filas. El tope deja ver una docena de golpe sin que la
+  // tarjeta se dispare de alto al abrir el desplegable; con seis filas
+  // (`monthly-flow`) no llega a activarse nunca.
+  max-block-size: 360px;
+  margin-block-start: var(--space-3);
+}
+
+.chart-data__table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+
+  th,
+  td {
+    padding: var(--space-2) var(--space-3);
+    text-align: end;
+    border-block-end: 1px solid var(--color-border);
+  }
+
+  // La primera columna es la etiqueta de la fila, no una cifra: se alinea al
+  // principio como cualquier texto.
+  thead th:first-child,
+  tbody th {
+    text-align: start;
+  }
+
+  // Los encabezados de columna en tinta apagada: nombran el eje, no son el dato.
+  //
+  // `sticky` porque con la tabla desplazándose dentro de su caja, a partir de la
+  // duodécima fila las columnas dejarían de tener nombre. El fondo explícito es
+  // obligatorio: un `sticky` transparente deja las filas pasando por debajo del
+  // texto del encabezado.
+  thead th {
+    position: sticky;
+    inset-block-start: 0;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+  }
+
+  // La etiqueta de fila sí es dato, así que no hereda la negrita de `<th>`.
+  tbody th {
+    font-weight: var(--weight-regular);
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Estados de carga y vacío
 // -----------------------------------------------------------------------------
 .empty-state {

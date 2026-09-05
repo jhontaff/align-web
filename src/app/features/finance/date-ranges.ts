@@ -1,4 +1,4 @@
-import { DateRange, DateRangePreset, toIsoDate } from '../../core/date/date-range';
+import { DateRange, DateRangePreset, parseIsoDate, toIsoDate } from '../../core/date/date-range';
 
 /**
  * Los periodos que ofrece Finanzas.
@@ -62,3 +62,77 @@ export const DATE_RANGE_PRESETS: readonly DateRangePreset[] = [
   { id: 'lastMonth', label: 'Mes pasado', range: lastMonth },
   { id: 'currentYear', label: 'Este año', range: currentYear }
 ];
+
+// -----------------------------------------------------------------------------
+// Meses
+// -----------------------------------------------------------------------------
+// `GET /api/transactions/summary/monthly` habla en `YearMonth` (`yyyy-MM`), no
+// en fechas, así que necesita sus propias conversiones. Se quedan aquí y no
+// suben a `core/date/` junto a `toIsoDate`/`parseIsoDate` por la regla del
+// segundo consumidor: hoy el único que cuenta por meses es Finanzas. Suben el
+// día que otra feature los pida, igual que subió `toHttpParams`.
+
+/** Una ventana de meses, inclusiva por los dos extremos. ISO `yyyy-MM`. */
+export interface MonthWindow {
+  from: string;
+  to: string;
+}
+
+/**
+ * Formatea un `Date` **local** como `yyyy-MM`.
+ *
+ * Misma trampa que evita `toIsoDate`, un escalón más arriba: `toISOString()`
+ * convierte a UTC antes de formatear, así que el 31 de agosto a las 22:00 en
+ * Bogotá saldría como septiembre.
+ */
+export function toIsoMonth(date: Date): string {
+  return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}`;
+}
+
+/**
+ * Convierte `yyyy-MM` en el primer día de ese mes, en hora **local**.
+ *
+ * Se parte la cadena a mano en vez de usar `new Date(iso)`, que es lo que
+ * parece que debería funcionar: `new Date('2026-09')` es válido y devuelve
+ * medianoche **UTC** del día 1, así que al oeste de Greenwich el mes que sale
+ * es el anterior. Es exactamente el mismo fallo que documenta `parseIsoDate`,
+ * y aquí duele más porque el resultado es la etiqueta del eje: un gráfico
+ * rotulado con el mes equivocado no se lee como un bug, se lee como datos
+ * malos.
+ */
+export function parseIsoMonth(isoMonth: string): Date {
+  const [year, month] = isoMonth.split('-').map(Number);
+  return new Date(year, month - 1, 1);
+}
+
+/**
+ * La ventana de meses que se pide para el gráfico de flujo: `count` meses
+ * consecutivos terminando en el mes del rango seleccionado.
+ *
+ * **Es el único bloque de la pantalla que mira más allá del periodo elegido, y
+ * eso es deliberado.** El resto sale del rango tal cual, pero una tendencia
+ * necesita historia: con "Este mes" seleccionado, acotar el gráfico al rango
+ * dejaría una sola barra, que no es un gráfico de líneas ni de tendencia — es
+ * la misma cifra que ya está escrita arriba, dibujada. Lo que sí respeta del
+ * rango es dónde **termina**: cambiar a "Mes pasado" mueve la ventana entera,
+ * así que el selector sigue mandando.
+ *
+ * **El final se recorta al mes en curso.** Sin ese tope, el preset "Este año"
+ * (que llega hasta el 31 de diciembre) pediría meses futuros: son legales para
+ * el backend y vuelven en cero, así que el gráfico acabaría con tres columnas
+ * vacías que se leen como "dejé de ingresar" en vez de como "todavía no ha
+ * pasado".
+ *
+ * Los meses se restan con `new Date(año, mes - n, 1)`: el `Date` normaliza los
+ * índices negativos por su cuenta, así que cruzar a diciembre del año anterior
+ * no necesita ningún caso aparte.
+ */
+export function monthWindow(range: DateRange, count: number, reference: Date = new Date()): MonthWindow {
+  const rangeEnd = parseIsoDate(range.to);
+  const end = rangeEnd < reference ? rangeEnd : reference;
+
+  return {
+    from: toIsoMonth(new Date(end.getFullYear(), end.getMonth() - (count - 1), 1)),
+    to: toIsoMonth(end)
+  };
+}
