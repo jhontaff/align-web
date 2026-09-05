@@ -1,0 +1,23 @@
+// La lista de requisitos de contraseña. Es maquetación propia de esta pantalla:
+// no hay un segundo consumidor que justifique subirla a `_components.scss`.
+.password-rules {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.password-rules__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  // Sin cumplir es NEUTRO, no rojo: en un campo vacío, cuatro requisitos en rojo
+  // acusan al usuario de algo que todavía no ha tenido ocasión de hacer.
+  color: var(--color-text-muted);
+}
+
+.password-rules__item--met {
+  color: var(--color-success);
+}
