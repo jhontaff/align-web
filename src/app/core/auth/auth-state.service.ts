@@ -14,6 +14,8 @@ export interface LoginRequest {
 export interface RegisterRequest {
     email: string;
     password: string;
+    /** El backend lo exige y valida el cruce por su cuenta (error `passwordConfirmed`). */
+    confirmPassword: string;
     firstName: string;
     lastName: string;
 }
