@@ -7,6 +7,8 @@ import { Page, Pageable } from '../../core/models/page.model';
 import {
   CategoryBreakdownResponse,
   FinancialSummaryResponse,
+  MonthlySummaryFilter,
+  MonthlySummaryResponse,
   TransactionFilter,
   TransactionRequest,
   TransactionResponse,
@@ -89,6 +91,27 @@ export class TransactionService {
   categoryBreakdown(range?: DateRange): Observable<CategoryBreakdownResponse> {
     return this.http.get<CategoryBreakdownResponse>('/api/transactions/summary/by-category', {
       params: toHttpParams(range)
+    });
+  }
+
+  /**
+   * El histórico mes a mes, para el gráfico de flujo.
+   *
+   * **Toma un `MonthlySummaryFilter` y no un `DateRange`**, justo al revés que
+   * el método de arriba y por el mismo tipo de motivo: aquí el servidor lee
+   * `from` y `to` como `YearMonth`, así que un `2026-09-01` no se convierte y
+   * responde 400. Los dos endpoints se llaman casi igual y esperan
+   * granularidades distintas; que sus tipos no encajen es lo que impide
+   * confundirlos.
+   *
+   * Sin `from`/`to` el servidor elige la ventana por su cuenta —hasta 12 meses,
+   * recortada al primer movimiento del usuario y con un suelo de 3—, así que el
+   * número de barras cambiaría solo según cuántos datos hubiera. La pantalla
+   * manda siempre la suya para que el gráfico tenga la misma forma cada día.
+   */
+  monthlySummary(filter?: MonthlySummaryFilter): Observable<MonthlySummaryResponse> {
+    return this.http.get<MonthlySummaryResponse>('/api/transactions/summary/monthly', {
+      params: toHttpParams(filter)
     });
   }
 }

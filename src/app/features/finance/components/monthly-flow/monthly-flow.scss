@@ -1,0 +1,404 @@
+@use '../../../../../styles/layout';
+
+// Alto del área de trazado. Fijo y no proporcional al ancho: con `aspect-ratio`
+// el gráfico se estira en escritorio hasta convertirse en una franja baja donde
+// las diferencias de altura dejan de leerse, que es justo lo único que este
+// gráfico tiene que comunicar.
+$plot-height: 180px;
+$plot-height-compact: 140px;
+
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+// -----------------------------------------------------------------------------
+// La cifra de cabecera
+// -----------------------------------------------------------------------------
+.flow__change {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.flow__change-caption {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+// El verde y el rojo aquí SÍ van sobre texto, al revés que en el importe de
+// `expense-by-category`: allí la barra de al lado ya llevaba el color de la
+// serie y teñir además la cifra solo restaba contraste. Esta no acompaña a
+// ninguna marca, así que el color es su único canal — y por eso lleva también
+// el signo escrito delante, que es el que funciona sin distinguir el tono.
+.flow__change-value {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--color-success);
+}
+
+.flow__change-value--down {
+  color: var(--color-danger);
+}
+
+// -----------------------------------------------------------------------------
+// El área de trazado
+// -----------------------------------------------------------------------------
+.flow__plot {
+  position: relative;
+  block-size: $plot-height;
+
+  // NO se recorta (`overflow` se queda en su `visible` por defecto): el
+  // emergente de cada columna se sale por arriba a propósito, y un
+  // `overflow: hidden` aquí lo cortaría por la mitad. Es el fallo que solo se
+  // ve al pasar el ratón, o sea después de darlo por terminado.
+}
+
+.flow__zero {
+  position: absolute;
+  inset-inline: 0;
+  block-size: 1px;
+  background: var(--color-border);
+}
+
+// Con balances negativos la línea deja de coincidir con el borde inferior del
+// área y pasa a ser un dato: separa lo que suma de lo que resta. Ahí se marca
+// más, porque un cero flotante que no se distinga hace parecer que las barras
+// arrancan de sitios distintos.
+.flow__zero--floating {
+  background: var(--color-border-strong);
+}
+
+// Reset de lista de las tres `<ul>` del componente, agrupado y no repetido en
+// cada una. Agrupar no es solo brevedad: `.flow__legend` se había quedado sin
+// `padding: 0` y arrastraba el sangrado de 40px que el navegador da a una
+// lista, así que su `justify-content: center` centraba dentro de una caja ya
+// desplazada y la leyenda salía a la derecha del gráfico.
+//
+// Va ANTES que las reglas propias de cada lista: `.flow__legend` vuelve a poner
+// su `padding-block-start` después, y con la misma especificidad (0,1,0) lo
+// único que decide es el orden de aparición.
+.flow__columns,
+.flow__labels,
+.flow__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.flow__columns {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.flow__column {
+  position: relative;
+  flex: 1;
+
+  // Sin esto un elemento flexible no baja de su ancho de contenido, y el
+  // emergente —que es hijo suyo— tiene texto que no parte. Seis columnas
+  // exigiendo el ancho de su tooltip desbordan la tarjeta. Mismo fallo que ya
+  // documenta `.chart__label`.
+  min-inline-size: 0;
+}
+
+// Se apoya en el cero y mide todo el alto del área, así que el `height` en
+// porcentaje de cada barra es porcentaje del ÁREA y no de un contenedor
+// intermedio — que es lo que hace que la escala sea la misma para las seis
+// columnas.
+.flow__bars {
+  position: absolute;
+  inset-inline: 0;
+  block-size: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+
+  // El hueco entre las dos barras del mismo mes es codificación, no aire: es lo
+  // que las hace dos marcas y no un bloque bicolor cuando el verde y el rojo se
+  // parecen (daltonismo, impresión en gris, contraste forzado).
+  gap: 2px;
+}
+
+.flow__bar {
+  inline-size: 26%;
+  max-inline-size: 16px;
+
+  // Extremo del dato redondeado, arranque cuadrado: el borde inferior es la
+  // línea base que comparten las doce barras, y curvarlo desdibuja el punto
+  // exacto desde el que se comparan. Mismo criterio que `.chart__fill`.
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+
+  // Un mes con un importe residual daría una barra de medio píxel: invisible, y
+  // una columna con dato pero sin marca se lee como un fallo de pintura. Las
+  // columnas sin importe no llegan a pintarse (el modelo de vista manda `null`),
+  // así que este mínimo nunca miente sobre un cero.
+  min-block-size: 2px;
+}
+
+.flow__bar--income {
+  background: var(--color-success);
+}
+
+.flow__bar--expense {
+  background: var(--color-danger);
+}
+
+.flow__line {
+  position: absolute;
+  inset: 0;
+
+  // El tamaño va explícito y NO se deduce de `inset: 0`. Un `<svg>` es un
+  // elemento reemplazado: con `width`/`height` en `auto` el navegador resuelve
+  // la ecuación sobre-restringida ignorando `right`/`bottom` y usa su tamaño
+  // intrínseco, que aquí sale del `viewBox` — 1:1, o sea un cuadro tan alto
+  // como ancha es la tarjeta. La polilínea se estiraba cuatro veces y se
+  // derramaba sobre la sección de abajo. Un `div` con `inset: 0` sí se estira;
+  // este no, y por eso estas dos líneas no son redundantes.
+  inline-size: 100%;
+  block-size: 100%;
+
+  // Por encima de las barras y por debajo de los puntos: la línea cruza las
+  // columnas y los puntos son su remate, así que ese es el orden en el que se
+  // leen.
+  z-index: 1;
+  pointer-events: none;
+
+  polyline {
+    fill: none;
+    stroke: var(--color-text);
+    stroke-width: 2;
+    stroke-linejoin: round;
+  }
+}
+
+.flow__dot {
+  position: absolute;
+  inset-inline-start: 50%;
+  inline-size: 9px;
+  block-size: 9px;
+  border-radius: var(--radius-full);
+  background: var(--color-text);
+
+  // Anillo del color de la tarjeta: sin él, un punto que caiga justo sobre una
+  // barra se funde con ella y deja de leerse como parte de la línea.
+  box-shadow: 0 0 0 2px var(--color-surface);
+
+  // El `top` lo pone la plantilla en porcentaje; el `translate` lo centra sobre
+  // esa coordenada en vez de colgarlo de ella.
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+// -----------------------------------------------------------------------------
+// El emergente
+// -----------------------------------------------------------------------------
+// Solo ratón, y sin JavaScript. La ruta de teclado y de lector de pantalla es
+// la tabla de abajo, que dice lo mismo ordenado y sin depender de apuntar.
+.flow__tip {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  inline-size: max-content;
+  max-inline-size: 200px;
+  padding: var(--space-2) var(--space-3);
+
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+
+  font-size: var(--text-xs);
+  color: var(--color-text-body);
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.flow__column:hover .flow__tip {
+  opacity: 1;
+}
+
+// Las columnas de los extremos anclan el emergente a su borde en vez de
+// centrarlo: centrado, la mitad del panel se sale de la tarjeta.
+.flow__column:first-child .flow__tip {
+  inset-inline-start: 0;
+  transform: none;
+}
+
+.flow__column:last-child .flow__tip {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  transform: none;
+}
+
+// Solo el color: la negrita ya la trae `<strong>` del navegador.
+.flow__tip-month {
+  color: var(--color-text);
+}
+
+.flow__tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-variant-numeric: tabular-nums;
+}
+
+// -----------------------------------------------------------------------------
+// Eje de meses
+// -----------------------------------------------------------------------------
+// Misma repartición flexible que las columnas, así que cada etiqueta cae bajo
+// la suya sin coordinar dos rejillas distintas.
+.flow__labels {
+  display: flex;
+}
+
+.flow__label {
+  flex: 1;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+// El último mes de la ventana es el que cierra la tendencia y el que la cifra
+// de cabecera compara. Se marca con peso y tinta, no con color de serie: no es
+// una categoría, es el punto de referencia.
+.flow__label--latest {
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+}
+
+// -----------------------------------------------------------------------------
+// Leyenda
+// -----------------------------------------------------------------------------
+.flow__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2) var(--space-5);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+}
+
+.flow__legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.flow__swatch {
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.flow__swatch--income {
+  background: var(--color-success);
+}
+
+.flow__swatch--expense {
+  background: var(--color-danger);
+}
+
+// La muestra del balance es un trazo y no un círculo: la leyenda tiene que
+// enseñar la FORMA de la marca, y esta serie se dibuja como línea. Con tres
+// círculos iguales, distinguirlas volvería a depender solo del color.
+.flow__swatch--balance {
+  inline-size: 16px;
+  block-size: 2px;
+  background: var(--color-text);
+}
+
+// -----------------------------------------------------------------------------
+// Tabla de datos
+// -----------------------------------------------------------------------------
+// Local por ahora: es el único consumidor. Sube a `_components.scss` el día que
+// haya un segundo, que es la regla que ya siguieron `.menu-item` y `.card-row`.
+.flow__data {
+  font-size: var(--text-sm);
+
+  // Sin acotar el ancho: el `<summary>` ocupa la línea entera y toda ella es
+  // zona de clic, que es el comportamiento habitual de un desplegable.
+  summary {
+    cursor: pointer;
+    color: var(--color-text-muted);
+  }
+}
+
+// Cuatro columnas de importes no caben en un móvil estrecho. El scroll va en
+// este contenedor y no en la página: el resto de la tarjeta no tiene por qué
+// desplazarse porque una tabla sea ancha.
+.flow__table-scroll {
+  overflow-x: auto;
+  margin-block-start: var(--space-3);
+}
+
+.flow__table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+
+  th,
+  td {
+    padding: var(--space-2) var(--space-3);
+    text-align: end;
+    border-block-end: 1px solid var(--color-border);
+  }
+
+  // La primera columna es la etiqueta de la fila, no una cifra: se alinea al
+  // principio como cualquier texto.
+  thead th:first-child,
+  tbody th {
+    text-align: start;
+  }
+
+  // Los encabezados de columna en tinta apagada: nombran el eje, no son el
+  // dato. La etiqueta de fila (el mes) sí es dato, y por eso se queda en peso
+  // normal en vez de heredar la negrita de `<th>`.
+  thead th {
+    color: var(--color-text-muted);
+  }
+
+  tbody th {
+    font-weight: var(--weight-regular);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Los bloques de media query van al FINAL de la hoja, nunca junto a la regla
+// que modifican: no añaden especificidad, solo deciden el orden.
+// -----------------------------------------------------------------------------
+@media (prefers-reduced-motion: reduce) {
+  .flow__tip {
+    transition: none;
+  }
+}
+
+@include layout.below-tablet {
+  // El relleno de `.card` (24px) se come el ancho útil justo donde menos sobra,
+  // y son doce barras las que se quedan sin sitio. Mismo ajuste que `.chart`.
+  .flow.card {
+    padding: var(--space-4);
+  }
+
+  .flow__plot {
+    block-size: $plot-height-compact;
+  }
+}

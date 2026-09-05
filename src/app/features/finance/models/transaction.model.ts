@@ -166,3 +166,65 @@ export interface CategoryBreakdownResponse {
   incomes: CategoryAmount<IncomeCategory>[];
 }
 
+/**
+ * Un mes del histórico con sus tres cifras, tal y como las devuelve
+ * `GET /api/transactions/summary/monthly`.
+ *
+ * **`month` es `yyyy-MM`, no `yyyy-MM-dd`.** El backend lo declara como
+ * `YearMonth` y Jackson lo serializa en ISO (`"2026-09"`) porque Spring Boot
+ * desactiva `WRITE_DATES_AS_TIMESTAMPS` por defecto — verificado contra el
+ * `pom.xml` y `application.properties`, que no lo sobreescriben. Es la razón de
+ * que `parseIsoDate` de `core/date/` **no sirva** aquí: `new Date('2026-09')`
+ * es válido y devuelve medianoche UTC del día 1, con el desfase de zona horaria
+ * de siempre. Se parte en año y mes a mano (ver `parseIsoMonth`).
+ *
+ * `income` y `expense` son magnitudes positivas, igual que `amount`; `balance`
+ * es `income - expense` y **sí puede ser negativo**. Esa es la única de las tres
+ * que cruza el cero, y es lo que obliga a que el gráfico tenga una línea base
+ * colocada por los datos en vez de apoyada en el suelo.
+ *
+ * El servidor rellena los meses sin movimientos con ceros —recorre el rango mes
+ * a mes en vez de agrupar solo lo que existe—, así que la lista nunca tiene
+ * huecos y el gráfico no necesita inventarlos.
+ */
+export interface MonthlyPoint {
+  /** ISO `yyyy-MM`. */
+  month: string;
+  income: number;
+  expense: number;
+  /** `income - expense`. Puede ser negativo. */
+  balance: number;
+}
+
+/** Respuesta de `GET /api/transactions/summary/monthly`. */
+export interface MonthlySummaryResponse {
+  months: MonthlyPoint[];
+}
+
+/**
+ * Filtros de `GET /api/transactions/summary/monthly`.
+ *
+ * **`from` y `to` son meses (`yyyy-MM`), no fechas**, y por eso este filtro no
+ * es un `DateRange`: pasarle uno mandaría `2026-09-01` a un `YearMonth` y el
+ * binder de Spring responde 400. El tipo distinto es lo que impide escribir ese
+ * error.
+ *
+ * Los cuatro campos son opcionales, pero conviene mandar siempre `from` y `to`:
+ * sin ellos el servidor elige una ventana propia (hasta 12 meses, recortada al
+ * primer movimiento del usuario y con un suelo de 3), así que el número de
+ * barras cambiaría solo de un día para otro. Tres límites suyos que la pantalla
+ * da por hechos:
+ *
+ * - `from` posterior a `to` responde 400, no una lista vacía.
+ * - Más de 36 meses de separación responde 400.
+ * - Meses futuros son legales y vuelven en cero — de ahí que la ventana se
+ *   recorte al mes en curso en `monthWindow()`.
+ */
+export interface MonthlySummaryFilter {
+  /** ISO `yyyy-MM`, inclusivo. */
+  from?: string;
+  /** ISO `yyyy-MM`, inclusivo. */
+  to?: string;
+  type?: TransactionType;
+  category?: TransactionCategory;
+}
