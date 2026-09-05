@@ -117,6 +117,29 @@
     }
   </section>
 
+  <!--
+    El flujo mensual va DESPUÉS del desglose por categoría y no antes, aunque
+    parezca el bloque más vistoso. El orden de la página es un argumento: las
+    tres cifras del periodo, luego en qué se fue ese gasto (las barras suman el
+    número de arriba, por eso van pegadas), y solo entonces cómo evoluciona el
+    conjunto mes a mes. Meterlo en medio rompería la adyacencia entre "Gastos" y
+    su desglose, que es la relación que hay que poder leer sin desplazarse.
+
+    Es también el único bloque que mira más allá del periodo seleccionado —una
+    tendencia de una sola columna no es una tendencia—, y por eso el encabezado
+    dice "Últimos meses" en vez del rango: prometer aquí el periodo de la
+    cabecera sería falso. Ver `monthWindow()` en `date-ranges.ts`.
+  -->
+  <section aria-labelledby="flow-heading">
+    <h2 class="section-heading" id="flow-heading">Flujo de los últimos meses</h2>
+
+    @if (loading()) {
+      <p class="empty-state">Cargando...</p>
+    } @else if (monthly(); as months) {
+      <app-monthly-flow [months]="months" />
+    }
+  </section>
+
   <section aria-labelledby="recent-heading">
     <div class="section-bar">
       <h2 class="section-heading" id="recent-heading">Últimos movimientos</h2>

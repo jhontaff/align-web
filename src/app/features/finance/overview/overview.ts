@@ -18,13 +18,15 @@ import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { DateRangePicker } from '../../../shared/ui/date-range-picker/date-range-picker';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { ExpenseByCategory } from '../components/expense-by-category/expense-by-category';
+import { MonthlyFlow } from '../components/monthly-flow/monthly-flow';
 import { TransactionRow } from '../components/transaction-row/transaction-row';
-import { DATE_RANGE_PRESETS, currentMonth } from '../date-ranges';
+import { DATE_RANGE_PRESETS, currentMonth, monthWindow } from '../date-ranges';
 import { MONEY_DIGITS } from '../money';
 import {
   CategoryAmount,
   ExpenseCategory,
   FinancialSummaryResponse,
+  MonthlyPoint,
   TransactionResponse
 } from '../models/transaction.model';
 import { TransactionService } from '../transaction.service';
@@ -42,11 +44,35 @@ import { TransactionService } from '../transaction.service';
 const RECENT_SIZE = 5;
 
 /**
+ * Cuántos meses entran en el gráfico de flujo.
+ *
+ * Seis y no doce, que es la ventana que el backend elegiría por su cuenta: doce
+ * columnas de barras agrupadas en el ancho de una tarjeta dejan cada barra en
+ * unos pocos píxeles, y comparar dos meses vecinos —que es la única pregunta
+ * que este gráfico responde— deja de ser posible. Medio año también es el
+ * horizonte en el que una tendencia de finanzas personales significa algo; más
+ * atrás es historia, y esa vive en el listado.
+ *
+ * Es una constante y no un control: un selector de "cuántos meses" es un ajuste
+ * más que mantener para responder la misma pregunta. Si aparece la necesidad
+ * real, entra en la cabecera junto al de periodo, no aquí.
+ */
+const FLOW_MONTHS = 6;
+
+/**
  * Resumen de Finanzas: los totales del rango elegido y un vistazo a lo último.
  */
 @Component({
   selector: 'app-finance-overview',
-  imports: [CurrencyPipe, RouterLink, DateRangePicker, Icon, ExpenseByCategory, TransactionRow],
+  imports: [
+    CurrencyPipe,
+    RouterLink,
+    DateRangePicker,
+    Icon,
+    ExpenseByCategory,
+    MonthlyFlow,
+    TransactionRow
+  ],
   templateUrl: './overview.html',
   styleUrl: './overview.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -100,6 +126,13 @@ export class Overview implements OnInit {
    * dos cosas distintas y el gráfico pinta un estado vacío para la segunda.
    */
   protected readonly byCategory = signal<CategoryAmount<ExpenseCategory>[] | null>(null);
+
+  /**
+   * Los meses del gráfico de flujo. `null` mientras no hay datos, por el mismo
+   * motivo que `byCategory`: "todavía no ha llegado" y "no hubo movimientos"
+   * son dos cosas distintas y el gráfico pinta un vacío para la segunda.
+   */
+  protected readonly monthly = signal<readonly MonthlyPoint[] | null>(null);
 
   protected readonly recent = signal<TransactionResponse[]>([]);
 
@@ -158,6 +191,7 @@ export class Overview implements OnInit {
     this.range.set(range);
     this.summary.set(null);
     this.byCategory.set(null);
+    this.monthly.set(null);
     this.recent.set([]);
     this.totalCount.set(0);
     this.loading.set(true);
@@ -165,7 +199,7 @@ export class Overview implements OnInit {
   }
 
   /**
-   * Las tres lecturas van en un `forkJoin` y no en tres `subscribe` sueltos.
+   * Las cuatro lecturas van en un `forkJoin` y no en cuatro `subscribe` sueltos.
    *
    * No es por ahorrar código: es que las cifras de arriba, las barras del medio
    * y las filas de abajo describen el mismo conjunto de datos. Resueltas por
@@ -173,7 +207,7 @@ export class Overview implements OnInit {
    * de que el balance se enterase, y durante ese instante la pantalla se
    * contradice a sí misma.
    *
-   * Con el gráfico dentro, el argumento se vuelve literal: las nueve barras
+   * Con el gráfico dentro, el argumento se vuelve literal: las barras
    * **suman** el `totalExpense` que está justo encima. Dejar que lleguen por su
    * cuenta es garantizar una ventana en la que el usuario puede ver un total y
    * un desglose que no cuadran, y ese es el tipo de descuadre que hace dudar de
@@ -189,20 +223,26 @@ export class Overview implements OnInit {
 
     forkJoin({
       summary: this.transactions.summary(range),
-      // Tres peticiones, no once: el desglose por categoría era un `forkJoin`
+      // Cuatro peticiones, no doce: el desglose por categoría era un `forkJoin`
       // de nueve `GET /summary` hasta que el backend añadió el endpoint
       // agregado (ver `categoryBreakdown()`). Con HTTP/1.1 en el proxy de
       // desarrollo —seis conexiones por origen— aquello salía en dos tandas, y
       // el gráfico se pintaba después que el resto de la pantalla.
       byCategory: this.transactions.categoryBreakdown(range),
+      // La única lectura que NO se acota al rango, y es deliberado: una
+      // tendencia necesita historia, y con "Este mes" seleccionado un gráfico
+      // acotado al rango sería una sola columna. Lo que sí respeta del rango es
+      // dónde termina la ventana — ver `monthWindow()`.
+      monthly: this.transactions.monthlySummary(monthWindow(range, FLOW_MONTHS)),
       recent: this.transactions.list(range, { page: 0, size: RECENT_SIZE, sort: 'date,desc' })
     }).subscribe({
-      next: ({ summary, byCategory, recent }) => {
+      next: ({ summary, byCategory, monthly, recent }) => {
         this.summary.set(summary);
         // Del desglose se toma solo `expenses`: la pantalla no pinta los
         // ingresos por categoría, y guardar la respuesta entera obligaría al
         // gráfico a saber de qué campo sacarlos.
         this.byCategory.set(byCategory.expenses);
+        this.monthly.set(monthly.months);
         this.recent.set(recent.content);
         this.totalCount.set(recent.totalElements);
         this.loading.set(false);
@@ -213,5 +253,4 @@ export class Overview implements OnInit {
       }
     });
   }
-
 }
