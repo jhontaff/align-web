@@ -1,15 +1,13 @@
-# Este archivo va en el VPS, en /opt/align-web/docker-compose.yml
-# Reemplaza jhontaff/align-web si el repo cambia de nombre.
-
 services:
-  web:
-    image: ghcr.io/jhontaff/align-web:latest
+  app:
+    image: 'jc21/nginx-proxy-manager:2.15.1'
     restart: unless-stopped
-    networks:
-      - proxy
-    # Sin "ports": nadie entra directo, todo pasa por Nginx Proxy Manager.
-    # En NPM apuntas el Proxy Host a  web:80
-
-networks:
-  proxy:
-    external: true
+    environment:
+      TZ: "Australia/Brisbane"
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    volumes:
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt
