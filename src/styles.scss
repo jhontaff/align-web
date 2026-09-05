@@ -3,3 +3,6 @@
 @use 'styles/tokens';
 @use 'styles/base';
 @use 'styles/components';
+// Correcciones a estilos de terceros, al final: solo pueden pisar, nunca
+// definir. Ver la cabecera del archivo para por qué no viven en el componente.
+@use 'styles/gridster';
