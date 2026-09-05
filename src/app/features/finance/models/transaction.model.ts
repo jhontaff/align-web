@@ -113,23 +113,56 @@ export interface FinancialSummaryResponse {
 }
 
 /**
- * El gasto acumulado de **una** categoría en un rango.
+ * Una categoría con lo acumulado en ella dentro del rango consultado.
  *
- * **No es un contrato del backend, y por eso lleva esta advertencia en un
- * archivo que solo tiene contratos verificados.** No existe ningún endpoint
- * agregado por categoría: `GET /api/transactions/summary` devuelve tres
- * escalares (`totalIncome`, `totalExpense`, `balance`) y acepta `category` como
- * filtro, así que el desglose se compone en el cliente pidiendo el resumen una
- * vez por categoría — ver `TransactionService.expenseByCategory()`.
+ * **Ahora sí es un contrato del backend**: hasta el 2026-09-04 este archivo
+ * declaraba un `CategoryExpense` con una advertencia de que no lo era, porque
+ * el desglose se componía en el cliente pidiendo `GET /api/transactions/summary`
+ * una vez por categoría. Ese endpoint existe (`GET /api/transactions/summary/by-category`)
+ * y devuelve `CategoryAmount` tal cual — verificado contra el controlador, no
+ * contra CLAUDE.md.
  *
- * Vive aquí y no junto al componente que lo pinta porque es la forma en que
- * viajan los datos entre el servicio y la pantalla, igual que los demás DTO. Y
- * está deliberadamente modelado como lo devolvería el endpoint que falta
- * (`GET /api/transactions/summary/by-category`): el día que exista, cambia el
- * cuerpo de un método y ni este tipo ni ningún componente se enteran.
+ * El parámetro de tipo no es adorno: el mismo `record` de Java sirve a las dos
+ * listas de la respuesta, pero cada una solo puede traer categorías de su tipo.
+ * Declararlo así es lo que permite que el gráfico de gastos reciba
+ * `ExpenseCategory` y pueda indexar `CATEGORY_LABELS` sin comprobaciones, y lo
+ * que impediría montar la lista de ingresos donde va la de gastos.
  */
-export interface CategoryExpense {
-  category: ExpenseCategory;
+export interface CategoryAmount<C extends TransactionCategory = TransactionCategory> {
+  category: C;
   /** Magnitud positiva, como `amount`: el signo lo pone la presentación. */
-  total: number;
+  amount: number;
+  /**
+   * Cuánto pesa esta categoría sobre el total de **su** lista, en el rango.
+   *
+   * Entero de 0 a 100: el servidor redondea a cero decimales con `HALF_UP`, así
+   * que un gasto que no llegue al 0,5 % llega como `0` teniendo un importe
+   * mayor que cero. Quien lo pinte tiene que distinguir ese caso (ver
+   * `ExpenseByCategory`), o escribirá "0%" al lado de una cifra que existe.
+   *
+   * Se usa el del servidor en vez de recalcularlo: es el mismo denominador que
+   * tendría el cliente, y dos fuentes para el mismo porcentaje son dos
+   * oportunidades de que no coincidan.
+   */
+  percentage: number;
 }
+
+/**
+ * Respuesta de `GET /api/transactions/summary/by-category`.
+ *
+ * Dos detalles del servidor que la presentación da por hechos y por eso quedan
+ * escritos aquí:
+ *
+ * - **Solo aparecen las categorías con movimientos.** El backend agrupa las
+ *   transacciones del rango, no recorre el enum, así que un mes normal trae
+ *   cuatro o cinco entradas de gasto y ninguna en cero.
+ * - **Vienen ordenadas de mayor a menor importe.**
+ *
+ * `incomes` todavía no lo pinta nadie: entra porque es lo que el endpoint
+ * devuelve, y recortarlo del tipo sería mentir sobre el cuerpo de la respuesta.
+ */
+export interface CategoryBreakdownResponse {
+  expenses: CategoryAmount<ExpenseCategory>[];
+  incomes: CategoryAmount<IncomeCategory>[];
+}
+

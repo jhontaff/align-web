@@ -22,7 +22,8 @@ import { TransactionRow } from '../components/transaction-row/transaction-row';
 import { DATE_RANGE_PRESETS, currentMonth } from '../date-ranges';
 import { MONEY_DIGITS } from '../money';
 import {
-  CategoryExpense,
+  CategoryAmount,
+  ExpenseCategory,
   FinancialSummaryResponse,
   TransactionResponse
 } from '../models/transaction.model';
@@ -98,7 +99,7 @@ export class Overview implements OnInit {
    * array vacío: "todavía no ha llegado" y "en este periodo no hubo gastos" son
    * dos cosas distintas y el gráfico pinta un estado vacío para la segunda.
    */
-  protected readonly byCategory = signal<CategoryExpense[] | null>(null);
+  protected readonly byCategory = signal<CategoryAmount<ExpenseCategory>[] | null>(null);
 
   protected readonly recent = signal<TransactionResponse[]>([]);
 
@@ -188,17 +189,20 @@ export class Overview implements OnInit {
 
     forkJoin({
       summary: this.transactions.summary(range),
-      // Once peticiones en paralelo, de las cuales nueve son este desglose. El
-      // navegador solo abre seis conexiones por origen sobre HTTP/1.1 —que es
-      // lo que da el proxy de desarrollo—, así que salen en dos tandas. Es el
-      // precio de que el backend no agregue por categoría, y está anotado en
-      // `expenseByCategory()`; no es algo que se arregle moviendo código aquí.
-      byCategory: this.transactions.expenseByCategory(range),
+      // Tres peticiones, no once: el desglose por categoría era un `forkJoin`
+      // de nueve `GET /summary` hasta que el backend añadió el endpoint
+      // agregado (ver `categoryBreakdown()`). Con HTTP/1.1 en el proxy de
+      // desarrollo —seis conexiones por origen— aquello salía en dos tandas, y
+      // el gráfico se pintaba después que el resto de la pantalla.
+      byCategory: this.transactions.categoryBreakdown(range),
       recent: this.transactions.list(range, { page: 0, size: RECENT_SIZE, sort: 'date,desc' })
     }).subscribe({
       next: ({ summary, byCategory, recent }) => {
         this.summary.set(summary);
-        this.byCategory.set(byCategory);
+        // Del desglose se toma solo `expenses`: la pantalla no pinta los
+        // ingresos por categoría, y guardar la respuesta entera obligaría al
+        // gráfico a saber de qué campo sacarlos.
+        this.byCategory.set(byCategory.expenses);
         this.recent.set(recent.content);
         this.totalCount.set(recent.totalElements);
         this.loading.set(false);
