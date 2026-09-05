@@ -1,0 +1,59 @@
+// Lista de comprobaciones bajo un campo: icono + etiqueta, colapsada hasta que el
+// campo recibe el foco. La usan los requisitos de contraseña y el check de "coinciden",
+// que es lo que la sacó del nombre `password-rules` original — ya no describe a los dos.
+// Sigue siendo maquetación de esta pantalla: no hay una segunda feature que la use,
+// así que no sube a `_components.scss`.
+//
+// Colapsada NO sale del DOM ni del árbol de accesibilidad: `display: none` y
+// `visibility: hidden` la sacarían de los dos, y entonces el `aria-describedby`
+// del campo apuntaría a un id inexistente mientras la lista está cerrada.
+// Con `opacity` + `max-height` el nodo sigue ahí y la descripción siempre resuelve.
+//
+// Corolario que hay que respetar en las plantillas: como el contenido colapsado
+// SÍ se anuncia, un ítem cuyo texto solo sea cierto a veces va en `@if`, no
+// permanente con una clase de estado.
+.field-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height 160ms ease,
+    opacity 160ms ease,
+    margin-top 160ms ease;
+}
+
+// Holgado para las cuatro reglas de contraseña (~96px). `max-height` necesita un
+// número: no se puede animar hacia `auto`. Si entra una quinta regla, sube esto.
+.field-checks--open {
+  max-height: 8rem;
+  opacity: 1;
+  margin-top: var(--space-2);
+}
+
+.field-checks__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  // Sin cumplir es NEUTRO, no rojo: en un campo vacío, cuatro requisitos en rojo
+  // acusan al usuario de algo que todavía no ha tenido ocasión de hacer.
+  color: var(--color-text-muted);
+}
+
+.field-checks__item--met {
+  color: var(--color-success);
+}
+
+// Las media queries van al final de la hoja: no añaden especificidad, así que
+// lo único que decide quién gana es el orden de aparición.
+@media (prefers-reduced-motion: reduce) {
+  .field-checks {
+    transition: none;
+  }
+}
