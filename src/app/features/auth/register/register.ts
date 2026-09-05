@@ -64,6 +64,7 @@ export class Register {
    * de contraseñas, que son justo los casos en los que nadie los ha leído todavía.
    */
   protected readonly passwordFocused = signal(false);
+  protected readonly confirmFocused = signal(false);
 
   protected readonly form = this.fb.nonNullable.group(
     {
@@ -82,6 +83,20 @@ export class Register {
   protected readonly passwordChecks = computed(() => {
     const value = this.passwordValue();
     return PASSWORD_RULES.map(rule => ({ id: rule.id, label: rule.label, met: rule.test(value) }));
+  });
+
+  private readonly confirmValue = toSignal(this.form.controls.confirmPassword.valueChanges, { initialValue: '' });
+
+  /**
+   * El check positivo de "coinciden". Exige contenido además de igualdad: dos campos
+   * vacíos son iguales, pero anunciar ahí que la confirmación es correcta sería mentir.
+   *
+   * No hay variante "sin cumplir" a propósito — el caso negativo ya tiene su propio
+   * mensaje de error, y pintar los dos a la vez se leería como una contradicción.
+   */
+  protected readonly showMatch = computed(() => {
+    const confirm = this.confirmValue();
+    return this.confirmFocused() && confirm.length > 0 && confirm === this.passwordValue();
   });
 
   /** El error vive en el grupo, así que el campo no lo delata: hay que preguntarlo a mano. */
