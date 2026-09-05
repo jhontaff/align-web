@@ -1,0 +1,169 @@
+@if (isEmpty()) {
+  <p class="empty-state">No hay movimientos registrados en los últimos meses.</p>
+} @else {
+  @let data = chart();
+
+  <div class="card flow">
+    @if (delta(); as change) {
+      <!--
+        La cifra de cabecera dice respecto a QUÉ cambió, escrito al lado. Un
+        "+320.000" suelto en una esquina obliga a adivinar el denominador —
+        ¿frente al mes pasado, a la media, al mismo mes del año anterior? — y
+        cada lector adivina uno distinto.
+      -->
+      <p class="flow__change">
+        <span class="flow__change-caption">Balance frente a {{ change.previousLabel }}</span>
+        <!--
+          El signo se interpola en la MISMA expresión que el importe, no en un
+          `@if` aparte: Angular colapsa los espacios de la plantilla, pero un
+          bloque de control en varias líneas deja un nodo de texto entre el "+"
+          y la cifra, y sale "+ 320.000" separado. El menos no se escribe:
+          `CurrencyPipe` ya lo pone cuando el número es negativo, y añadirlo
+          daría "-−320.000".
+        -->
+        <span class="flow__change-value" [class.flow__change-value--down]="!change.positive">
+          {{ change.positive ? '+' : '' }}{{ change.amount | currency: undefined : 'symbol' : moneyDigits }}
+        </span>
+      </p>
+    }
+
+    <!--
+      Todo el trazado es `aria-hidden`, igual que las barras de
+      `expense-by-category`: no aporta ni un dato que no esté en la tabla de
+      abajo, y anunciarlo marca por marca convertiría el gráfico en una lista
+      de dieciocho números sin estructura. La representación accesible es la
+      tabla, que está siempre en el DOM.
+    -->
+    <div class="flow__plot" aria-hidden="true">
+      <!--
+        El cero. Se dibuja siempre porque es la referencia de la que nacen las
+        barras; cuando algún balance es negativo se despega del suelo y se
+        marca más, que es cuando de verdad hay que verlo.
+      -->
+      <span
+        class="flow__zero"
+        [class.flow__zero--floating]="data.hasNegative"
+        [style.bottom.%]="data.zeroBottom"
+      ></span>
+
+      <ul class="flow__columns">
+        @for (column of data.columns; track column.month) {
+          <li class="flow__column">
+            <!--
+              El contenedor de barras se apoya en el cero, no en el suelo del
+              área: con un balance negativo en la ventana esos dos puntos no
+              coinciden, y anclarlo abajo dejaría las barras flotando por
+              debajo de su propio origen.
+            -->
+            <span class="flow__bars" [style.bottom.%]="data.zeroBottom">
+              @if (column.incomeHeight !== null) {
+                <span class="flow__bar flow__bar--income" [style.height.%]="column.incomeHeight"></span>
+              }
+              @if (column.expenseHeight !== null) {
+                <span class="flow__bar flow__bar--expense" [style.height.%]="column.expenseHeight"></span>
+              }
+            </span>
+
+            <span class="flow__dot" [style.top.%]="column.balanceTop"></span>
+
+            <!--
+              Emergente de ratón, puro CSS. No lleva `tabindex`: seis columnas
+              enfocables serían seis paradas de tabulación que repiten lo que
+              la tabla de abajo ya dice ordenado, y esa tabla es el camino de
+              teclado y de lector de pantalla.
+            -->
+            <span class="flow__tip">
+              <strong class="flow__tip-month">{{ column.fullLabel }}</strong>
+              <span class="flow__tip-row">
+                Ingresos
+                <span>{{ column.income | currency: undefined : 'symbol' : moneyDigits }}</span>
+              </span>
+              <span class="flow__tip-row">
+                Gastos
+                <span>{{ column.expense | currency: undefined : 'symbol' : moneyDigits }}</span>
+              </span>
+              <span class="flow__tip-row">
+                Balance
+                <span>{{ column.balance | currency: undefined : 'symbol' : moneyDigits }}</span>
+              </span>
+            </span>
+          </li>
+        }
+      </ul>
+
+      <!--
+        Solo la línea va en SVG; las barras, los puntos y las etiquetas son
+        HTML. El `viewBox` de 100×100 con `preserveAspectRatio="none"` estira la
+        geometría al tamaño real del área, que es justo lo que hace falta para
+        una polilínea en coordenadas porcentuales — y `vector-effect` es lo que
+        impide que ese estirado deforme también el grosor del trazo. Un punto
+        dibujado aquí saldría ovalado por la misma razón, y por eso los puntos
+        son elementos HTML.
+      -->
+      <svg class="flow__line" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
+        <polyline [attr.points]="data.linePoints" vector-effect="non-scaling-stroke" />
+      </svg>
+    </div>
+
+    <ul class="flow__labels" aria-hidden="true">
+      @for (column of data.columns; track column.month) {
+        <li class="flow__label" [class.flow__label--latest]="column.latest">{{ column.label }}</li>
+      }
+    </ul>
+
+    <!--
+      La leyenda existe siempre que hay más de una serie, y aquí hay tres. Las
+      muestras son `aria-hidden` porque el color no se puede leer en voz alta:
+      lo que nombra cada serie es el texto que tienen al lado.
+    -->
+    <ul class="flow__legend">
+      <li class="flow__legend-item">
+        <span class="flow__swatch flow__swatch--income" aria-hidden="true"></span>Ingresos
+      </li>
+      <li class="flow__legend-item">
+        <span class="flow__swatch flow__swatch--expense" aria-hidden="true"></span>Gastos
+      </li>
+      <li class="flow__legend-item">
+        <span class="flow__swatch flow__swatch--balance" aria-hidden="true"></span>Balance neto
+      </li>
+    </ul>
+
+    <!--
+      La tabla no es solo para lectores de pantalla, y por eso no va en un
+      `visually-hidden`: el verde de ingresos sobre la tarjeta blanca se queda
+      en 2,5:1 de contraste, por debajo del 3:1 que necesita una marca para
+      distinguirse del fondo. Un gráfico con esa nota obliga a ofrecer los
+      valores escritos en alguna parte, y plegada en un `<details>` no compite
+      con el gráfico para quien sí lo ve.
+    -->
+    <details class="chart-data">
+      <summary>Ver los datos</summary>
+
+      <div class="chart-data__scroll">
+        <table class="chart-data__table">
+          <caption class="visually-hidden">
+            Ingresos, gastos y balance de cada uno de los últimos meses
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Mes</th>
+              <th scope="col">Ingresos</th>
+              <th scope="col">Gastos</th>
+              <th scope="col">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (column of data.columns; track column.month) {
+              <tr>
+                <th scope="row">{{ column.fullLabel }}</th>
+                <td>{{ column.income | currency: undefined : 'symbol' : moneyDigits }}</td>
+                <td>{{ column.expense | currency: undefined : 'symbol' : moneyDigits }}</td>
+                <td>{{ column.balance | currency: undefined : 'symbol' : moneyDigits }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+}

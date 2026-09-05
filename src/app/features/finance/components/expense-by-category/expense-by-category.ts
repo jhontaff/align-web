@@ -1,19 +1,19 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
-import { CategoryExpense, ExpenseCategory } from '../../models/transaction.model';
+import { CategoryAmount, ExpenseCategory } from '../../models/transaction.model';
 import { MONEY_DIGITS } from '../../money';
 import { CATEGORY_LABELS } from '../../transaction-labels';
 
 /**
  * Una barra ya resuelta: todo lo que la plantilla necesita, sin calcular nada.
  *
- * No es el DTO que entra —ese es `CategoryExpense`— sino el modelo de vista que
+ * No es el DTO que entra —ese es `CategoryAmount`— sino el modelo de vista que
  * sale del unico `computed` de esta clase. Ver `bars` abajo para por que existe.
  */
 interface ExpenseBar {
   readonly category: ExpenseCategory;
   readonly label: string;
-  readonly total: number;
+  readonly amount: number;
   /** Porcentaje del maximo: el ancho de la barra, no su peso en el gasto. */
   readonly width: number;
   /** El peso en el gasto del periodo, ya formateado ("39%", "<1%"). */
@@ -25,7 +25,7 @@ interface ExpenseBar {
  *
  * **Por que esta en `features/finance/components/` y no en `shared/ui/`**: la
  * regla del arbol canonico dice que una primitiva de `shared/ui/` nunca recibe
- * un DTO de dominio, y esta recibe `CategoryExpense[]` y sabe traducir un
+ * un DTO de dominio, y esta recibe `CategoryAmount[]` y sabe traducir un
  * `ExpenseCategory` a su etiqueta en espanol. En cuanto un componente necesita
  * importar un tipo de la feature, deja de ser primitiva. Es tambien el primer
  * inquilino de `finance/components/`, que se crea ahora y no antes porque
@@ -55,8 +55,9 @@ interface ExpenseBar {
  *   incomparables entre si; con escala al maximo se usa todo el ancho y las
  *   diferencias pequenas se ven. Lo que se pierde —la composicion— vuelve como
  *   el porcentaje escrito al lado del importe.
- * - **Se ocultan las categorias en cero.** Una barra de longitud nula no
- *   informa de nada y son cinco de las nueve en un mes normal.
+ * - **Las categorias en cero no se pintan porque no llegan.** Una barra de
+ *   longitud nula no informa de nada, y son cinco de las nueve en un mes
+ *   normal; el endpoint agregado ya las omite, asi que aqui no hay filtro.
  */
 @Component({
   selector: 'app-expense-by-category',
@@ -67,15 +68,22 @@ interface ExpenseBar {
 })
 export class ExpenseByCategory {
   /**
-   * Las nueve categorias con su total, en cualquier orden y con ceros
-   * incluidos: quien llama entrega lo que devolvio el servicio sin filtrar ni
-   * ordenar, y este componente decide como se presenta.
+   * Las categorias con gasto en el periodo, tal y como las devuelve
+   * `GET /api/transactions/summary/by-category`: ya ordenadas de mayor a menor
+   * y sin las que no tuvieron movimientos.
+   *
+   * **Este componente ya no ordena ni filtra, y esa es la diferencia con la
+   * version anterior** (2026-09-04). Antes recibia las nueve categorias con sus
+   * ceros —el cliente pedia un total por cada una— y tenia que quitar los ceros
+   * y ordenar de mayor a menor por su cuenta. Reordenar aqui lo que el servidor
+   * ya ordeno son dos autoridades para la misma decision; se confia en el DTO,
+   * que es lo que el tipo declara.
    *
    * Se llama `expenses` y no `data`: el nombre de un `input()` es lo que se lee
    * en la plantilla de quien lo monta, y `[data]` no dice nada sobre lo que
    * entra.
    */
-  readonly expenses = input.required<readonly CategoryExpense[]>();
+  readonly expenses = input.required<readonly CategoryAmount<ExpenseCategory>[]>();
 
   protected readonly moneyDigits = MONEY_DIGITS;
 
@@ -90,37 +98,31 @@ export class ExpenseByCategory {
    * el modelo de vista, el calculo se memoriza en el `computed` y solo se
    * rehace cuando cambia el `input()`.
    *
-   * Derivarlo todo aqui tambien quita el otro riesgo de aquella version: `max`
-   * y `total` eran `computed` separados que volvian a recorrer la lista, y los
-   * tres tenian que estar de acuerdo sobre que filas entraban.
+   * Lo unico que queda por calcular es el ancho, porque es lo unico que el
+   * servidor no puede saber: depende de la escala elegida aqui (al maximo, no
+   * al total — ver arriba). El peso de cada categoria viene en `percentage` y
+   * se usa el del servidor; recalcularlo con la suma de esta lista daria el
+   * mismo numero por otro camino, y dos caminos para la misma cifra es como se
+   * acaba con dos cifras.
    *
-   * **`filter` antes que `sort` no es casualidad**: `filter` devuelve un array
-   * nuevo, asi que `sort` ordena la copia. Encadenado al reves —o llamando a
-   * `sort()` sobre `this.expenses()` directamente— estaria reordenando en el
-   * sitio el array del padre, que es el que `Overview` guarda en su signal:
-   * mutar la entrada de un `input()` es escribir en el estado de otro
-   * componente sin que se entere.
+   * **`max` sale de la primera fila porque la respuesta viene ordenada.** Si
+   * algun dia dejara de venirlo, esto no falla: se rompe visualmente —alguna
+   * barra pasaria del 100 %—, que es lo que hace que se note.
    *
-   * De mayor a menor y no en el orden del dominio porque la pregunta que se le
-   * hace a este grafico es "en que se me va el dinero", y la respuesta tiene
-   * que ser la primera fila.
+   * No se copia ni se reordena el array del `input()`: `sort()` ordena en el
+   * sitio, y el array que llega es el que `Overview` guarda en su signal.
+   * Mutarlo seria escribir en el estado de otro componente sin que se entere.
    */
   protected readonly bars = computed<ExpenseBar[]>(() => {
-    const spent = this.expenses()
-      .filter(expense => expense.total > 0)
-      .sort((a, b) => b.total - a.total);
-
-    // Ambos son > 0 siempre que haya una fila, porque el filtro de arriba ya
-    // descarto los ceros. Con la lista vacia no se llega al `map`.
-    const max = spent[0]?.total ?? 0;
-    const total = spent.reduce((sum, expense) => sum + expense.total, 0);
+    const spent = this.expenses();
+    const max = spent[0]?.amount ?? 0;
 
     return spent.map(expense => ({
       category: expense.category,
       label: CATEGORY_LABELS[expense.category],
-      total: expense.total,
-      width: (expense.total / max) * 100,
-      share: formatShare(expense.total, total)
+      amount: expense.amount,
+      width: (expense.amount / max) * 100,
+      share: formatShare(expense.percentage)
     }));
   });
 
@@ -128,13 +130,17 @@ export class ExpenseByCategory {
 }
 
 /**
- * El peso de una categoria sobre el gasto del periodo.
+ * El peso que manda el servidor, escrito para leerse.
  *
- * **`<1%` en vez de `0%`** para lo que no llega a medio punto. Redondear a cero
- * un gasto que existe y que esta escrito con su importe al lado dice que no
- * cuenta, que es distinto de que cuente poco; y como esas filas son
- * precisamente las que llevan la barra en su minimo de 2px, el "0%" era la
- * segunda senal seguida de que ahi no hay nada.
+ * **`<1%` en vez de `0%`** para lo que no llega a medio punto. El backend
+ * redondea a cero decimales con `HALF_UP`, asi que una categoria con gasto real
+ * pero minimo llega con `percentage: 0`; escribir "0%" al lado de un importe que
+ * existe dice que no cuenta, que es distinto de que cuente poco. Y como esas
+ * filas son precisamente las que llevan la barra en su minimo de 2px, el "0%"
+ * era la segunda senal seguida de que ahi no hay nada.
+ *
+ * Solo puede darse con importe mayor que cero, porque el endpoint no devuelve
+ * categorias sin movimientos.
  *
  * Los porcentajes redondeados no suman 100 exactamente, y por eso la pantalla
  * no afirma en ningun sitio que lo hagan: cada uno se lee como "cuanto pesa
@@ -143,7 +149,6 @@ export class ExpenseByCategory {
  * Funcion suelta y no metodo: no lee estado del componente, asi que no tiene
  * por que estar en su superficie.
  */
-function formatShare(amount: number, total: number): string {
-  const percent = (amount / total) * 100;
-  return percent < 0.5 ? '<1%' : `${Math.round(percent)}%`;
+function formatShare(percentage: number): string {
+  return percentage === 0 ? '<1%' : `${percentage}%`;
 }

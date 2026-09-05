@@ -1,0 +1,374 @@
+@use '../../../../../styles/layout';
+
+// Alto del área de trazado. Fijo y no proporcional al ancho, igual que en
+// `monthly-flow`: con `aspect-ratio` el gráfico se estira en escritorio hasta
+// una franja baja donde los escalones dejan de distinguirse unos de otros.
+$plot-height: 180px;
+$plot-height-compact: 140px;
+
+// Ancho de la columna de rótulos del eje vertical. Cabe "1,5 M" y también
+// "500 mil", que es lo que `Intl` produce en español para medio millón — el
+// número que hay que reservar es el largo, no el corto.
+$axis-width: 56px;
+$axis-width-compact: 44px;
+
+.pace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+// -----------------------------------------------------------------------------
+// Cabecera
+// -----------------------------------------------------------------------------
+.pace__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.pace__spent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.pace__spent-caption {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+// Sin color propio: es un gasto, pero es EL dato de la tarjeta, no una de tres
+// cifras que haya que distinguir entre sí. Teñirlo de rojo lo pondría al nivel
+// de una alerta cuando lo único que dice es cuánto va del mes.
+.pace__spent-value {
+  font-size: var(--text-h1);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.pace__day {
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-muted);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+// -----------------------------------------------------------------------------
+// El área de trazado
+// -----------------------------------------------------------------------------
+// El alto se declara UNA vez aquí y no en cada columna: un contenedor flex
+// estira a sus hijos por defecto (`align-items: stretch`), así que el eje y el
+// área de trazado lo heredan sin repetirlo. Repetido serían dos sitios que
+// mantener a la vez, y basta con que uno se quede atrás para que los rótulos
+// dejen de caer sobre sus líneas.
+.pace__chart {
+  display: flex;
+  gap: var(--space-2);
+  block-size: $plot-height;
+}
+
+.pace__axis {
+  position: relative;
+  flex: 0 0 $axis-width;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pace__axis-label {
+  position: absolute;
+  inset-inline-end: 0;
+
+  // El `top` lo pone la plantilla en porcentaje; el translate centra el rótulo
+  // SOBRE su línea en vez de colgarlo de ella. Sin esto el "0" quedaría entero
+  // por debajo del suelo del gráfico.
+  transform: translateY(-50%);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.pace__plot {
+  position: relative;
+  flex: 1;
+
+  // Sin esto un elemento flexible no baja de su ancho de contenido. Mismo
+  // fallo que ya documentan `.flow__column` y `.chart__label`.
+  min-inline-size: 0;
+}
+
+.pace__grid {
+  position: absolute;
+  inset-inline: 0;
+  block-size: 0;
+  border-block-start: 1px dashed var(--color-border);
+}
+
+// El cero es el PRIMER rótulo (valor 0, o sea el 100 % desde arriba), no el
+// último. Va continuo porque no es una referencia más: es la línea base de la
+// que nacen las dos curvas, y discontinuo se confundiría con las otras tres.
+.pace__grid:first-child {
+  border-block-start-style: solid;
+  border-block-start-color: var(--color-border-strong);
+}
+
+.pace__today {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 0;
+  border-inline-start: 1px dashed var(--color-border-strong);
+  transform: translateX(-50%);
+}
+
+.pace__lines {
+  position: absolute;
+  inset: 0;
+
+  // El tamaño va explícito y NO se deduce de `inset: 0`. Un `<svg>` es un
+  // elemento reemplazado: con `width`/`height` en `auto` el navegador ignora
+  // `right`/`bottom` y usa su tamaño intrínseco, que aquí sale del `viewBox`
+  // (1:1). La misma trampa que documenta `.flow__line`, y con el mismo
+  // resultado: el trazado se derrama sobre la sección de abajo.
+  inline-size: 100%;
+  block-size: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.pace__line {
+  fill: none;
+  stroke-width: 2;
+
+  // Los escalones son ángulos de 90°: `miter` los deja en punta justo donde
+  // está el dato (el salto de un día). `butt` deja el arranque del día 1
+  // exactamente sobre la línea base en vez de sobresalir por debajo.
+  stroke-linejoin: round;
+  stroke-linecap: butt;
+}
+
+// El mes en curso, en tinta: es el dato.
+.pace__line--current {
+  stroke: var(--color-text);
+}
+
+// El anterior, apagado y discontinuo: es la referencia. La discontinuidad es lo
+// que las distingue sin depender del color — se mantiene en gris, en contraste
+// forzado y en papel.
+.pace__line--previous {
+  stroke: var(--color-text-muted);
+  stroke-dasharray: 4 4;
+}
+
+.pace__marker {
+  position: absolute;
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-text);
+
+  // Anillo del color de la tarjeta: sin él, el marcador se funde con la curva
+  // punteada cuando las dos pasan por el mismo sitio y deja de leerse como el
+  // punto de hoy.
+  box-shadow: 0 0 0 2px var(--color-surface);
+
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+// -----------------------------------------------------------------------------
+// Eje de días
+// -----------------------------------------------------------------------------
+// Se desplaza el ancho de la columna del eje vertical más su hueco, para que el
+// 0 % de esta fila coincida con el 0 % del área de trazado. Sin el margen, el
+// día 1 caería debajo del rótulo "0" y todo el eje iría corrido.
+.pace__days {
+  position: relative;
+  block-size: var(--space-5);
+  margin: 0 0 0 calc(#{$axis-width} + var(--space-2));
+  padding: 0;
+  list-style: none;
+}
+
+.pace__day-label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+// Los extremos se anclan a su borde en vez de centrarse: centrado, la mitad del
+// "1" se saldría por la izquierda de la tarjeta y el último día por la derecha.
+.pace__day-label:first-child {
+  transform: none;
+}
+
+.pace__day-label:last-child {
+  transform: translateX(-100%);
+}
+
+// -----------------------------------------------------------------------------
+// Leyenda
+// -----------------------------------------------------------------------------
+.pace__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.pace__legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+// Las muestras son TRAZOS y no cuadrados de color: la leyenda tiene que enseñar
+// la forma de la marca, y aquí las dos series comparten familia de color y se
+// distinguen por el patrón. Dos cuadraditos grises no distinguirían nada.
+.pace__swatch {
+  inline-size: 18px;
+  block-size: 2px;
+  flex-shrink: 0;
+}
+
+.pace__swatch--current {
+  background: var(--color-text);
+}
+
+// Repite el `stroke-dasharray: 4 4` del trazo. Es un degradado y no un
+// `border: dashed` porque el patrón de un borde lo decide el navegador y no
+// coincidiría con el de la curva, que es justo lo que la muestra reproduce.
+.pace__swatch--previous {
+  background: repeating-linear-gradient(
+    to right,
+    var(--color-text-muted) 0 4px,
+    transparent 4px 8px
+  );
+}
+
+// -----------------------------------------------------------------------------
+// La comparación
+// -----------------------------------------------------------------------------
+// Verde por defecto: gastar menos que el mes pasado es la lectura buena. Es una
+// inversión respecto al resto de Finanzas —donde el gasto va en `danger`— y por
+// eso el color nunca va solo: la flecha y las palabras "por debajo" / "por
+// encima" dicen lo mismo sin depender del tono.
+.pace__delta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-success-soft);
+  color: var(--color-success-soft-text);
+  font-size: var(--text-sm);
+
+  strong {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+}
+
+.pace__delta--over {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-soft-text);
+}
+
+// El icono no se encoge cuando la frase envuelve a dos líneas, que es lo que
+// haría un `flex` por defecto con un elemento de ancho intrínseco.
+.pace__delta-icon {
+  flex-shrink: 0;
+  font-size: var(--text-lg);
+}
+
+// -----------------------------------------------------------------------------
+// Las tres cifras
+// -----------------------------------------------------------------------------
+.pace__stats {
+  display: grid;
+
+  // `minmax(0, 1fr)` y no `1fr`: `1fr` es `minmax(auto, 1fr)` y ese `auto` no
+  // baja del ancho del contenido, así que un importe largo saca la rejilla del
+  // contenedor y arrastra a la página entera con scroll horizontal. Mismo
+  // fallo, misma solución que `.summary`.
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3) 0 0;
+  list-style: none;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.pace__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: center;
+  min-inline-size: 0;
+}
+
+.pace__stat-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.pace__stat-value {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+// La tabla de datos (`.chart-data*`) es global: la comparten esta tarjeta y
+// `monthly-flow`, que son dos encapsulaciones distintas. Ver `_components.scss`.
+
+// -----------------------------------------------------------------------------
+// Los bloques de media query van al FINAL de la hoja, nunca junto a la regla que
+// modifican: no añaden especificidad, solo deciden el orden.
+// -----------------------------------------------------------------------------
+@include layout.below-tablet {
+  // El relleno de `.card` (24px) se come el ancho útil justo donde menos sobra.
+  // Mismo ajuste que `.flow` y `.chart`.
+  .pace.card {
+    padding: var(--space-4);
+  }
+
+  .pace__chart {
+    block-size: $plot-height-compact;
+  }
+
+  .pace__axis {
+    flex-basis: $axis-width-compact;
+  }
+
+  .pace__days {
+    margin-inline-start: calc(#{$axis-width-compact} + var(--space-2));
+  }
+
+  // Tres columnas de importes no caben en un móvil estrecho sin partir las
+  // cifras. Se apilan: las dos primeras comparten línea porque se leen juntas
+  // (el promedio y los días sobre los que se promedia), y la proyección —que es
+  // la conclusión— ocupa la suya entera.
+  .pace__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pace__stat:last-child {
+    grid-column: 1 / -1;
+  }
+}

@@ -18,14 +18,19 @@ import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { DateRangePicker } from '../../../shared/ui/date-range-picker/date-range-picker';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { ExpenseByCategory } from '../components/expense-by-category/expense-by-category';
+import { MonthlyFlow } from '../components/monthly-flow/monthly-flow';
+import { SpendingPace } from '../components/spending-pace/spending-pace';
 import { TransactionRow } from '../components/transaction-row/transaction-row';
-import { DATE_RANGE_PRESETS, currentMonth } from '../date-ranges';
+import { DATE_RANGE_PRESETS, currentMonth, monthWindow } from '../date-ranges';
 import { MONEY_DIGITS } from '../money';
 import {
-  CategoryExpense,
+  CategoryAmount,
+  ExpenseCategory,
   FinancialSummaryResponse,
+  MonthlyPoint,
   TransactionResponse
 } from '../models/transaction.model';
+import { DailySeries, buildDailySeries, paceWindows } from '../spending-pace';
 import { TransactionService } from '../transaction.service';
 
 /**
@@ -41,11 +46,62 @@ import { TransactionService } from '../transaction.service';
 const RECENT_SIZE = 5;
 
 /**
+ * Cuántos meses entran en el gráfico de flujo.
+ *
+ * Seis y no doce, que es la ventana que el backend elegiría por su cuenta: doce
+ * columnas de barras agrupadas en el ancho de una tarjeta dejan cada barra en
+ * unos pocos píxeles, y comparar dos meses vecinos —que es la única pregunta
+ * que este gráfico responde— deja de ser posible. Medio año también es el
+ * horizonte en el que una tendencia de finanzas personales significa algo; más
+ * atrás es historia, y esa vive en el listado.
+ *
+ * Es una constante y no un control: un selector de "cuántos meses" es un ajuste
+ * más que mantener para responder la misma pregunta. Si aparece la necesidad
+ * real, entra en la cabecera junto al de periodo, no aquí.
+ */
+const FLOW_MONTHS = 6;
+
+/**
+ * Cuántos movimientos se piden por mes para el gráfico de ritmo de gasto.
+ *
+ * **No es una página de una lista paginada: es "todo el mes de una vez".** La
+ * curva es el acumulado día a día, así que necesita las filas crudas —no hay
+ * endpoint diario— y una segunda página no se pide: si un mes no cabe aquí, la
+ * tarjeta se niega a pintarse (ver `DailySeries.complete`). Paginar en bucle
+ * sería reintroducir el N+1 que `categoryBreakdown()` acaba de quitarse de
+ * encima, y por un caso que en finanzas personales no ocurre: quinientos gastos
+ * en un mes son dieciséis al día.
+ *
+ * Queda cómodamente por debajo del tope de Spring
+ * (`spring.data.web.pageable.max-page-size`, 2000 por defecto), que recorta el
+ * `size` en silencio en vez de responder un error.
+ */
+const PACE_PAGE_SIZE = 500;
+
+/**
+ * Las dos series del ritmo de gasto, que solo tienen sentido juntas: comparten
+ * la escala vertical del gráfico.
+ */
+interface Pace {
+  readonly current: DailySeries;
+  readonly previous: DailySeries;
+}
+
+/**
  * Resumen de Finanzas: los totales del rango elegido y un vistazo a lo último.
  */
 @Component({
   selector: 'app-finance-overview',
-  imports: [CurrencyPipe, RouterLink, DateRangePicker, Icon, ExpenseByCategory, TransactionRow],
+  imports: [
+    CurrencyPipe,
+    RouterLink,
+    DateRangePicker,
+    Icon,
+    ExpenseByCategory,
+    MonthlyFlow,
+    SpendingPace,
+    TransactionRow
+  ],
   templateUrl: './overview.html',
   styleUrl: './overview.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -98,7 +154,37 @@ export class Overview implements OnInit {
    * array vacío: "todavía no ha llegado" y "en este periodo no hubo gastos" son
    * dos cosas distintas y el gráfico pinta un estado vacío para la segunda.
    */
-  protected readonly byCategory = signal<CategoryExpense[] | null>(null);
+  protected readonly byCategory = signal<CategoryAmount<ExpenseCategory>[] | null>(null);
+
+  /**
+   * Los meses del gráfico de flujo. `null` mientras no hay datos, por el mismo
+   * motivo que `byCategory`: "todavía no ha llegado" y "no hubo movimientos"
+   * son dos cosas distintas y el gráfico pinta un vacío para la segunda.
+   */
+  protected readonly monthly = signal<readonly MonthlyPoint[] | null>(null);
+
+  /**
+   * Las dos series diarias del ritmo de gasto: el mes en curso hasta hoy y el
+   * anterior completo.
+   *
+   * **Es el único bloque de la pantalla que NO depende del selector de
+   * periodo**, y por eso tiene sus propios signals y su propia carga en vez de
+   * salir del `forkJoin` de `load()`. El marcador de hoy, la proyección y el
+   * "día 15 de 30" solo significan algo dentro del mes en curso: con "Este año"
+   * seleccionado no hay ningún "día de hoy" del rango que dibujar. Se fija al
+   * mes en curso y su encabezado lo nombra, para que no parezca que el selector
+   * no le hace caso.
+   *
+   * Es un caso distinto del de `monthly`, que mira más allá del rango pero
+   * respeta dónde termina: este ni siquiera lo mira.
+   *
+   * Las dos series van en **un solo signal** y no en dos: comparten la escala
+   * vertical del gráfico, así que ninguna significa nada sin la otra. Con dos
+   * signals la plantilla tendría que comprobar los dos y existiría un estado
+   * —una sí, la otra no— que no debería poder representarse.
+   */
+  protected readonly pace = signal<Pace | null>(null);
+  protected readonly paceLoading = signal(true);
 
   protected readonly recent = signal<TransactionResponse[]>([]);
 
@@ -131,16 +217,43 @@ export class Overview implements OnInit {
    */
   protected readonly balanceNegative = computed(() => (this.summary()?.balance ?? 0) < 0);
 
+  /**
+   * "Septiembre": el mes que describe la tarjeta de ritmo.
+   *
+   * Se calcula una vez y no es un `computed` porque no depende de ningún signal
+   * —la ventana es fija, ver `paceCurrent`—. Encabeza la sección precisamente
+   * porque ese bloque ignora el selector de periodo: sin el mes escrito, con
+   * "Este año" elegido arriba parecería que el selector no le hace caso.
+   */
+  protected readonly paceMonthLabel = capitalize(
+    new Date().toLocaleDateString(this.locale, { month: 'long' }),
+    this.locale
+  );
+
+  /**
+   * La carga del ritmo terminó sin datos, o sea falló.
+   *
+   * Hace falta distinguirlo de "todavía cargando": sin esto, un fallo dejaría la
+   * sección con su encabezado y nada debajo, que es la forma de fallo que parece
+   * un hueco de maquetación en vez de un error.
+   */
+  protected readonly paceFailed = computed(() => !this.paceLoading() && !this.pace());
+
   ngOnInit(): void {
     this.load();
+    this.loadPace();
 
     // El agente puede registrar movimientos mientras esta pantalla está abierta
     // detrás del panel de chat. `takeUntilDestroyed` es obligatorio: un Subject
     // no completa nunca, así que sin esto cada visita a /finance dejaría otra
     // suscripción viva pidiendo datos.
-    this.dataRefresh.changes
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.load());
+    //
+    // La revalidación sí toca las dos cargas: un gasto creado por el agente
+    // puede ser de hoy, y entonces cambia también la curva del ritmo.
+    this.dataRefresh.changes.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.load();
+      this.loadPace();
+    });
   }
 
   /**
@@ -152,11 +265,17 @@ export class Overview implements OnInit {
    * vaciarlo sería ruido. Un cambio de rango es otra pregunta, y dejar las
    * cifras de agosto bajo un encabezado que ya dice "septiembre" es afirmar
    * algo falso durante todo lo que tarde la petición.
+   *
+   * **No vuelve a pedir el ritmo de gasto**, y esa omisión es la parte
+   * deliberada: sus datos dependen de la ventana fija y de la versión de los
+   * datos, no del rango. Refrescarlo aquí serían dos peticiones por cada clic
+   * del selector para recibir exactamente lo mismo.
    */
   protected onRangeChange(range: DateRange): void {
     this.range.set(range);
     this.summary.set(null);
     this.byCategory.set(null);
+    this.monthly.set(null);
     this.recent.set([]);
     this.totalCount.set(0);
     this.loading.set(true);
@@ -164,7 +283,7 @@ export class Overview implements OnInit {
   }
 
   /**
-   * Las tres lecturas van en un `forkJoin` y no en tres `subscribe` sueltos.
+   * Las cuatro lecturas van en un `forkJoin` y no en cuatro `subscribe` sueltos.
    *
    * No es por ahorrar código: es que las cifras de arriba, las barras del medio
    * y las filas de abajo describen el mismo conjunto de datos. Resueltas por
@@ -172,7 +291,7 @@ export class Overview implements OnInit {
    * de que el balance se enterase, y durante ese instante la pantalla se
    * contradice a sí misma.
    *
-   * Con el gráfico dentro, el argumento se vuelve literal: las nueve barras
+   * Con el gráfico dentro, el argumento se vuelve literal: las barras
    * **suman** el `totalExpense` que está justo encima. Dejar que lleguen por su
    * cuenta es garantizar una ventana en la que el usuario puede ver un total y
    * un desglose que no cuadran, y ese es el tipo de descuadre que hace dudar de
@@ -188,17 +307,26 @@ export class Overview implements OnInit {
 
     forkJoin({
       summary: this.transactions.summary(range),
-      // Once peticiones en paralelo, de las cuales nueve son este desglose. El
-      // navegador solo abre seis conexiones por origen sobre HTTP/1.1 —que es
-      // lo que da el proxy de desarrollo—, así que salen en dos tandas. Es el
-      // precio de que el backend no agregue por categoría, y está anotado en
-      // `expenseByCategory()`; no es algo que se arregle moviendo código aquí.
-      byCategory: this.transactions.expenseByCategory(range),
+      // Cuatro peticiones, no doce: el desglose por categoría era un `forkJoin`
+      // de nueve `GET /summary` hasta que el backend añadió el endpoint
+      // agregado (ver `categoryBreakdown()`). Con HTTP/1.1 en el proxy de
+      // desarrollo —seis conexiones por origen— aquello salía en dos tandas, y
+      // el gráfico se pintaba después que el resto de la pantalla.
+      byCategory: this.transactions.categoryBreakdown(range),
+      // La única lectura que NO se acota al rango, y es deliberado: una
+      // tendencia necesita historia, y con "Este mes" seleccionado un gráfico
+      // acotado al rango sería una sola columna. Lo que sí respeta del rango es
+      // dónde termina la ventana — ver `monthWindow()`.
+      monthly: this.transactions.monthlySummary(monthWindow(range, FLOW_MONTHS)),
       recent: this.transactions.list(range, { page: 0, size: RECENT_SIZE, sort: 'date,desc' })
     }).subscribe({
-      next: ({ summary, byCategory, recent }) => {
+      next: ({ summary, byCategory, monthly, recent }) => {
         this.summary.set(summary);
-        this.byCategory.set(byCategory);
+        // Del desglose se toma solo `expenses`: la pantalla no pinta los
+        // ingresos por categoría, y guardar la respuesta entera obligaría al
+        // gráfico a saber de qué campo sacarlos.
+        this.byCategory.set(byCategory.expenses);
+        this.monthly.set(monthly.months);
         this.recent.set(recent.content);
         this.totalCount.set(recent.totalElements);
         this.loading.set(false);
@@ -210,4 +338,53 @@ export class Overview implements OnInit {
     });
   }
 
+  /**
+   * El ritmo de gasto: dos peticiones de movimientos crudos, fijas al mes en
+   * curso.
+   *
+   * **Va aparte de `load()` porque no depende del rango**, no por comodidad. Y
+   * sus dos lecturas sí van juntas en un `forkJoin` entre ellas: las dos curvas
+   * comparten escala vertical, así que resueltas por separado el gráfico se
+   * pintaría con una sola y luego saltaría de escala al llegar la otra.
+   *
+   * **Son filas y no un agregado porque no hay endpoint diario**: `/summary` da
+   * un total por rango y `/summary/monthly` agrega por mes, y esta curva es
+   * acumulado por día. Ver `spending-pace.ts`.
+   *
+   * `type: 'EXPENSE'` en el filtro: la tarjeta habla de gasto, y traer también
+   * los ingresos sería pedir filas que se descartan y acercar el tope de
+   * `PACE_PAGE_SIZE` sin ninguna razón.
+   *
+   * **No propaga el error a `errorMessage`.** Ese banner encabeza la página y
+   * habla de todo lo que hay debajo; que falle un bloque que ni siquiera
+   * responde al selector no puede teñir de rojo el resumen entero. La tarjeta se
+   * queda en su estado de carga y el resto de la pantalla sigue siendo válido.
+   */
+  private loadPace(): void {
+    const windows = paceWindows();
+    const pageable = { page: 0, size: PACE_PAGE_SIZE, sort: 'date,asc' };
+
+    forkJoin({
+      current: this.transactions.list({ ...windows.current, type: 'EXPENSE' }, pageable),
+      previous: this.transactions.list({ ...windows.previous, type: 'EXPENSE' }, pageable)
+    }).subscribe({
+      next: ({ current, previous }) => {
+        this.pace.set({
+          current: buildDailySeries(windows.current, current),
+          previous: buildDailySeries(windows.previous, previous)
+        });
+        this.paceLoading.set(false);
+      },
+      error: () => this.paceLoading.set(false)
+    });
+  }
+}
+
+/**
+ * `Intl` devuelve los meses en minúscula en español y aquí encabeza una sección.
+ * `toLocaleUpperCase` con el locale y no `toUpperCase`, igual que en
+ * `core/date/date-range.ts`: en turco la `i` mayúscula no es la misma letra.
+ */
+function capitalize(text: string, locale: string): string {
+  return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
 }
