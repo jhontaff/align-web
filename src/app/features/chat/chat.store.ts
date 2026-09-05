@@ -4,6 +4,23 @@ import { ChatService } from './chat.service';
 import { ChatMessage } from './models/chat.model';
 
 /**
+ * Mensajes de error mostrados como burbuja del propio agente. Variados para
+ * que no se sienta un mensaje de sistema repetido; la elección es aleatoria,
+ * no rotativa, así que no hay estado que mantener entre errores.
+ */
+const CHAT_ERROR_MESSAGES = [
+  'Se me cruzaron los cables un momento. ¿Lo intentamos de nuevo?',
+  'Algo no salió bien de mi lado. ¿Puedes repetir el mensaje?',
+  'Ups, no pude procesarlo. Intenta otra vez en un momento.',
+  'Perdona, algo falló al responder. ¿Lo intentas de nuevo?',
+  'Se me trabó la idea a mitad de camino. Prueba otra vez, seguro sale mejor.',
+];
+
+function randomChatErrorMessage(): string {
+  return CHAT_ERROR_MESSAGES[Math.floor(Math.random() * CHAT_ERROR_MESSAGES.length)];
+}
+
+/**
  * Estado de la conversación con el agente.
  *
  * Excepción deliberada al "servicio stateless" del resto de la app, y la razón
@@ -82,7 +99,7 @@ export class ChatStore {
         this.dataRefresh.invalidate();
       },
       error: () => {
-        this._messages.update(msgs => [...msgs, { role: 'assistant', text: 'Hubo un error, intenta de nuevo.' }]);
+        this._messages.update(msgs => [...msgs, { role: 'assistant', text: randomChatErrorMessage() }]);
         this._sending.set(false);
       }
     });
