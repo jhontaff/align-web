@@ -125,6 +125,54 @@
   border-color: var(--color-success);
 }
 
+// -----------------------------------------------------------------------------
+// El acuse de recibo, entre marcar y moverse
+// -----------------------------------------------------------------------------
+//
+// La tarjeta recién marcada da un golpe corto y se queda quieta con el borde
+// encendido mientras `holding` la retiene; solo después viaja al final de la
+// lista. Sin esta pausa el usuario ve un salto, no una confirmación: el único
+// fotograma en el que la tarjeta está verde y en su sitio es el mismo en el que
+// ya se está yendo.
+//
+// El bloque global de `prefers-reduced-motion` de `_base.scss` deja la
+// animación en 0.01ms, así que aquí no hace falta repetirlo. El viaje, en
+// cambio, se anima desde TypeScript con `Element.animate()`, que ese bloque no
+// alcanza — por eso `reorderAnimated()` consulta `matchMedia` por su cuenta.
+.habit-card.is-marking {
+  border-color: var(--color-success);
+  animation: habit-mark-pop 420ms ease-out;
+  // Sin `z-index`: durante la pausa no hay nada que solapar, y en el viaje la
+  // tarjeta marcada ya va a la ÚLTIMA posición del DOM, así que se pinta encima
+  // de las que cruza sin pedirlo. Un `z-index` sobre `.is-marking` además
+  // caducaría justo al empezar a moverse, que es cuando haría falta.
+}
+
+// El halo sale del borde hacia fuera y se apaga. Es la misma señal que el
+// círculo verde, pero al tamaño de la tarjeta: es la tarjeta entera la que está
+// a punto de cambiar de sitio, y el ojo tiene que estar mirándola cuando lo
+// haga.
+@keyframes habit-mark-pop {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 var(--color-success-soft);
+  }
+
+  40% {
+    transform: scale(1.03);
+    box-shadow: 0 0 0 6px var(--color-success-soft);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+// El check NO lleva golpe propio: ya se confirma solo —se rellena de verde por
+// su transición y `:active` le da el acuse táctil—, y sumarle un tercer
+// movimiento en los mismos 420ms convierte la confirmación en un temblor.
+
 .habit-card:has(.habit-card__link:hover),
 .habit-card:has(.habit-card__link:focus-visible) {
   border-color: var(--color-primary);
