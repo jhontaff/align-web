@@ -99,12 +99,27 @@ export class Register {
     return this.confirmFocused() && confirm.length > 0 && confirm === this.passwordValue();
   });
 
-  /** El error vive en el grupo, así que el campo no lo delata: hay que preguntarlo a mano. */
+  private readonly submitAttempted = signal(false);
+
+  /**
+   * El aviso de que no coinciden NO sale al escribir ni al salir del campo: solo
+   * si se intenta enviar. Mientras se escribe la confirmación, "no coinciden" es
+   * cierto y completamente inútil — todavía no se ha terminado de teclear.
+   *
+   * Pero no puede desaparecer del todo: el botón no se deshabilita, así que sin
+   * este mensaje pulsar Crear cuenta con contraseñas distintas no haría nada
+   * visible y el usuario no sabría por qué.
+   *
+   * Es un método y no un `computed` porque `form.hasError()` no es reactivo:
+   * un computed encima del estado del FormGroup no se recalcularía nunca.
+   */
   protected showMismatch(): boolean {
-    return this.form.controls.confirmPassword.touched && this.form.hasError('passwordsMismatch');
+    return this.submitAttempted() && this.form.hasError('passwordsMismatch');
   }
 
   protected onSubmit(): void {
+    this.submitAttempted.set(true);
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
