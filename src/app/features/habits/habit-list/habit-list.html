@@ -143,9 +143,20 @@
     -->
     <p class="empty-state">No hay hábitos todavía. Añade el primero arriba.</p>
   } @else {
-    <ul class="habit-grid">
+    <!--
+      `#grid` y `data-habit-id` existen para el FLIP de `reorderAnimated()`: hay
+      que medir cada tarjeta antes y despues de reordenar, y el id es lo que
+      empareja las dos medidas de la MISMA tarjeta. Un índice no serviría —
+      justo lo que cambia es qué tarjeta ocupa cada posición.
+    -->
+    <ul class="habit-grid" #grid>
       @for (habit of sorted(); track habit.id) {
-        <li class="card habit-card" [class.is-done]="isDone(habit)">
+        <li
+          class="card habit-card"
+          [attr.data-habit-id]="habit.id"
+          [class.is-done]="isDone(habit)"
+          [class.is-marking]="isMarking(habit)"
+        >
           <h2 class="habit-card__name">
             <a class="habit-card__link" [routerLink]="['/habits', habit.id]">{{ habit.name }}</a>
           </h2>
