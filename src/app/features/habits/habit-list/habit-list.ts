@@ -3,8 +3,11 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  Injector,
   LOCALE_ID,
+  NgZone,
   OnInit,
+  afterNextRender,
   computed,
   inject,
   signal,
@@ -42,6 +45,11 @@ import { HabitService } from '../habit.service';
  * campo y se sigue escribiendo. `task-form` es una ruta porque `TaskRequest`
  * tiene cinco campos, fecha, hora y prioridad — no por simetria.
  *
+ * **La lista se ordena por lo que falta**: los pendientes arriba, los ya hechos
+ * al final, y alfabetico dentro de cada grupo. Marcar uno lo manda al final,
+ * pero no de golpe: la tarjeta se queda quieta un instante mostrando que quedo
+ * marcada y luego viaja hasta su sitio nuevo. Ver `sorted` y `reorderAnimated`.
+ *
  * **Sin paginacion**: `GET /api/habits` devuelve el array completo, a
  * diferencia de Tareas y Finanzas. No hay `Page<T>` ni `totalElements`.
  *
@@ -58,6 +66,22 @@ import { HabitService } from '../habit.service';
  * mismo hecho es como se acaba con un check verde en un dispositivo y gris en
  * otro.
  */
+/**
+ * Cuanto se queda QUIETA la tarjeta recien marcada antes de irse al final.
+ *
+ * No es un adorno. Sin la pausa, el unico fotograma en el que la tarjeta esta
+ * verde y todavia en su sitio es el mismo en el que ya empieza a moverse: el
+ * usuario ve un salto, no una confirmacion, y pierde de vista cual de las ocho
+ * tarjetas acaba de tocar.
+ *
+ * Vale lo mismo que la animacion `habit-mark-pop` de la hoja de estilos: los
+ * dos numeros describen el mismo gesto, asi que si cambia uno cambia el otro.
+ */
+const MARK_HOLD_MS = 420;
+
+/** Lo que tarda una tarjeta en viajar hasta su posicion nueva. */
+const REORDER_MS = 320;
+
 @Component({
   selector: 'app-habit-list',
   imports: [ReactiveFormsModule, RouterLink, Icon],
@@ -82,7 +106,23 @@ export class HabitList implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly locale = inject(LOCALE_ID);
 
+  private readonly injector = inject(Injector);
+  private readonly zone = inject(NgZone);
+
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
+
+  /**
+   * La rejilla, para medir las tarjetas antes y despues de reordenarlas.
+   *
+   * Se lee el contenedor y no una `viewChildren` de las tarjetas porque el
+   * `<ul>` vive dentro de un `@else`: mientras carga o con la lista vacia no
+   * existe, y el signal devuelve `undefined` en vez de un array vacio que
+   * habria que distinguir igual.
+   */
+  private readonly grid = viewChild<ElementRef<HTMLElement>>('grid');
+
+  /** Temporizadores de la pausa, para poder cancelarlos al destruir. */
+  private readonly releaseTimers = new Set<ReturnType<typeof setTimeout>>();
 
   private readonly all = signal<HabitResponse[]>([]);
   protected readonly loading = signal(true);
@@ -108,6 +148,17 @@ export class HabitList implements OnInit {
    */
   protected readonly completingId = signal<string | null>(null);
 
+  /**
+   * Ids ya marcados que **todavia no han cambiado de sitio**: se pintan como
+   * hechos pero siguen contando como pendientes para el orden.
+   *
+   * Es una lista y no un solo id porque marcar es un gesto encadenable — en una
+   * rejilla de ocho habitos se toca uno detras de otro. Con un unico id, el
+   * segundo toque soltaria al primero de golpe y su viaje al final se perderia
+   * sin animar.
+   */
+  private readonly holding = signal<readonly string[]>([]);
+
   /** Lo ultimo confirmado, para la region `role="status"`. */
   protected readonly statusMessage = signal('');
 
@@ -126,15 +177,24 @@ export class HabitList implements OnInit {
   });
 
   /**
-   * Orden alfabetico, **no por racha**.
+   * **Lo que queda por hacer primero, lo hecho al final**; dentro de cada grupo,
+   * alfabetico.
    *
-   * Ordenada por racha, marcar un habito le sube el numero y la tarjeta salta
-   * de sitio bajo el dedo justo despues de tocarla. Un inventario se ordena
-   * para encontrar cosas, no para rankearlas.
+   * La pantalla se abre a diario para una sola pregunta —que me falta hoy— y
+   * asi la respuesta esta siempre en la primera tarjeta, sin recorrer la
+   * rejilla saltandose los verdes. Con todo marcado no hay primero pendiente
+   * que valga, y eso ya lo dice la cabecera ("Todo hecho hoy").
    *
-   * Que la tarjeta de Inicio siga ordenando por racha no es una incoherencia:
-   * alli son los tres primeros de un ranking declarado, aqui es la lista
-   * completa.
+   * Esto **revierte** el orden alfabetico plano que habia antes, que existia
+   * para que la tarjeta no saltara de sitio bajo el dedo justo despues de
+   * tocarla. La objecion era buena y sigue en pie: lo que cambia es que ahora
+   * el salto no existe — la tarjeta se queda quieta mientras se ve que quedo
+   * marcada (`holding`) y despues **viaja** hasta el final animada, asi que el
+   * movimiento se sigue con la vista en vez de aparecer ya consumado. Un
+   * reordenamiento instantaneo aqui seguiria siendo un error.
+   *
+   * No es orden por racha: eso rankea, y esta pantalla es un inventario. El
+   * criterio es binario —hecho o no— y solo cambia una vez al dia por habito.
    *
    * `localeCompare` con el locale inyectado, no `<`: comparar cadenas con el
    * operador usa orden de puntos de codigo, donde la N con virgulilla cae
@@ -145,9 +205,18 @@ export class HabitList implements OnInit {
    * es el valor de un signal — mutarlo lo cambiaria por debajo sin notificar,
    * que con `OnPush` es una lista que deja de repintarse.
    */
-  protected readonly sorted = computed(() =>
-    [...this.all()].sort((a, b) => a.name.localeCompare(b.name, this.locale))
-  );
+  protected readonly sorted = computed(() => {
+    const holding = this.holding();
+
+    // 0 = pendiente (arriba), 1 = hecho (abajo). Un habito retenido cuenta como
+    // pendiente SOLO para el orden: en pantalla ya se ve verde y con su racha.
+    const rank = (habit: HabitResponse) =>
+      habit.isCompletedToday && !holding.includes(habit.id) ? 1 : 0;
+
+    return [...this.all()].sort(
+      (a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, this.locale)
+    );
+  });
 
   /**
    * Cuantos quedan por marcar hoy, para el resumen de la cabecera.
@@ -169,6 +238,13 @@ export class HabitList implements OnInit {
     // suscripcion. `takeUntilDestroyed` es obligatorio: un Subject no completa
     // nunca, asi que sin esto cada visita dejaria otra viva.
     this.dataRefresh.changes.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
+
+    // Salir de la pantalla a media pausa dejaria un `setTimeout` escribiendo en
+    // los signals de un componente ya destruido.
+    this.destroyRef.onDestroy(() => {
+      this.releaseTimers.forEach(clearTimeout);
+      this.releaseTimers.clear();
+    });
   }
 
   private load(): void {
@@ -195,6 +271,11 @@ export class HabitList implements OnInit {
 
   protected isDone(habit: HabitResponse): boolean {
     return habit.isCompletedToday;
+  }
+
+  /** Marcado hace un instante y todavia retenido en su sitio. */
+  protected isMarking(habit: HabitResponse): boolean {
+    return this.holding().includes(habit.id);
   }
 
   /**
@@ -254,22 +335,130 @@ export class HabitList implements OnInit {
 
     this.habits.complete(habit.id).subscribe({
       next: updated => {
+        // Retener ANTES de sustituir la fila, no despues: entre las dos
+        // escrituras hay un valor de `sorted()` intermedio, y si el habito ya
+        // llega marcado sin estar retenido esa vuelta lo manda al final de
+        // golpe — justo el salto que la pausa viene a evitar.
+        this.holding.update(ids => [...ids, updated.id]);
+
         // La respuesta del POST ya trae `isCompletedToday: true` y la racha
         // recalculada, asi que sustituir la fila deja la tarjeta en su estado
         // final sin tocar nada mas ni volver a pedir la lista.
         this.all.update(habits => habits.map(h => (h.id === updated.id ? updated : h)));
         this.completingId.set(null);
 
-        // El cambio visible es un color y un numero que aparece. Sin este
-        // anuncio, quien no ve la pantalla no tiene forma de saber que la
-        // accion surtio efecto.
-        this.statusMessage.set(`${updated.name} marcado. ${this.streakLabel(updated)}.`);
+        this.scheduleRelease(updated.id);
+
+        // El cambio visible es un color, un numero que aparece y un viaje al
+        // final de la lista. Sin este anuncio, quien no ve la pantalla no tiene
+        // forma de saber que la accion surtio efecto ni que la tarjeta cambio
+        // de sitio.
+        this.statusMessage.set(
+          `${updated.name} marcado. ${this.streakLabel(updated)}. Pasa al final de la lista.`
+        );
       },
       error: err => {
         this.completingId.set(null);
         this.errorMessage.set(extractErrorMessage(err));
       }
     });
+  }
+
+  /**
+   * Suelta la retencion pasada la pausa, y anima el viaje de la tarjeta.
+   *
+   * **Fuera de la zona.** Con Zone.js un temporizador pendiente deja la zona
+   * inestable mientras corre, que es lo que cuelga un `fixture.whenStable()`.
+   * El repintado no lo necesita —`holding` es un signal y el componente es
+   * `OnPush`— pero la escritura vuelve dentro con `run()` porque
+   * `afterNextRender` se apoya en el ciclo de render de Angular.
+   */
+  private scheduleRelease(id: string): void {
+    this.zone.runOutsideAngular(() => {
+      const timer = setTimeout(() => {
+        this.releaseTimers.delete(timer);
+        this.zone.run(() => {
+          this.reorderAnimated(() => this.holding.update(ids => ids.filter(x => x !== id)));
+        });
+      }, MARK_HOLD_MS);
+
+      this.releaseTimers.add(timer);
+    });
+  }
+
+  /**
+   * Aplica `mutate()` y anima el cambio de posicion de las tarjetas (FLIP).
+   *
+   * Angular reordena el DOM de un `@for` de golpe: sin esto, la tarjeta
+   * desaparece de la primera posicion y reaparece en la ultima en el mismo
+   * fotograma, y con ella se mueven todas las que ocupan su hueco. La tecnica
+   * es la clasica: se miden las posiciones (**F**irst), se aplica el cambio
+   * (**L**ast), se compensa con un `translate` que devuelve cada tarjeta a
+   * donde estaba (**I**nvert) y se anima ese desplazamiento hasta cero
+   * (**P**lay).
+   *
+   * Detalles que no se leen en el codigo:
+   *
+   * - **Se mide despues del render, con `afterNextRender`, no con `effect`.**
+   *   Hay que LEER `getBoundingClientRect()`, y solo da un valor correcto una
+   *   vez pintada la lista nueva; un `effect` corre antes y devolveria las
+   *   posiciones viejas, o sea un desplazamiento de cero. Mismo motivo que el
+   *   auto-scroll de `chat-thread` y el auto-crecer del `<textarea>`.
+   * - **Se anima con la Web Animations API y solo `transform`.** Trasladar no
+   *   dispara layout, asi que el viaje va en el compositor; animar `top`/`left`
+   *   recalcularia la rejilla en cada fotograma. Y `@angular/animations` no
+   *   esta instalado, ni hace falta traerlo para trece lineas.
+   * - **`prefers-reduced-motion` se comprueba AQUI, en TypeScript.** El bloque
+   *   global de `_base.scss` neutraliza transiciones y animaciones CSS, pero no
+   *   toca `Element.animate()`: un desplazamiento de media pantalla es
+   *   exactamente el movimiento que hay que no hacer.
+   * - **Una tarjeta sin medida previa se salta**: es una recien creada, y
+   *   `translate` desde una posicion que nunca ocupo seria un barrido salido de
+   *   la nada.
+   */
+  private reorderAnimated(mutate: () => void): void {
+    const grid = this.grid()?.nativeElement;
+
+    if (!grid || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      mutate();
+      return;
+    }
+
+    const before = new Map<string, DOMRect>();
+
+    for (const card of grid.querySelectorAll<HTMLElement>('[data-habit-id]')) {
+      before.set(card.dataset['habitId'] ?? '', card.getBoundingClientRect());
+    }
+
+    mutate();
+
+    afterNextRender(
+      () => {
+        for (const card of grid.querySelectorAll<HTMLElement>('[data-habit-id]')) {
+          const first = before.get(card.dataset['habitId'] ?? '');
+
+          if (!first) {
+            continue;
+          }
+
+          const last = card.getBoundingClientRect();
+          const dx = first.left - last.left;
+          const dy = first.top - last.top;
+
+          if (dx === 0 && dy === 0) {
+            continue;
+          }
+
+          card.animate(
+            [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }],
+            // Salida rapida y frenada larga: el ojo engancha el arranque y
+            // llega con tiempo de sobra al destino.
+            { duration: REORDER_MS, easing: 'cubic-bezier(0.2, 0, 0, 1)' }
+          );
+        }
+      },
+      { injector: this.injector }
+    );
   }
 
   /**
