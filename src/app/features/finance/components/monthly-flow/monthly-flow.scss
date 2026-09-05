@@ -325,61 +325,12 @@ $plot-height-compact: 140px;
   background: var(--color-text);
 }
 
-// -----------------------------------------------------------------------------
-// Tabla de datos
-// -----------------------------------------------------------------------------
-// Local por ahora: es el único consumidor. Sube a `_components.scss` el día que
-// haya un segundo, que es la regla que ya siguieron `.menu-item` y `.card-row`.
-.flow__data {
-  font-size: var(--text-sm);
-
-  // Sin acotar el ancho: el `<summary>` ocupa la línea entera y toda ella es
-  // zona de clic, que es el comportamiento habitual de un desplegable.
-  summary {
-    cursor: pointer;
-    color: var(--color-text-muted);
-  }
-}
-
-// Cuatro columnas de importes no caben en un móvil estrecho. El scroll va en
-// este contenedor y no en la página: el resto de la tarjeta no tiene por qué
-// desplazarse porque una tabla sea ancha.
-.flow__table-scroll {
-  overflow-x: auto;
-  margin-block-start: var(--space-3);
-}
-
-.flow__table {
-  inline-size: 100%;
-  border-collapse: collapse;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-
-  th,
-  td {
-    padding: var(--space-2) var(--space-3);
-    text-align: end;
-    border-block-end: 1px solid var(--color-border);
-  }
-
-  // La primera columna es la etiqueta de la fila, no una cifra: se alinea al
-  // principio como cualquier texto.
-  thead th:first-child,
-  tbody th {
-    text-align: start;
-  }
-
-  // Los encabezados de columna en tinta apagada: nombran el eje, no son el
-  // dato. La etiqueta de fila (el mes) sí es dato, y por eso se queda en peso
-  // normal en vez de heredar la negrita de `<th>`.
-  thead th {
-    color: var(--color-text-muted);
-  }
-
-  tbody th {
-    font-weight: var(--weight-regular);
-  }
-}
+// La tabla de datos (`.chart-data`, `.chart-data__scroll`, `.chart-data__table`)
+// subió a global cuando `spending-pace` pasó a ser su segundo consumidor. Es el
+// mismo criterio que `.menu-item` y `.card-row`: pintura sobre elementos que el
+// consumidor ya escribe, compartida por dos componentes con encapsulación
+// distinta, así que la alternativa era el mismo bloque duplicado en dos hojas.
+// Ver `_components.scss`.
 
 // -----------------------------------------------------------------------------
 // Los bloques de media query van al FINAL de la hoja, nunca junto a la regla

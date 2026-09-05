@@ -118,6 +118,36 @@
   </section>
 
   <!--
+    El ritmo de gasto va entre el desglose por categoría y el flujo mensual, y
+    ese hueco es el argumento: la página va de lo puntual a lo histórico —las
+    cifras del periodo, en qué se fueron, cómo van dentro del mes, y solo
+    entonces cómo evoluciona el conjunto mes a mes—. Es el escalón temporal que
+    faltaba entre "este periodo" y "los últimos seis meses".
+
+    Es también el ÚNICO bloque que no obedece al selector de la cabecera: la
+    ventana es siempre el mes en curso, porque el marcador de hoy y la proyección
+    no significan nada en un rango que no contenga hoy. Por eso el encabezado
+    nombra el mes en vez de decir solo "Ritmo de gasto" — es lo que evita que
+    parezca que el selector se ha quedado colgado.
+  -->
+  <section aria-labelledby="pace-heading">
+    <h2 class="section-heading" id="pace-heading">Ritmo de gasto &middot; {{ paceMonthLabel }}</h2>
+
+    @if (paceLoading()) {
+      <p class="empty-state">Cargando...</p>
+    } @else if (paceFailed()) {
+      <!--
+        Este bloque tiene su propio mensaje en vez de sumarse al banner de error
+        de la cabecera: aquel encabeza la página y habla de todo lo que hay
+        debajo, así que un fallo aquí teñiría de rojo un resumen que sí cargó.
+      -->
+      <p class="empty-state">No se pudo cargar el ritmo de gasto.</p>
+    } @else if (pace(); as series) {
+      <app-spending-pace [current]="series.current" [previous]="series.previous" />
+    }
+  </section>
+
+  <!--
     El flujo mensual va DESPUÉS del desglose por categoría y no antes, aunque
     parezca el bloque más vistoso. El orden de la página es un argumento: las
     tres cifras del periodo, luego en qué se fue ese gasto (las barras suman el

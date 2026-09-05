@@ -1,0 +1,255 @@
+@if (incomplete()) {
+  <!--
+    El único fallo de esta tarjeta que, sin decirlo, saldría en pantalla entero y
+    plausible: con la curva agregada en el cliente, un periodo que no quepa en
+    una página se dibuja aplanándose a media anchura y las cifras salen por
+    debajo de las reales. Antes que enseñar eso, no se enseña nada.
+  -->
+  <p class="empty-state">
+    Hay demasiados movimientos en este periodo para calcular el ritmo de gasto en
+    el navegador.
+  </p>
+} @else if (isEmpty()) {
+  <p class="empty-state">Todavía no hay gastos registrados este mes ni el anterior.</p>
+} @else {
+  @let data = chart();
+  @let numbers = stats();
+
+  <div class="card pace">
+    <!--
+      La cifra grande va en la cabecera de la tarjeta y NO flotando junto al
+      marcador del gráfico, como en el diseño de referencia. Un rótulo anclado a
+      un punto que se mueve cada día tiene que resolver por su cuenta qué hacer
+      los días 1 y 30, cuando se sale por el lado; y aquí no acompaña a ningún
+      dato que la curva no diga ya — el marcador está justo debajo, en su
+      vertical.
+    -->
+    <div class="pace__head">
+      <p class="pace__spent">
+        <span class="pace__spent-caption">Llevas gastado</span>
+        <span class="pace__spent-value">
+          {{ numbers.spent | currency: undefined : 'symbol' : moneyDigits }}
+        </span>
+      </p>
+
+      <!--
+        "de 30" no es adorno: sin el denominador, "día 15" obliga a saber de
+        memoria cuántos días tiene el mes para entender por dónde va la
+        proyección de abajo.
+      -->
+      <p class="pace__day">Día {{ numbers.elapsedDays }} de {{ numbers.daysInMonth }}</p>
+    </div>
+
+    <!--
+      Todo el trazado va `aria-hidden`, igual que en `monthly-flow` y en las
+      barras de `expense-by-category`: no dice ni un dato que no esté escrito en
+      la tabla del final, y anunciarlo vértice a vértice convertiría el gráfico
+      en una lista de sesenta números sin estructura.
+    -->
+    <div class="pace__chart" aria-hidden="true">
+      <!--
+        Los rótulos del eje viven FUERA del área de trazado, en su propia
+        columna. Metidos dentro tendrían que ir sobre las curvas —que es donde
+        peor se leen— o robarle ancho al dibujo con un relleno interior que
+        descuadraría las coordenadas 0–100 del `viewBox`.
+      -->
+      <ul class="pace__axis">
+        @for (line of data.gridLines; track line.value) {
+          <li class="pace__axis-label" [style.top.%]="line.top">{{ line.label }}</li>
+        }
+      </ul>
+
+      <div class="pace__plot">
+        @for (line of data.gridLines; track line.value) {
+          <span class="pace__grid" [style.top.%]="line.top"></span>
+        }
+
+        <!--
+          La vertical de hoy. Es lo que separa "lo que llevas" de "lo que queda
+          de mes": sin ella, el hueco a la derecha del último escalón se lee como
+          que la curva se acaba ahí y no como que el mes sigue.
+        -->
+        <span class="pace__today" [style.left.%]="data.markerX"></span>
+
+        <!--
+          El mes anterior se dibuja PRIMERO para que quede por debajo: donde las
+          dos curvas se solapan —que es casi todo el principio del mes— la que
+          tiene que ganar es la del mes en curso, que es el dato, no la
+          referencia.
+
+          `preserveAspectRatio="none"` estira las coordenadas porcentuales al
+          tamaño real del área, y `vector-effect` es lo que impide que ese
+          estirado deforme también el grosor del trazo y el patrón de la línea
+          discontinua. En un escalón se nota el doble que en una polilínea
+          normal: los tramos verticales y los horizontales se estiran por ejes
+          distintos, así que sin esto saldrían con dos grosores.
+        -->
+        <svg class="pace__lines" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
+          <polyline
+            class="pace__line pace__line--previous"
+            [attr.points]="data.previousPoints"
+            vector-effect="non-scaling-stroke"
+          />
+          <polyline
+            class="pace__line pace__line--current"
+            [attr.points]="data.currentPoints"
+            vector-effect="non-scaling-stroke"
+          />
+        </svg>
+
+        <!--
+          El marcador es un elemento HTML y no un `<circle>` del SVG: dentro de
+          un `viewBox` estirado con `preserveAspectRatio="none"` un círculo sale
+          ovalado. Mismo motivo por el que los puntos de `monthly-flow` también
+          son HTML.
+        -->
+        <span class="pace__marker" [style.left.%]="data.markerX" [style.top.%]="data.markerY"></span>
+      </div>
+    </div>
+
+    <ul class="pace__days" aria-hidden="true">
+      @for (tick of data.dayTicks; track tick.day) {
+        <li class="pace__day-label" [style.left.%]="tick.x">{{ tick.day }}</li>
+      }
+    </ul>
+
+    <!--
+      La leyenda es obligatoria en cuanto hay dos series, y las muestras van
+      `aria-hidden` porque un trazo no se lee en voz alta: lo que nombra cada
+      serie es el texto de al lado. Las muestras reproducen el PATRÓN de la línea
+      (continua / discontinua), que es el canal por el que se distinguen las dos
+      curvas — no su color.
+    -->
+    <ul class="pace__legend">
+      <li class="pace__legend-item">
+        <span class="pace__swatch pace__swatch--current" aria-hidden="true"></span>
+        {{ currentLabel() }}
+      </li>
+      <li class="pace__legend-item">
+        <span class="pace__swatch pace__swatch--previous" aria-hidden="true"></span>
+        {{ previousLabel() }}
+      </li>
+    </ul>
+
+    @if (delta(); as change) {
+      <!--
+        El importe va en `<strong>` y la dirección en palabras. El color es el
+        tercer canal, detrás de la flecha y del texto: "por debajo" en verde es
+        una inversión respecto al resto de Finanzas (donde el gasto es rojo) y
+        apoyarla solo en el tono sería pedirle al usuario que adivine cuál de las
+        dos convenciones está mirando.
+      -->
+      <p class="pace__delta" [class.pace__delta--over]="change.direction === 'over'">
+        @switch (change.direction) {
+          @case ('below') {
+            <app-icon class="pace__delta-icon" name="bi:arrow-down" />
+            <span>
+              Vas
+              <strong>{{ change.amount | currency: undefined : 'symbol' : moneyDigits }}</strong>
+              por debajo de {{ change.previousLabel }} a esta altura del mes
+            </span>
+          }
+          @case ('over') {
+            <app-icon class="pace__delta-icon" name="bi:arrow-up" />
+            <span>
+              Vas
+              <strong>{{ change.amount | currency: undefined : 'symbol' : moneyDigits }}</strong>
+              por encima de {{ change.previousLabel }} a esta altura del mes
+            </span>
+          }
+          @default {
+            <app-icon class="pace__delta-icon" name="bi:circle" />
+            <span>Vas al mismo ritmo que {{ change.previousLabel }}</span>
+          }
+        }
+      </p>
+    }
+
+    <!--
+      Las tres cifras se pintan SIEMPRE, con guion en el hueco de la proyección
+      mientras no hay días suficientes. Es la misma regla que la lista de totales
+      del resumen: montar la fila solo cuando el dato existe haría cambiar de
+      forma la tarjeta el día 5.
+    -->
+    <ul class="pace__stats">
+      <li class="pace__stat">
+        <span class="pace__stat-label" id="pace-average">Promedio diario</span>
+        <span class="pace__stat-value" aria-labelledby="pace-average">
+          {{ numbers.dailyAverage | currency: undefined : 'symbol' : moneyDigits }}
+        </span>
+      </li>
+
+      <li class="pace__stat">
+        <!--
+          Va al lado del promedio a propósito: el promedio divide entre días
+          TRANSCURRIDOS, y este número es el que deja ver que no todos tuvieron
+          gasto. Sin él, "48.000 al día" se lee como si se gastara a diario.
+        -->
+        <span class="pace__stat-label" id="pace-days">Días con gasto</span>
+        <span class="pace__stat-value" aria-labelledby="pace-days">
+          {{ numbers.daysWithSpending }}
+        </span>
+      </li>
+
+      <li class="pace__stat">
+        <span class="pace__stat-label" id="pace-projection">Proyección</span>
+        <span class="pace__stat-value" aria-labelledby="pace-projection">
+          @if (numbers.projection !== null) {
+            {{ numbers.projection | currency: undefined : 'symbol' : moneyDigits }}
+          } @else {
+            &mdash;
+            <!--
+              El guion sin más deja preguntándose si falla algo. La explicación
+              va en texto para lector de pantalla y en `title` para el ratón, en
+              vez de ocupar una línea permanente de la tarjeta por una condición
+              que dura cuatro días al mes.
+            -->
+            <span class="visually-hidden">
+              todavía no hay días suficientes del mes para proyectar
+            </span>
+          }
+        </span>
+      </li>
+    </ul>
+
+    <details class="chart-data">
+      <summary>Ver los datos</summary>
+
+      <div class="chart-data__scroll">
+        <table class="chart-data__table">
+          <caption class="visually-hidden">
+            Gasto acumulado de cada día del mes, comparado con el mes anterior
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Día</th>
+              <th scope="col">{{ currentLabel() }}</th>
+              <th scope="col">{{ previousLabel() }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of tableRows(); track row.day) {
+              <tr>
+                <th scope="row">{{ row.day }}</th>
+                <td>
+                  @if (row.current !== null) {
+                    {{ row.current | currency: undefined : 'symbol' : moneyDigits }}
+                  } @else {
+                    &mdash;
+                  }
+                </td>
+                <td>
+                  @if (row.previous !== null) {
+                    {{ row.previous | currency: undefined : 'symbol' : moneyDigits }}
+                  } @else {
+                    &mdash;
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+}
