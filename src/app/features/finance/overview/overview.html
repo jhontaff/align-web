@@ -1,9 +1,11 @@
-<div class="page">
+<div class="page page--wide">
   <!--
-    El selector va en la cabecera de la pagina y no dentro del bloque del
-    resumen: acota TODO lo que hay debajo (las tres cifras, el grafico y los
-    ultimos movimientos salen de la misma peticion), asi que colgarlo de una de
-    las tres secciones sugeriria que las otras no le hacen caso.
+    El selector va en la cabecera de la pagina y no dentro de una tarjeta: acota
+    TODO lo que hay debajo (las tres cifras, los graficos y los ultimos
+    movimientos salen de la misma peticion), asi que colgarlo de una de ellas
+    sugeriria que las demas no le hacen caso. Su boton muestra el periodo
+    ("Septiembre de 2026"), que es donde se lee ahora que las cifras ya no
+    comparten un encabezado comun.
   -->
   <div class="page-header">
     <h1>Finanzas</h1>
@@ -15,6 +17,41 @@
         [presets]="presets"
         (rangeChange)="onRangeChange($event)"
       />
+
+      <!--
+        "Restablecer" solo aparece en modo edicion, que es cuando significa
+        algo. Y no es solo comodidad: al no haber equivalente de teclado para
+        arrastrar, es el unico camino accesible para deshacer una disposicion
+        heredada o estropeada. Ver `resetLayout()`.
+      -->
+      @if (editing()) {
+        <button type="button" class="btn btn-ghost dashboard-action" (click)="resetLayout()">
+          <app-icon name="bi:arrow-counterclockwise" />
+          Restablecer
+        </button>
+      }
+
+      <!--
+        `aria-pressed` y no un `aria-label` que cambie: el estado de un boton de
+        dos posiciones lo anuncian los lectores de pantalla solos ("pulsado" /
+        "no pulsado") aunque el foco ya este encima, que es justo lo que NO pasa
+        con un nombre accesible que cambia — el problema que en el boton de tema
+        obligo a montar una region `aria-live` aparte.
+      -->
+      <button
+        type="button"
+        class="btn btn-ghost dashboard-action"
+        [attr.aria-pressed]="editing()"
+        (click)="toggleEditing()"
+      >
+        @if (editing()) {
+          <app-icon name="bi:check-lg" />
+          Listo
+        } @else {
+          <app-icon name="bi:arrows-move" />
+          Personalizar
+        }
+      </button>
 
       <a class="btn btn-primary" routerLink="/finance/new">
         <app-icon name="bi:plus-lg" />
@@ -29,197 +66,222 @@
 
   @let totals = summary();
 
-  <section aria-labelledby="summary-heading" [attr.aria-busy]="loading()">
-    <!--
-      "Resumen · septiembre" y no "Resumen de Septiembre": la etiqueta viene
-      capitalizada porque encabeza el boton del selector, donde va suelta, y en
-      español el mes en mitad de una frase va en minuscula. El separador evita
-      tener que elegir entre dos capitalizaciones de la misma cadena.
-    -->
-    <h2 class="section-heading" id="summary-heading">Resumen &middot; {{ rangeLabel() }}</h2>
+  <!--
+    Las siete tarjetas van escritas UNA A UNA y no con un `@for` sobre las
+    posiciones. Con `@for` haria falta un `@switch` de siete ramas dentro del
+    item para elegir que pintar, y el orden del DOM —que es el orden de lectura
+    y el que manda cuando la rejilla se apila en movil— pasaria a depender del
+    orden del array, que es justo lo que gridster reordena.
 
+    El orden es el mismo de siempre y esta argumentado tarjeta a tarjeta: de lo
+    puntual a lo historico. La rejilla decide donde se pintan, no en que orden
+    se leen.
+  -->
+  <gridster class="dashboard" [class.dashboard--editing]="editing()" [options]="gridOptions">
     <!--
-      La lista se pinta SIEMPRE, también mientras carga, con un guion en el
-      hueco de cada cifra. Montarla solo cuando llegan los datos haría saltar
-      hacia abajo todo lo que tiene debajo justo cuando el usuario ya está
-      leyendo — el guion ocupa la misma línea que ocupará el importe.
+      Las tres cifras son tres tarjetas independientes desde el 2026-09-05.
+      Antes eran un `<ul>` dentro de una sola tarjeta, y agrupadas no se podian
+      recolocar por separado — que es justo lo que la rejilla viene a permitir.
+
+      Cada una es una `<section>` con su propio encabezado, y ese encabezado ES
+      la etiqueta ("Ingresos"): un `h2` pequeno y apagado, porque el elemento
+      marca la estructura y el CSS marca la jerarquia visual. Asi cada tarjeta
+      tiene nombre accesible y aparece al navegar por encabezados, igual que las
+      cuatro de contenido.
     -->
-    <ul class="summary">
-      <li class="card summary__item">
-        <span class="summary__label" id="summary-income">Ingresos</span>
-        <span class="summary__value summary__value--income" aria-labelledby="summary-income">
+    <gridster-item class="dashboard__cell" [item]="cards.income">
+      <section class="card metric" aria-labelledby="income-heading" [attr.aria-busy]="loading()">
+        <h2 class="metric__label" id="income-heading">Ingresos</h2>
+        <!--
+          El guion se pinta mientras carga en vez de dejar el hueco vacio: la
+          linea existe desde el primer fotograma y la cifra no hace saltar nada
+          al llegar.
+        -->
+        <p class="metric__value metric__value--income">
           @if (totals) {
             +{{ totals.totalIncome | currency: undefined : 'symbol' : moneyDigits }}
           } @else {
             &mdash;
           }
-        </span>
-      </li>
+        </p>
+      </section>
+    </gridster-item>
 
-      <li class="card summary__item">
-        <span class="summary__label" id="summary-expense">Gastos</span>
-        <span class="summary__value summary__value--expense" aria-labelledby="summary-expense">
+    <gridster-item class="dashboard__cell" [item]="cards.expense">
+      <section class="card metric" aria-labelledby="expense-heading" [attr.aria-busy]="loading()">
+        <h2 class="metric__label" id="expense-heading">Gastos</h2>
+        <p class="metric__value metric__value--expense">
           @if (totals) {
             &minus;{{ totals.totalExpense | currency: undefined : 'symbol' : moneyDigits }}
           } @else {
             &mdash;
           }
-        </span>
-      </li>
+        </p>
+      </section>
+    </gridster-item>
 
-      <li class="card summary__item">
-        <span class="summary__label" id="summary-balance">Balance</span>
+    <gridster-item class="dashboard__cell" [item]="cards.balance">
+      <section class="card metric" aria-labelledby="balance-heading" [attr.aria-busy]="loading()">
+        <h2 class="metric__label" id="balance-heading">Balance</h2>
         <!--
-          La única cifra sin signo escrito a mano: los ingresos siempre suman y
+          La unica cifra sin signo escrito a mano: los ingresos siempre suman y
           los gastos siempre restan, pero el balance puede ir en cualquier
-          dirección, así que el signo lo pone `CurrencyPipe` cuando el número es
-          negativo. Escribirlo aquí además daría "-−12,00 €".
+          direccion, asi que el signo lo pone `CurrencyPipe` cuando el numero es
+          negativo. Escribirlo aqui ademas daria "-−12,00 €".
         -->
-        <span
-          class="summary__value"
-          [class.summary__value--expense]="balanceNegative()"
-          aria-labelledby="summary-balance"
-        >
+        <p class="metric__value" [class.metric__value--expense]="balanceNegative()">
           @if (totals) {
             {{ totals.balance | currency: undefined : 'symbol' : moneyDigits }}
           } @else {
             &mdash;
           }
-        </span>
-      </li>
-    </ul>
-  </section>
+        </p>
+      </section>
+    </gridster-item>
 
-  <!--
-    El grafico va DEBAJO del resumen y ENCIMA de los movimientos, y ese orden es
-    el argumento: desglosa exactamente la cifra de "Gastos" que tiene justo
-    arriba —las barras suman ese numero—, asi que cualquier otra posicion
-    obligaria a saltar de un lado a otro de la pagina para relacionarlos.
+    <!--
+      El grafico desglosa exactamente la cifra de "Gastos" que tiene encima —las
+      barras suman ese numero—, asi que de fabrica va justo debajo. El usuario
+      puede separarlos, pero la disposicion inicial deja los dos a la vista sin
+      desplazarse.
 
-    No lleva selector propio: el de la cabecera acota toda la pagina, y un
-    segundo control de periodo aqui sugeriria que este bloque puede ir por su
-    cuenta cuando en realidad sale de la misma peticion.
-  -->
-  <section aria-labelledby="by-category-heading">
-    <h2 class="section-heading" id="by-category-heading">Gastos por categoría</h2>
+      Es una de las dos tarjetas de alto automatico: cuantas categorias tuvieron
+      gasto depende del periodo. El `#byCategoryCard` es lo que observa
+      `observeAutoHeight()`.
+    -->
+    <gridster-item class="dashboard__cell" [item]="cards.byCategory">
+      <section class="dashboard__card" #byCategoryCard aria-labelledby="by-category-heading">
+        <h2 class="section-heading" id="by-category-heading">Gastos por categoría</h2>
 
-    @if (loading()) {
-      <!--
-        Aqui SI se pinta "Cargando" y no un esqueleto con guiones como en el
-        resumen: alli el numero de filas se sabe de antemano (siempre tres) y el
-        hueco se puede reservar, pero cuantas categorias tuvieron gasto depende
-        del periodo, asi que un esqueleto tendria que adivinar el alto y
-        provocaria el salto que pretende evitar.
-      -->
-      <p class="empty-state">Cargando...</p>
-    } @else if (byCategory(); as expenses) {
-      <app-expense-by-category [expenses]="expenses" />
-    }
-  </section>
-
-  <!--
-    El ritmo de gasto va entre el desglose por categoría y el flujo mensual, y
-    ese hueco es el argumento: la página va de lo puntual a lo histórico —las
-    cifras del periodo, en qué se fueron, cómo van dentro del mes, y solo
-    entonces cómo evoluciona el conjunto mes a mes—. Es el escalón temporal que
-    faltaba entre "este periodo" y "los últimos seis meses".
-
-    Es también el ÚNICO bloque que no obedece al selector de la cabecera: la
-    ventana es siempre el mes en curso, porque el marcador de hoy y la proyección
-    no significan nada en un rango que no contenga hoy. Por eso el encabezado
-    nombra el mes en vez de decir solo "Ritmo de gasto" — es lo que evita que
-    parezca que el selector se ha quedado colgado.
-  -->
-  <section aria-labelledby="pace-heading">
-    <h2 class="section-heading" id="pace-heading">Ritmo de gasto &middot; {{ paceMonthLabel }}</h2>
-
-    @if (paceLoading()) {
-      <p class="empty-state">Cargando...</p>
-    } @else if (paceFailed()) {
-      <!--
-        Este bloque tiene su propio mensaje en vez de sumarse al banner de error
-        de la cabecera: aquel encabeza la página y habla de todo lo que hay
-        debajo, así que un fallo aquí teñiría de rojo un resumen que sí cargó.
-      -->
-      <p class="empty-state">No se pudo cargar el ritmo de gasto.</p>
-    } @else if (pace(); as series) {
-      <app-spending-pace [current]="series.current" [previous]="series.previous" />
-    }
-  </section>
-
-  <!--
-    El flujo mensual va DESPUÉS del desglose por categoría y no antes, aunque
-    parezca el bloque más vistoso. El orden de la página es un argumento: las
-    tres cifras del periodo, luego en qué se fue ese gasto (las barras suman el
-    número de arriba, por eso van pegadas), y solo entonces cómo evoluciona el
-    conjunto mes a mes. Meterlo en medio rompería la adyacencia entre "Gastos" y
-    su desglose, que es la relación que hay que poder leer sin desplazarse.
-
-    Es también el único bloque que mira más allá del periodo seleccionado —una
-    tendencia de una sola columna no es una tendencia—, y por eso el encabezado
-    dice "Últimos meses" en vez del rango: prometer aquí el periodo de la
-    cabecera sería falso. Ver `monthWindow()` en `date-ranges.ts`.
-  -->
-  <section aria-labelledby="flow-heading">
-    <h2 class="section-heading" id="flow-heading">Flujo de los últimos meses</h2>
-
-    @if (loading()) {
-      <p class="empty-state">Cargando...</p>
-    } @else if (monthly(); as months) {
-      <app-monthly-flow [months]="months" />
-    }
-  </section>
-
-  <section aria-labelledby="recent-heading">
-    <div class="section-bar">
-      <h2 class="section-heading" id="recent-heading">Últimos movimientos</h2>
-
-      <!--
-        El contador va DENTRO del enlace y no en el encabezado: es lo que
-        convierte "Ver todo" en una promesa concreta ("hay 83, aquí ves 5") y lo
-        que explica por qué la lista de abajo se queda corta — que era justo la
-        duda de no ver todos los gastos registrados.
-
-        Sale de `totalElements` del periodo actual, así que sube y baja con el
-        selector de la cabecera.
-
-        La palabra oculta al final es por WCAG 2.5.3: el nombre accesible tiene
-        que CONTENER el texto visible, así que se añade detrás en vez de
-        sustituirlo por un `aria-label` como "Ver todos los movimientos", que
-        dejaría fuera el "(83)" que se ve en pantalla.
-
-        Solo se pinta con datos ya cargados y con al menos un movimiento: un
-        "Ver todo (0)" enlazaría a una pantalla vacía.
-      -->
-      @if (!loading() && totalCount() > 0) {
-        <a class="btn btn-ghost btn-sm" routerLink="/finance/history">
-          Ver todo ({{ totalCount() }})<span class="visually-hidden"> movimientos</span>
-          <app-icon name="bi:arrow-right" />
-        </a>
-      }
-    </div>
-
-    @if (loading()) {
-      <p class="empty-state">Cargando...</p>
-    } @else if (recent().length === 0) {
-      <p class="empty-state">
-        Todavía no hay movimientos en este periodo.
-        <a routerLink="/finance/new">Registra el primero</a>.
-      </p>
-    } @else {
-      <!--
-        La fila se fue a `components/transaction-row/` en su segundo uso: el
-        historial pinta exactamente la misma, y duplicar el marcado habría
-        duplicado también las tres copias del importe (color, signo y tipo
-        oculto) y la corrección de zona horaria de la fecha.
-      -->
-      <ul class="movements">
-        @for (movement of recent(); track movement.id) {
-          <li>
-            <app-transaction-row [transaction]="movement" />
-          </li>
+        @if (loading()) {
+          <!--
+            Aqui SI se pinta "Cargando" y no un esqueleto con guiones como en las
+            cifras: alli la linea que ocupara el importe se sabe de antemano,
+            pero cuantas categorias tuvieron gasto depende del periodo, asi que
+            un esqueleto tendria que adivinar el alto y provocaria el salto que
+            pretende evitar.
+          -->
+          <p class="empty-state">Cargando...</p>
+        } @else if (byCategory(); as expenses) {
+          <app-expense-by-category [expenses]="expenses" />
         }
-      </ul>
-    }
-  </section>
+      </section>
+    </gridster-item>
+
+    <!--
+      El ritmo de gasto es el escalón temporal que falta entre "este periodo" y
+      "los últimos seis meses", y por eso va junto al desglose y antes del flujo.
+
+      Es también el ÚNICO bloque que no obedece al selector de la cabecera: la
+      ventana es siempre el mes en curso, porque el marcador de hoy y la
+      proyección no significan nada en un rango que no contenga hoy. Por eso el
+      encabezado nombra el mes en vez de decir solo "Ritmo de gasto" — es lo que
+      evita que parezca que el selector se ha quedado colgado.
+    -->
+    <gridster-item class="dashboard__cell" [item]="cards.pace">
+      <section class="dashboard__card dashboard__card--fill" aria-labelledby="pace-heading">
+        <h2 class="section-heading" id="pace-heading">Ritmo de gasto &middot; {{ paceMonthLabel }}</h2>
+
+        @if (paceLoading()) {
+          <p class="empty-state">Cargando...</p>
+        } @else if (paceFailed()) {
+          <!--
+            Este bloque tiene su propio mensaje en vez de sumarse al banner de
+            error de la cabecera: aquel encabeza la página y habla de todo lo que
+            hay debajo, así que un fallo aquí teñiría de rojo unas cifras que sí
+            cargaron.
+          -->
+          <p class="empty-state">No se pudo cargar el ritmo de gasto.</p>
+        } @else if (pace(); as series) {
+          <app-spending-pace [current]="series.current" [previous]="series.previous" />
+        }
+      </section>
+    </gridster-item>
+
+    <!--
+      El flujo mensual va DESPUÉS del desglose por categoría y no antes, aunque
+      parezca el bloque más vistoso. El orden de la página es un argumento: las
+      tres cifras del periodo, luego en qué se fue ese gasto, y solo entonces
+      cómo evoluciona el conjunto mes a mes.
+
+      Es el único bloque que mira más allá del periodo seleccionado —una
+      tendencia de una sola columna no es una tendencia—, y por eso el encabezado
+      dice "Últimos meses" en vez del rango: prometer aquí el periodo de la
+      cabecera sería falso. Ver `monthWindow()` en `date-ranges.ts`.
+    -->
+    <gridster-item class="dashboard__cell" [item]="cards.flow">
+      <section class="dashboard__card" aria-labelledby="flow-heading">
+        <h2 class="section-heading" id="flow-heading">Flujo de los últimos meses</h2>
+
+        @if (loading()) {
+          <p class="empty-state">Cargando...</p>
+        } @else if (monthly(); as months) {
+          <app-monthly-flow [months]="months" />
+        }
+      </section>
+    </gridster-item>
+
+    <!--
+      La segunda tarjeta de alto automatico: de cero a cinco filas, o un estado
+      vacio mas corto que cualquiera de las dos.
+    -->
+    <gridster-item class="dashboard__cell" [item]="cards.recent">
+      <section class="dashboard__card" #recentCard aria-labelledby="recent-heading">
+        <div class="section-bar">
+          <h2 class="section-heading" id="recent-heading">Últimos movimientos</h2>
+
+          <!--
+            El contador va DENTRO del enlace y no en el encabezado: es lo que
+            convierte "Ver todo" en una promesa concreta ("hay 83, aquí ves 5") y
+            lo que explica por qué la lista de abajo se queda corta.
+
+            Sale de `totalElements` del periodo actual, así que sube y baja con el
+            selector de la cabecera.
+
+            La palabra oculta al final es por WCAG 2.5.3: el nombre accesible
+            tiene que CONTENER el texto visible, así que se añade detrás en vez de
+            sustituirlo por un `aria-label` como "Ver todos los movimientos", que
+            dejaría fuera el "(83)" que se ve en pantalla.
+
+            `dashboard__no-drag` es lo que impide que en modo edicion pulsar el
+            enlace se convierta en un arrastre: es la clase que gridster mira
+            para dejar pasar el evento (`ignoreContentClass`).
+          -->
+          @if (!loading() && totalCount() > 0) {
+            <a class="btn btn-ghost btn-sm dashboard__no-drag" routerLink="/finance/history">
+              Ver todo ({{ totalCount() }})<span class="visually-hidden"> movimientos</span>
+              <app-icon name="bi:arrow-right" />
+            </a>
+          }
+        </div>
+
+        @if (loading()) {
+          <p class="empty-state">Cargando...</p>
+        } @else if (recent().length === 0) {
+          <p class="empty-state">
+            Todavía no hay movimientos en este periodo.
+            <a class="dashboard__no-drag" routerLink="/finance/new">Registra el primero</a>.
+          </p>
+        } @else {
+          <!--
+            La fila se fue a `components/transaction-row/` en su segundo uso: el
+            historial pinta exactamente la misma, y duplicar el marcado habría
+            duplicado también las tres copias del importe (color, signo y tipo
+            oculto) y la corrección de zona horaria de la fecha.
+
+            La lista entera lleva `dashboard__no-drag`: cada fila contiene un
+            enlace al detalle del movimiento, y en modo edición un arrastre que
+            arranca encima de uno se comería la pulsación.
+          -->
+          <ul class="movements dashboard__no-drag">
+            @for (movement of recent(); track movement.id) {
+              <li>
+                <app-transaction-row [transaction]="movement" />
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </gridster-item>
+  </gridster>
 </div>
