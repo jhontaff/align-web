@@ -12,10 +12,16 @@ $plot-height-compact: 140px;
 $axis-width: 56px;
 $axis-width-compact: 44px;
 
+// `flex: 1` + `min-block-size: 0` para que la tarjeta se quede con el alto que
+// le dé el host cuando este vive dentro de una celda que estira. Quien pone al
+// host en columna flexible es `overview.scss`: el componente no da por hecho
+// dónde está montado, solo sabe repartirse el alto que reciba.
 .pace {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  flex: 1;
+  min-block-size: 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -72,7 +78,22 @@ $axis-width-compact: 44px;
 .pace__chart {
   display: flex;
   gap: var(--space-2);
-  block-size: $plot-height;
+
+  // El área de trazado es lo ÚNICO que se estira: todo lo demás de la tarjeta
+  // —cabecera, leyenda, comparación, cifras, la tabla plegada— mide lo que mide
+  // su texto, y estirarlo solo produciría huecos. Así, agrandar la tarjeta desde
+  // la rejilla agranda el gráfico, que es lo que hace que redimensionarla sirva
+  // para algo.
+  //
+  // `flex-basis` en $plot-height y no `block-size`: sigue siendo el alto natural
+  // cuando no sobra sitio —o sea, el de siempre fuera de una celda que estire—,
+  // pero deja de ser un tope.
+  flex: 1 1 $plot-height;
+
+  // Suelo, para que encoger la tarjeta hasta lo absurdo deje un gráfico
+  // ilegible antes que empujar las cifras fuera de la celda. Por debajo de esto
+  // los escalones ya no se distinguen unos de otros.
+  min-block-size: 96px;
 }
 
 .pace__axis {
@@ -348,8 +369,10 @@ $axis-width-compact: 44px;
     padding: var(--space-4);
   }
 
+  // `flex-basis` y no `block-size`, igual que arriba: en móvil el alto de
+  // partida baja, pero la tarjeta sigue pudiendo estirarlo si tiene sitio.
   .pace__chart {
-    block-size: $plot-height-compact;
+    flex-basis: $plot-height-compact;
   }
 
   .pace__axis {

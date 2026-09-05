@@ -10,56 +10,52 @@
 }
 
 // -----------------------------------------------------------------------------
-// Las tres cifras
+// Las tres cifras, una tarjeta cada una
 // -----------------------------------------------------------------------------
-.summary {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-
-  // `minmax(0, ...)` y no `1fr` a secas. `1fr` es `minmax(auto, 1fr)`, y ese
-  // `auto` NO baja del ancho mínimo del contenido: un importe como
-  // "$ 3.500.000" no tiene dónde partirse, así que cada columna exige su ancho
-  // completo, la rejilla se sale del contenedor y arrastra a toda la página
-  // consigo. Se ve como scroll horizontal en móvil, no como texto cortado, y
-  // por eso es tan fácil atribuirlo a otra cosa.
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-.summary__item {
+// Ya no hay rejilla de tres columnas aquí: el reparto lo hace gridster, y cada
+// cifra es un item suyo. Lo que queda es la pintura de una sola tarjeta.
+//
+// `block-size: 100%` para que la tarjeta llene su celda en vez de quedar corta
+// y flotando arriba. Es seguro precisamente porque estas tres NO son de alto
+// automático: si lo fueran, medir un elemento que ya vale el 100% de la celda
+// realimentaría al observador (ver `dashboard-layout.ts`).
+.metric {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: var(--space-1);
+  block-size: 100%;
 }
 
-.summary__label {
+// Es un `h2` real —da nombre accesible a la tarjeta y aparece al navegar por
+// encabezados—, pero no se pinta como tal: el elemento marca la estructura y el
+// CSS marca la jerarquía visual. Lo grande aquí es la cifra, no su etiqueta.
+.metric__label {
   font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
   color: var(--color-text-muted);
+  margin: 0;
 }
 
-.summary__value {
+.metric__value {
+  margin: 0;
   font-size: var(--text-h1);
   font-weight: var(--weight-semibold);
   color: var(--color-text);
 
-  // Cifras de ancho fijo. Sin esto las columnas de importes bailan de una fila
-  // a otra según los dígitos que toquen, y comparar dos cantidades de un
-  // vistazo deja de ser posible.
+  // Cifras de ancho fijo. Sin esto los importes bailan de una tarjeta a otra
+  // según los dígitos que toquen, y comparar dos cantidades de un vistazo deja
+  // de ser posible — que es lo único que sostiene tenerlas en fila.
   font-variant-numeric: tabular-nums;
-
-  // No hace falta reservar alto a mano: la plantilla pinta un guion mientras
-  // carga, así que la línea existe desde el primer fotograma.
 }
 
 // Mapeo dominio → semántica, igual que los badges de Tareas: ingreso apunta a
 // `success`, gasto a `danger`. Ningún hex aquí.
-.summary__value--income {
+.metric__value--income {
   color: var(--color-success);
 }
 
-.summary__value--expense {
+.metric__value--expense {
   color: var(--color-danger);
 }
 
@@ -96,25 +92,160 @@
 }
 
 // -----------------------------------------------------------------------------
+// La rejilla
+// -----------------------------------------------------------------------------
+// gridster declara sus componentes con `ViewEncapsulation.None`: sus estilos son
+// globales en cuanto se carga este chunk y traen colores literales —`gray` en la
+// rejilla, `#fff` en cada tarjeta—, que en el tema oscuro son rectángulos
+// blancos.
+//
+// Se corrigen desde aquí y no desde un archivo global porque SÍ se puede: los
+// `<gridster>` y `<gridster-item>` están escritos en `overview.html`, así que
+// llevan el atributo de encapsulación de este componente y estos selectores
+// pesan (0,1,1) contra el (0,0,1) de la librería. Ganan por especificidad, no
+// por orden de inyección — que con un chunk lazy no está garantizado, la misma
+// trampa que documenta `.card-metric`. Lo que la encapsulación no alcanza (lo
+// que gridster renderiza en su propia plantilla) está en `styles/_gridster.scss`
+// y explicado allí.
+.dashboard {
+  background: transparent;
+
+  // `setGridSize: true` es lo que hace que la rejilla crezca con su contenido y
+  // que el scroll siga siendo el de la ventana, pero fija TAMBIÉN el ancho en
+  // línea al que midió. Sin esto la rejilla no vuelve a encogerse al estrechar
+  // la ventana: mide su propio ancho congelado y se queda ahí.
+  //
+  // `width` y no `inline-size`, y con `!important`: hay que ganarle a un estilo
+  // en línea, y para eso el `!important` es la única vía. Se usa la propiedad
+  // física porque es exactamente la que escribe la librería; con la lógica, cuál
+  // de las dos gana depende del orden y no de la importancia.
+  width: 100% !important;
+}
+
+.dashboard__cell {
+  background: transparent;
+}
+
+// Una tarjeta de contenido tiene dos formas de relacionarse con su celda, y hay
+// que elegir una explícitamente:
+//
+// - **alto automático** (`byCategory`, `recent`): manda el contenido y la celda
+//   se ajusta a él. Ver `observeAutoHeight()`.
+// - **`--fill`** (los gráficos): manda la celda y el contenido se reparte el
+//   alto que haya.
+//
+// El `:not()` es lo que hace que no compitan: sube la especificidad a (0,2,0)
+// frente a (0,1,0), así que cuál gana no depende de cuál esté antes en el
+// archivo. Un empate aquí se resolvería por orden de aparición, que es
+// exactamente la clase de fragilidad que ya documentan `.card-metric` y las
+// media queries de `app-header.scss`.
+.dashboard__card:not(.dashboard__card--fill) {
+  // `flow-root` para que el margen superior del `h2` no se escape de la caja.
+  // Sin esto el margen colapsa hacia fuera: el contenido se pintaría por debajo
+  // del borde de la celda y —peor— `offsetHeight` no lo contaría, así que las
+  // dos tarjetas de alto automático se medirían cortas y se recortarían solas.
+  display: flow-root;
+}
+
+// La tarjeta ocupa la celda entera y su contenido se reparte ese alto.
+//
+// **No lleva `overflow`**, y es deliberado: `monthly-flow` deja su área de
+// trazado en `overflow: visible` para que el emergente de cada columna pueda
+// salirse por arriba, y un contenedor de scroll aquí lo cortaría. Si la celda se
+// queda pequeña, quien recorta es el `overflow: hidden` del `gridster-item`; el
+// seguro contra llegar ahí es el `minItemRows` de la tarjeta.
+//
+// **Nunca se pone sobre una tarjeta de alto automático.** `block-size: 100%`
+// haría que el `ResizeObserver` midiera el alto que la rejilla acaba de imponer
+// en vez del del contenido, y eso es el bucle de realimentación que
+// `dashboard-layout.ts` documenta.
+.dashboard__card--fill {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+}
+
+// El gráfico se queda con todo el alto que sobre después del encabezado.
+//
+// Las cuatro declaraciones van AQUÍ y no en un `:host` del componente, y esa es
+// la decisión: `flex` solo llega hasta el hijo directo, así que para que la
+// cadena continúe hacia dentro hay que poner al host en columna flexible — pero
+// eso es una afirmación sobre dónde está montado, no sobre lo que el componente
+// es. `spending-pace` solo sabe repartirse el alto que reciba; quién se lo da lo
+// decide el sitio donde se monta. Montado en otro lado sin esta regla, se
+// comporta como siempre.
+//
+// `min-block-size: 0` porque un item flexible no baja de su alto de contenido
+// salvo que se le diga: sin él la tarjeta se desborda en vez de encogerse. Es el
+// equivalente vertical del `min-inline-size: 0` que ya llevan `.pace__plot` y
+// `.flow__column`.
+.dashboard__card--fill > app-spending-pace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-block-size: 0;
+}
+
+// Dentro de una celda el encabezado no lleva aire por arriba: la separación
+// entre tarjetas ya la pone el margen de la rejilla.
+.dashboard .section-heading {
+  margin-block-start: 0;
+}
+
+// -----------------------------------------------------------------------------
+// Modo edición
+// -----------------------------------------------------------------------------
+// **Toda la tarjeta es el asa.** La primera versión ponía una franja con un
+// icono arriba y `ignoreContent: true`, y eso hacía que la franja fuera el ÚNICO
+// punto de agarre: quien la intentaba mover desde cualquier otro sitio veía que
+// no pasaba nada, sin ninguna pista de por qué. Con siete tarjetas pequeñas la
+// franja se comía además media tarjeta. Se cambió por `cursor: move` sobre la
+// celda entera, que es la señal estándar y no ocupa sitio.
+.dashboard--editing {
+  .dashboard__cell {
+    cursor: move;
+
+    // Sin esto, arrastrar selecciona el texto que va pasando por debajo del
+    // puntero. `gridster-item` declara `user-select: text` desde la librería, y
+    // este selector le gana por especificidad (0,1,1 contra 0,0,1).
+    user-select: none;
+
+    // El navegador se quedaría el gesto para hacer scroll y la tarjeta no se
+    // movería en táctil. Mismo motivo que en el botón de dictado del chat.
+    touch-action: none;
+
+    // El borde discontinuo hace visible el límite de la celda mientras se
+    // coloca. Va en `outline` y no en `border`: un borde cambiaría el alto de la
+    // caja y las tarjetas de alto automático se remedirían al entrar en el modo.
+    outline: 1px dashed var(--color-border-strong);
+    outline-offset: -1px;
+    border-radius: var(--radius-lg);
+  }
+
+  // Lo que sigue siendo pulsable dentro de una tarjeta recupera su cursor. La
+  // clase la mira también gridster (`ignoreContentClass`) para no convertir esa
+  // pulsación en un arrastre; aquí solo se encarga de que se vea.
+  .dashboard__no-drag {
+    cursor: auto;
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Los bloques de media query van al FINAL de la hoja, nunca junto a la regla
 // que modifican: una media query no añade especificidad, solo decide el orden,
 // así que puesta arriba la pisa la declaración de más abajo. Ya pasó en
 // `app-header.scss`.
 // -----------------------------------------------------------------------------
 @include layout.below-tablet {
-  // Una sola columna, y cada tarjeta pasa de apilada a fila: etiqueta a la
-  // izquierda, importe a la derecha.
+  // La tarjeta de una cifra pasa de apilada a fila: etiqueta a la izquierda,
+  // importe a la derecha.
   //
-  // Con dos columnas el hueco útil de cada tarjeta era de ~102px y un importe
-  // en pesos mide ~140px: no cabía por bastante. Y no es cuestión de bajar la
-  // tipografía hasta que entre — en fila hay 280px disponibles para lo mismo,
-  // las tres cifras quedan alineadas verticalmente (que es como se comparan) y
-  // el bloque ocupa menos alto que dos tarjetas apiladas.
-  .summary {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .summary__item {
+  // Apilada, el hueco útil quedaba en ~102px y un importe en pesos mide ~140px:
+  // no cabía por bastante. Y no es cuestión de bajar la tipografía hasta que
+  // entre — en fila hay 280px disponibles para lo mismo, las tres cifras quedan
+  // alineadas verticalmente (que es como se comparan) y cada tarjeta ocupa menos
+  // alto, que en una columna apilada es lo que más importa.
+  .metric {
     flex-direction: row;
     align-items: baseline;
     justify-content: space-between;
@@ -124,7 +255,7 @@
     padding: var(--space-4);
   }
 
-  .summary__value {
+  .metric__value {
     font-size: var(--text-h2);
   }
 }
@@ -155,5 +286,42 @@
   .page-header__actions .btn-primary {
     width: 100%;
     justify-content: center;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Por debajo de escritorio la rejilla se apila
+// -----------------------------------------------------------------------------
+// La conmutación la hace gridster solo (`mobileBreakpoint`, ver `gridOptions`):
+// pone los items en `position: relative` y los deja caer en el orden del DOM,
+// que es el orden de lectura de siempre. Lo que NO resuelve bien es el alto —le
+// da a cada tarjeta el que tendría dentro de la rejilla, y en una sola columna
+// eso no significa nada: el resumen pasa de tres cifras en fila a tres apiladas
+// y se recortaría.
+//
+// Con el alto en automático, la columna apilada es exactamente el flujo normal
+// que esta pantalla tenía antes de la rejilla. `!important` porque ese alto lo
+// escribe la librería en línea, igual que el ancho de `.dashboard`.
+@include layout.below-desktop {
+  .dashboard__cell {
+    height: auto !important;
+  }
+
+  // Personalizar no tiene sentido aquí, y no por falta de sitio: gridster
+  // desactiva arrastre y redimensionado por debajo de su `mobileBreakpoint`
+  // (`canBeDragged()` devuelve `false` en modo móvil), así que el botón estaría
+  // sin hacer nada. No hace falta recambio: en una sola columna no hay
+  // disposición que romper ni que recuperar.
+  .dashboard-action {
+    display: none;
+  }
+}
+
+// El desplazamiento de las tarjetas al recolocarse es exactamente el movimiento
+// grande que provoca malestar vestibular. Se quita el recorrido, no la función:
+// la tarjeta sigue cambiando de sitio, solo que sin animarlo.
+@media (prefers-reduced-motion: reduce) {
+  .dashboard__cell {
+    transition: none;
   }
 }
