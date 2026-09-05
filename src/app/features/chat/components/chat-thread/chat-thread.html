@@ -10,7 +10,11 @@
   puedan editar o borrar mensajes, esto pasa a ser un bug de reuso de DOM.
 -->
 @for (message of messages(); track $index) {
-  <div class="chat-message chat-message--{{ message.role }}">{{ message.text }}</div>
+  @if (message.role === 'assistant') {
+    <div class="chat-message chat-message--assistant" [innerHTML]="renderMarkdown(message.text)"></div>
+  } @else {
+    <div class="chat-message chat-message--user">{{ message.text }}</div>
+  }
 }
 
 @if (sending()) {

@@ -26,6 +26,43 @@
   align-self: flex-start;
   background: var(--color-surface-muted);
   color: var(--color-text);
+
+  // El markdown se inserta con [innerHTML]: Angular no compila ese HTML, así
+  // que no lleva el atributo de scoping y una regla normal no lo alcanza.
+  // `::ng-deep` es el escape reconocido para ese caso — a diferencia del uso
+  // que el resto del repo evita (saltar entre dos componentes distintos),
+  // aquí no hay frontera que perforar: es contenido propio, solo que Angular
+  // no lo generó.
+  ::ng-deep {
+    p {
+      margin: 0 0 var(--space-2);
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    ul,
+    ol {
+      margin: var(--space-2) 0;
+      padding-inline-start: var(--space-4);
+    }
+
+    li + li {
+      margin-top: var(--space-1);
+    }
+
+    strong {
+      font-weight: var(--weight-semibold);
+    }
+
+    code {
+      background: var(--color-surface);
+      padding: 0 var(--space-1);
+      border-radius: var(--radius-sm);
+      font-size: 0.9em;
+    }
+  }
 }
 
 .chat-message--pending {

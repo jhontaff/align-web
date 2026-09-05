@@ -9,6 +9,7 @@ import {
   input
 } from '@angular/core';
 import { ChatMessage } from '../../models/chat.model';
+import { renderMarkdown } from '../../render-markdown';
 
 /**
  * A cuántos píxeles del fondo se sigue considerando que el usuario está "abajo".
@@ -43,6 +44,15 @@ export class ChatThread {
   readonly messages = input.required<ChatMessage[]>();
   readonly loadingHistory = input(false);
   readonly sending = input(false);
+
+  /**
+   * Solo el agente escribe en markdown; lo que el usuario tipea se pinta tal
+   * cual, o un asterisco suelto en su propio mensaje se convertiría en negrita
+   * sin que lo pidiera.
+   */
+  protected renderMarkdown(text: string): string {
+    return renderMarkdown(text);
+  }
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly zone = inject(NgZone);
