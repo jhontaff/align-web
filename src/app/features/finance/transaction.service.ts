@@ -1,17 +1,17 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, forkJoin, map } from 'rxjs';
+import { Observable } from 'rxjs';
+import { DateRange } from '../../core/date/date-range';
 import { toHttpParams } from '../../core/http/to-http-params';
 import { Page, Pageable } from '../../core/models/page.model';
 import {
-  CategoryExpense,
+  CategoryBreakdownResponse,
   FinancialSummaryResponse,
   TransactionFilter,
   TransactionRequest,
   TransactionResponse,
   TransactionUpdateRequest
 } from './models/transaction.model';
-import { EXPENSE_CATEGORIES } from './transaction-labels';
 
 /**
  * Cliente HTTP de Finanzas. Sin estado, como `TaskService`: el estado lo posee
@@ -65,47 +65,30 @@ export class TransactionService {
   }
 
   /**
-   * El gasto de cada categoría en el rango, para el gráfico comparativo.
+   * El desglose por categoría del rango, para el gráfico comparativo.
    *
-   * **Esto es un N+1 declarado, y el sitio donde está es la decisión.** El
-   * backend no tiene ningún endpoint agregado por categoría: `/summary`
-   * devuelve tres escalares y acepta `category` como filtro, así que un
-   * desglose de nueve categorías son nueve peticiones. No hay forma de
-   * evitarlo desde el frontend; lo que sí se puede elegir es que el coste
-   * quede encerrado detrás de una firma que no lo delata. Cuando exista
-   * `GET /api/transactions/summary/by-category` cambia el cuerpo de este
-   * método y no se entera nadie más: ni el componente, ni el tipo que devuelve.
+   * **Era un N+1 y ya no lo es** (2026-09-04). Hasta hoy este método hacía un
+   * `forkJoin` de nueve `GET /summary`, uno por categoría de gasto, porque el
+   * backend no agregaba por categoría; el comentario que ocupaba este sitio
+   * anunciaba que el día que existiera `GET /api/transactions/summary/by-category`
+   * cambiaría el cuerpo del método y no se enteraría nadie más. Existe, y eso
+   * es exactamente lo que pasó: una petición en vez de nueve.
    *
-   * **Por qué no se agrega en cliente desde `list()`**, que sería una sola
-   * petición: ese endpoint está paginado. Pedir un `size` grande y sumar la
-   * página es el fallo silencioso que este repo ya rechazó para el buscador de
-   * Tareas — en cuanto el rango tenga más movimientos que el `size`, el gráfico
-   * infra-reporta sin error alguno y sus barras dejan de sumar el `totalExpense`
-   * que la misma pantalla muestra justo encima. Aquí cada cifra la calcula el
-   * servidor sobre el rango entero, cueste lo que cueste en round-trips.
+   * **Toma un `DateRange` y no un `TransactionFilter`, y la firma es la
+   * corrección importante.** Este endpoint solo acepta `from` y `to` —los lee
+   * como `@RequestParam` sueltos, no bindea el objeto de filtro—, así que un
+   * `category` o un `type` colados en el filtro viajarían en la URL para que el
+   * servidor los ignore en silencio: el gráfico saldría con el desglose entero
+   * bajo un encabezado que promete otra cosa. Con el tipo estrecho, ese error no
+   * se puede escribir.
    *
-   * `forkJoin` sobre un array conserva el orden, así que el resultado sale en
-   * el orden de `EXPENSE_CATEGORIES`. Es determinista a propósito: ordenar de
-   * mayor a menor es una decisión de presentación y la toma quien pinta.
-   *
-   * Falla entero si falla una: un gráfico al que le falta una barra en silencio
-   * es peor que un gráfico que no se pinta, precisamente porque las barras
-   * tienen que sumar el total de al lado.
-   *
-   * `type` no se manda. Sobra —el backend deriva el tipo de la categoría, y
-   * `FOOD` solo puede ser gasto— y mandarlo abriría la puerta a un filtro
-   * contradictorio (`type=INCOME&category=FOOD`) que devolvería ceros.
+   * Sin rango, el servidor responde el mes en curso — no el histórico, que es lo
+   * que hace `/summary`. No se depende de eso: la pantalla manda siempre su
+   * rango, que es el mismo con el que pide las cifras de arriba.
    */
-  expenseByCategory(filter?: TransactionFilter): Observable<CategoryExpense[]> {
-    return forkJoin(
-      EXPENSE_CATEGORIES.map(category =>
-        this.summary({ ...filter, category }).pipe(
-          // De los tres escalares solo uno tiene sentido aquí: con la categoría
-          // fijada a un gasto, `totalIncome` es siempre 0 y `balance` es el
-          // mismo número cambiado de signo.
-          map(summary => ({ category, total: summary.totalExpense }))
-        )
-      )
-    );
+  categoryBreakdown(range?: DateRange): Observable<CategoryBreakdownResponse> {
+    return this.http.get<CategoryBreakdownResponse>('/api/transactions/summary/by-category', {
+      params: toHttpParams(range)
+    });
   }
 }

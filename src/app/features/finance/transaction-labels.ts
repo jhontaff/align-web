@@ -50,11 +50,13 @@ export const INCOME_CATEGORIES = [
  * declarados: ese tipo dice que todo elemento *pertenece* a la unión, no que la
  * unión esté *cubierta*. Olvidar una categoría compilaba sin una queja.
  *
- * Dejó de ser un detalle en cuanto el gráfico de gastos por categoría empezó a
- * recorrer `EXPENSE_CATEGORIES` para pedir un total por cada una: una categoría
- * ausente del array no pinta barra y, peor, sus gastos desaparecen de la suma —
- * las barras dejan de sumar el total de "Gastos" que está tres centímetros más
- * arriba en la misma pantalla, y nada falla de forma visible.
+ * Dejó de ser un detalle cuando el gráfico de gastos por categoría recorría
+ * este array para pedir un total por cada una: una categoría ausente no pintaba
+ * barra y, peor, sus gastos desaparecían de la suma. Ese gráfico ya no lo
+ * recorre —el backend agrega el desglose en un solo endpoint desde el
+ * 2026-09-04—, pero la comprobación se queda: el `<select>` del formulario sigue
+ * saliendo de aquí, y una categoría que falte ahí es una que el usuario no puede
+ * registrar.
  *
  * `as const satisfies` es lo que lo hace posible: `satisfies` valida que cada
  * elemento sea de la unión (lo que daba la anotación de tipo) sin ensanchar el

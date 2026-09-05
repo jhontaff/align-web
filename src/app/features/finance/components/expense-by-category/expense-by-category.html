@@ -16,7 +16,7 @@
         <span class="chart__label">{{ bar.label }}</span>
 
         <span class="chart__value">
-          {{ bar.total | currency: undefined : 'symbol' : moneyDigits }}
+          {{ bar.amount | currency: undefined : 'symbol' : moneyDigits }}
           <!--
             El sufijo va dentro del mismo nodo y solo para lectores de pantalla:
             en voz alta "$ 850.000, 34%" no dice de que es ese 34, y escribirlo
