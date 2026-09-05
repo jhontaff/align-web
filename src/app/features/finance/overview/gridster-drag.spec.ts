@@ -161,3 +161,114 @@ describe('rejilla de Finanzas: arrastre', () => {
     releasePointer();
   });
 });
+
+/**
+ * El segundo fallo que este archivo protege: el móvil (2026-09-05) dejó de
+ * apilar por CSS y pasó a ser gridster de verdad, con una sola columna
+ * (`minCols`/`maxCols = 1`) en vez de doce, precisamente para poder
+ * personalizar (arrastrar para reordenar) también ahí. Si alguien reintrodujera
+ * `mobileBreakpoint` como forma de detectar pantallas estrechas, el modo
+ * `.mobile` de gridster volvería a apagar `canBeDragged()` sin excepción y el
+ * arrastre en el teléfono se rompería exactamente igual que se rompía antes en
+ * escritorio — mismo mecanismo, otro disparador.
+ *
+ * Se prueba con una rejilla de UNA columna y no de doce para que la prueba
+ * falle si algún día vuelve a depender de `mobileBreakpoint` en vez de
+ * `minCols`/`maxCols`.
+ */
+@Component({
+  selector: 'app-single-column-drag-harness',
+  imports: [GridsterComponent, GridsterItemComponent],
+  template: `
+    <gridster class="dashboard" [options]="options">
+      <gridster-item class="dashboard__cell" [item]="first">
+        <section class="card metric"><h2>Ingresos</h2></section>
+      </gridster-item>
+      <gridster-item class="dashboard__cell" [item]="second">
+        <section class="card metric"><h2>Gastos</h2></section>
+      </gridster-item>
+    </gridster>
+  `,
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+class SingleColumnDragHarness {
+  first = { id: 'income', x: 0, y: 0, cols: 1, rows: 2 };
+  second = { id: 'expense', x: 0, y: 2, cols: 1, rows: 2 };
+
+  /** La misma configuración que `Overview.gridOptions` con una sola columna. */
+  readonly options: GridsterConfig = {
+    gridType: GridType.VerticalFixed,
+    fixedRowHeight: 48,
+    setGridSize: true,
+    margin: 16,
+    outerMargin: false,
+    minCols: 1,
+    maxCols: 1,
+    minItemRows: 2,
+    compactType: CompactType.CompactUp,
+    pushItems: true,
+    useBodyForBreakpoint: false,
+    mobileBreakpoint: 0,
+    displayGrid: DisplayGrid.None,
+    draggable: { enabled: false, ignoreContent: false, ignoreContentClass: 'dashboard__no-drag' },
+    // Réplica de `Overview.applyColumnLayout()`: en una sola columna el
+    // redimensionado se queda apagado aunque se edite; solo se arrastra.
+    resizable: { enabled: false }
+  };
+
+  enableEditing(): void {
+    this.options.draggable = { ...this.options.draggable, enabled: true };
+    this.options.api?.optionsChanged?.();
+  }
+}
+
+describe('rejilla de Finanzas: arrastre en una sola columna (móvil)', () => {
+  let fixture: ComponentFixture<SingleColumnDragHarness>;
+  let host: SingleColumnDragHarness;
+  let grid: GridsterComponent;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({ imports: [SingleColumnDragHarness] }).compileComponents();
+    fixture = TestBed.createComponent(SingleColumnDragHarness);
+    host = fixture.componentInstance;
+    fixture.detectChanges();
+    grid = fixture.debugElement.query(By.directive(GridsterComponent)).componentInstance;
+  });
+
+  function releasePointer(): void {
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    fixture.detectChanges();
+  }
+
+  it('una sola columna no activa el modo móvil de gridster', () => {
+    expect(grid.columns).toBe(1);
+    expect(grid.mobile).toBe(false);
+  });
+
+  it('las dos tarjetas se pueden arrastrar igual que con doce columnas', () => {
+    host.enableEditing();
+    fixture.detectChanges();
+
+    const items = fixture.debugElement.queryAll(By.directive(GridsterItemComponent));
+    for (const debugItem of items) {
+      const component: GridsterItemComponent = debugItem.componentInstance;
+      expect(component.canBeDragged()).withContext(component.item['id']).toBe(true);
+    }
+  });
+
+  it('arrastrar la primera tarjeta arranca un arrastre real', () => {
+    host.enableEditing();
+    fixture.detectChanges();
+
+    const body: HTMLElement = fixture.nativeElement.querySelector('.metric');
+    body.dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10, button: 0 })
+    );
+    document.dispatchEvent(
+      new MouseEvent('mousemove', { bubbles: true, clientX: 10, clientY: 200 })
+    );
+
+    expect(grid.dragInProgress).toBe(true);
+    releasePointer();
+  });
+});
