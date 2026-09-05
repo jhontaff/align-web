@@ -1,11 +1,32 @@
 // La lista de requisitos de contraseña. Es maquetación propia de esta pantalla:
 // no hay un segundo consumidor que justifique subirla a `_components.scss`.
+//
+// Colapsada NO sale del DOM ni del árbol de accesibilidad: `display: none` y
+// `visibility: hidden` la sacarían de los dos, y entonces el `aria-describedby`
+// del campo apuntaría a un id inexistente mientras la lista está cerrada.
+// Con `opacity` + `max-height` el nodo sigue ahí y la descripción siempre resuelve.
 .password-rules {
   list-style: none;
-  margin: var(--space-2) 0 0;
+  margin: 0;
   padding: 0;
   display: grid;
   gap: var(--space-1);
+
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height 160ms ease,
+    opacity 160ms ease,
+    margin-top 160ms ease;
+}
+
+// Holgado para las cuatro reglas (~96px). `max-height` necesita un número: no
+// se puede animar hacia `auto`. Si entra una quinta regla, sube este valor.
+.password-rules--open {
+  max-height: 8rem;
+  opacity: 1;
+  margin-top: var(--space-2);
 }
 
 .password-rules__item {
@@ -20,4 +41,12 @@
 
 .password-rules__item--met {
   color: var(--color-success);
+}
+
+// Las media queries van al final de la hoja: no añaden especificidad, así que
+// lo único que decide quién gana es el orden de aparición.
+@media (prefers-reduced-motion: reduce) {
+  .password-rules {
+    transition: none;
+  }
 }

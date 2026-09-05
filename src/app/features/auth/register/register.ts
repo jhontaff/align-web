@@ -58,6 +58,13 @@ export class Register {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly submitting = signal(false);
 
+  /**
+   * Abre y cierra la lista de requisitos. Se alimenta de `focus`/`blur` y no de `click`:
+   * un `click` dejaría sin requisitos a quien llega al campo con Tab o desde un gestor
+   * de contraseñas, que son justo los casos en los que nadie los ha leído todavía.
+   */
+  protected readonly passwordFocused = signal(false);
+
   protected readonly form = this.fb.nonNullable.group(
     {
       email: ['', [Validators.required, Validators.email]],

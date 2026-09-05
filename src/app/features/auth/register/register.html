@@ -30,8 +30,14 @@
           formControlName="password"
           autocomplete="new-password"
           aria-describedby="password-rules"
+          (focus)="passwordFocused.set(true)"
+          (blur)="passwordFocused.set(false)"
         />
-        <ul id="password-rules" class="password-rules">
+        <ul
+          id="password-rules"
+          class="password-rules"
+          [class.password-rules--open]="passwordFocused()"
+        >
           @for (check of passwordChecks(); track check.id) {
             <li class="password-rules__item" [class.password-rules__item--met]="check.met">
               <app-icon [name]="check.met ? 'bi:check-circle-fill' : 'bi:circle'" />
