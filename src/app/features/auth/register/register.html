@@ -33,13 +33,9 @@
           (focus)="passwordFocused.set(true)"
           (blur)="passwordFocused.set(false)"
         />
-        <ul
-          id="password-rules"
-          class="password-rules"
-          [class.password-rules--open]="passwordFocused()"
-        >
+        <ul id="password-rules" class="field-checks" [class.field-checks--open]="passwordFocused()">
           @for (check of passwordChecks(); track check.id) {
-            <li class="password-rules__item" [class.password-rules__item--met]="check.met">
+            <li class="field-checks__item" [class.field-checks__item--met]="check.met">
               <app-icon [name]="check.met ? 'bi:check-circle-fill' : 'bi:circle'" />
               <span>{{ check.label }}</span>
               <span class="visually-hidden">{{ check.met ? '(cumplido)' : '(pendiente)' }}</span>
@@ -56,8 +52,25 @@
           formControlName="confirmPassword"
           autocomplete="new-password"
           [attr.aria-invalid]="showMismatch() ? 'true' : null"
-          [attr.aria-describedby]="showMismatch() ? 'confirmPassword-error' : null"
+          [attr.aria-describedby]="
+            showMismatch() ? 'confirmPassword-match confirmPassword-error' : 'confirmPassword-match'
+          "
+          (focus)="confirmFocused.set(true)"
+          (blur)="confirmFocused.set(false)"
         />
+        <!--
+          El <ul> se queda siempre para que `aria-describedby` no apunte a un id
+          inexistente; el <li> sí va en @if, porque un nodo colapsado sigue en el
+          árbol de accesibilidad y anunciar "coinciden" cuando no coinciden mentiría.
+        -->
+        <ul id="confirmPassword-match" class="field-checks" [class.field-checks--open]="showMatch()">
+          @if (showMatch()) {
+            <li class="field-checks__item field-checks__item--met">
+              <app-icon name="bi:check-circle-fill" />
+              <span>Las contraseñas coinciden</span>
+            </li>
+          }
+        </ul>
         @if (showMismatch()) {
           <p id="confirmPassword-error" class="form-error">Las contraseñas no coinciden.</p>
         }
