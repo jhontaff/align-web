@@ -1,6 +1,3 @@
-# Este archivo va en el VPS, en /opt/align-web/docker-compose.yml
-# Reemplaza jhontaff/align-web si el repo cambia de nombre.
-
 services:
   web:
     image: ghcr.io/jhontaff/align-web:latest
