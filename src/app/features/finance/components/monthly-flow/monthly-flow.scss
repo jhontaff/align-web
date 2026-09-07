@@ -7,10 +7,17 @@
 $plot-height: 180px;
 $plot-height-compact: 140px;
 
+// `flex: 1` + `min-block-size: 0` para que la tarjeta se quede con el alto que
+// le dé el host cuando este vive dentro de una celda que estira (2026-09-05,
+// mismo tratamiento que `spending-pace`). Quien pone al host en columna
+// flexible es `overview.scss`: el componente no da por hecho dónde está
+// montado, solo sabe repartirse el alto que reciba.
 .flow {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  flex: 1;
+  min-block-size: 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -52,7 +59,20 @@ $plot-height-compact: 140px;
 // -----------------------------------------------------------------------------
 .flow__plot {
   position: relative;
-  block-size: $plot-height;
+
+  // `flex-basis` y no `block-size` a secas (2026-09-05): dentro de `.flow`, que
+  // ahora es una columna flexible, esto es lo único que se estira. Todo lo
+  // demás de la tarjeta —cabecera, eje de meses, leyenda, la tabla plegada—
+  // mide lo que mide su contenido, y estirarlo solo produciría huecos. Así,
+  // agrandar la tarjeta desde la rejilla agranda el gráfico, que es lo que hace
+  // que redimensionarla sirva para algo. `$plot-height` sigue siendo el alto de
+  // partida cuando no sobra sitio —el de siempre, montado fuera de una celda
+  // que estire—, pero deja de ser un tope.
+  flex: 1 1 $plot-height;
+
+  // Suelo: por debajo de esto las doce barras y sus emergentes ya no caben con
+  // holgura. Mismo valor que el suelo de `spending-pace`.
+  min-block-size: 96px;
 
   // NO se recorta (`overflow` se queda en su `visible` por defecto): el
   // emergente de cada columna se sale por arriba a propósito, y un
@@ -349,7 +369,9 @@ $plot-height-compact: 140px;
     padding: var(--space-4);
   }
 
+  // `flex-basis` y no `block-size`, igual que arriba: en móvil el alto de
+  // partida baja, pero la tarjeta sigue pudiendo estirarlo si tiene sitio.
   .flow__plot {
-    block-size: $plot-height-compact;
+    flex-basis: $plot-height-compact;
   }
 }

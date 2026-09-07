@@ -1,0 +1,36 @@
+// =============================================================================
+// Correcciones a angular-gridster2
+// -----------------------------------------------------------------------------
+// Este archivo existe por una sola razón, y conviene que quede escrita: los tres
+// componentes de la librería se declaran con `ViewEncapsulation.None`, así que
+// sus estilos son globales y traen colores literales (`background: gray`, un
+// `#fff` en cada item, `#ccc` en el tirador de redimensionar, un negro
+// translúcido en la vista previa). Ninguno sabe nada del tema oscuro.
+//
+// **Casi todas esas correcciones NO van aquí, van en `overview.scss`.** Los
+// elementos que la pantalla escribe —`<gridster>` y los `<gridster-item>`—
+// llevan el atributo de encapsulación de su componente, así que un selector
+// suyo pesa (0,1,1) contra el (0,0,1) de la librería y gana por especificidad,
+// no por orden de inyección (que con un chunk lazy no está garantizado).
+//
+// Aquí solo queda lo que la encapsulación NO puede alcanzar: los elementos que
+// gridster renderiza en SU propia plantilla, que no llevan nuestro atributo y
+// por tanto no los ve ningún selector de un `.scss` de componente. La
+// alternativa era `::ng-deep`, que está deprecado y que este repo ya descartó
+// una vez (ver `.menu-item` en `_components.scss`). Que las correcciones a unos
+// estilos globales sean globales es, además, la escala que les corresponde.
+// =============================================================================
+
+// La sombra del hueco al que va a caer la tarjeta que se arrastra. Su valor de
+// fábrica es un negro al 15%: sobre el fondo oscuro apenas se distingue, que es
+// justo cuando más falta hace saber dónde vas a soltar.
+gridster-preview {
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-lg);
+}
+
+// El triángulo de la esquina inferior derecha, el único tirador de
+// redimensionar que se ve. La librería lo pinta en `#ccc` fijo.
+gridster-item:hover .gridster-item-resizable-handler.handle-se {
+  border-color: transparent transparent var(--color-border-strong);
+}
