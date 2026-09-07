@@ -1,5 +1,18 @@
 @use '../../../../../styles/layout';
 
+// `<ul class="chart card">` es a la vez el host raíz del componente Y la
+// tarjeta visual (mismo patrón que `.card.pace`/`.card.flow`), así que es este
+// elemento el que tiene que continuar la cadena flexible que arranca en
+// `.dashboard__card--fill` de `overview.scss`: `flex: 1` para quedarse con el
+// alto que le dé la celda, `min-block-size: 0` porque un item flexible no baja
+// de su alto de contenido salvo que se le diga.
+//
+// **Hasta el 2026-09-05 esta tarjeta era de alto automático** (crecía con el
+// número de categorías del periodo, nunca hacía scroll). Pasó a tamaño fijo y
+// redimensionable como `pace`/`flow` para que el usuario pueda controlar cuánto
+// ocupa; el precio es `overflow-y: auto` aquí: con pocas categorías sobra
+// espacio debajo de la lista, y con muchas, las que no quepan se alcanzan
+// deslizando dentro de la propia tarjeta en vez de estirarla sin límite.
 .chart {
   list-style: none;
   margin: 0;
@@ -8,6 +21,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  flex: 1;
+  min-block-size: 0;
+  overflow-y: auto;
 }
 
 // -----------------------------------------------------------------------------

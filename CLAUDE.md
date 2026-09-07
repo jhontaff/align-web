@@ -136,6 +136,69 @@ Decisions already made in discussion with the backend session, before any fronte
 
 ---
 
+# El panel de Finanzas: rejilla arrastrable (angular-gridster2)
+
+Añadido 2026-09-05 en `finance-body-update`. La pantalla de resumen deja de ser una columna de 720px con cinco secciones apiladas y pasa a ser una rejilla de 12 columnas que el usuario recoloca y redimensiona. Es la primera —y por ahora única— dependencia de UI de terceros del repo, así que conviene que el porqué y el precio queden escritos.
+
+**La pantalla ancha y la rejilla son dos cambios distintos.** El ancho es `class="page page--wide"` (1280px), que es lo que Inicio y Hábitos ya usaban; Finanzas era el único dashboard que se pintaba en columna de lectura. Eso se arregla con una línea y no necesita ninguna librería.
+
+## Por qué gridster2 y no CSS grid
+
+Para colocar bien cinco tarjetas, CSS grid sobra y es lo que este repo haría por defecto. Gridster resuelve **una** cosa que CSS no: que el usuario final mueva y redimensione las tarjetas con el ratón y eso se recuerde. Esa era la petición, y es la única justificación válida para la dependencia. Si algún día la personalización se retira, la librería se va con ella — no se queda "para maquetar".
+
+Versión **20.2.4**, fijada. Standalone (`GridsterComponent` / `GridsterItemComponent` entran por el array `imports`, no hay `GridsterModule`), MIT, sin dependencias más allá de `tslib`. Ver la nota de versionado en [Angular 20.3](#angular-203--apis-disponibles-y-límites-de-versión).
+
+## Lo que costó, y cómo se pagó
+
+Cada uno de estos puntos es una fricción real entre la librería y las reglas del repo. Están resueltos; se anotan para que no se "arreglen" de vuelta.
+
+- **`ViewEncapsulation.None` con colores literales.** `gridster { background: gray }`, `gridster-item { background: #fff }`, `#ccc` en el tirador. En oscuro son rectángulos blancos. Se corrigen por especificidad desde `overview.scss` —los elementos escritos en nuestra plantilla llevan nuestro atributo de encapsulación, así que `.dashboard` pesa (0,1,1) contra el (0,0,1) de la librería—, **no por orden de inyección**, que con un chunk lazy no está garantizado. Lo que la librería renderiza en su propia plantilla no se alcanza así y vive en `styles/_gridster.scss`. **`::ng-deep` no se usa**, sigue descartado.
+- **El scroll.** `gridType: 'verticalFixed'` + `setGridSize: true` es la **única** combinación que deja el scroll en la ventana: `fit` recorta al alto del contenedor y `scrollVertical` le da a la rejilla su propio `overflow-y`, y las dos dejarían `withInMemoryScrolling` sin efecto. Precio: `setGridSize` fija también el **ancho** en línea y la rejilla no vuelve a encogerse — se compensa con `width: 100% !important` en `.dashboard`, que es de los pocos `!important` legítimos que hay (ganarle a un estilo en línea no tiene otra vía).
+- **El breakpoint, el bug que causó, y por qué ya no se apaga nunca** (corregido 2026-09-05, extendido el mismo día). Gridster decide si está en "modo móvil" comparando `mobileBreakpoint` contra un ancho que mide él, y **en modo móvil `canBeDragged()` devuelve `false` pase lo que pase**. La primera versión usaba `useBodyForBreakpoint: true` + 1024, o sea `document.body.clientWidth` — que **excluye la barra de scroll**— contra el mismo número que la media query de `_layout.scss`, que compara contra el viewport y **la incluye**. Dos varas de medir para el mismo umbral: había una franja en la que el CSS pintaba el escritorio, con su botón de "Personalizar", y el arrastre estaba muerto sin ningún aviso.
+  El primer arreglo sincronizaba el umbral con `BreakpointService` en vez de dejar que gridster lo midiera — mejor, pero seguía dejando entrar a gridster en modo móvil por debajo de 1024, y ahí el arrastre sigue muerto por diseño de la librería. Como la siguiente petición fue justo **personalizar también en el teléfono**, ese modo móvil dejó de ser una opción: `mobileBreakpoint: 0` es ahora un centinela fijo **para siempre**, nunca se vuelve a tocar. Gridster no entra en su modo `.mobile` en ningún ancho.
+  Lo que sí reacciona al ancho es `minCols`/`maxCols`: `DASHBOARD_COLUMNS` (12) en escritorio, `DASHBOARD_MOBILE_COLUMNS` (1) por debajo, escrito por el mismo `effect` sobre `BreakpointService.isDesktop()` de antes — sigue siendo el único `matchMedia` de verdad, el que también lee el SCSS. Con una columna, gridster sigue colocando de verdad (no hay pila por CSS ni `height: auto !important`): cada tarjeta ocupa el 100% del ancho y el arrastre reordena, que es justo lo que el modo móvil de la librería nunca habría permitido.
+- **Personalizar también en el teléfono, en una sola columna** (2026-09-05). Dos consecuencias de lo anterior:
+  - **Escritorio y móvil son dos disposiciones independientes**, cada una con su propio guardado (`DashboardLayoutVariant`, ver el bullet de persistencia) y su propio botón "Restablecer" — restablecer en el teléfono no toca lo que el usuario colocó en el monitor grande, y viceversa. `Overview.applyColumnLayout()` es quien conmuta las dos al cruzar el umbral, escribiendo directamente en los mismos siete objetos (`cards`) que gridster ya tiene enlazados — nunca se cambia la identidad del objeto, solo los números que contiene, por la misma razón que `cards` no es un `signal`.
+  - **El redimensionado se apaga entero en móvil**, aunque el modo edición esté activo (`toggleEditing()` y `applyColumnLayout()` comparten esa condición, para que cruzar el breakpoint con el modo edición ya abierto no deje un redimensionado colgado). Con una columna no hay ancho que repartir y el alto ya no es del usuario en las tres tarjetas `--fill` — personalizar en el teléfono es reordenar, nada más.
+  - `dashboard-layout.spec.ts` (8 pruebas) y dos `describe` nuevos en `gridster-drag.spec.ts` cubren esto: que la disposición de móvil apila en el orden de `DASHBOARD_CARD_IDS` reutilizando el `rows` de escritorio, que guardar una variante no toca la otra, y que una rejilla de una sola columna **no** activa el modo `.mobile` de gridster ni impide arrastrar — la prueba que habría fallado si alguien reintrodujera `mobileBreakpoint` como detector de pantalla estrecha.
+- **Alto automático de una sola tarjeta.** "Últimos movimientos" crece con su contenido; las otras seis tienen alto determinista. Hasta el 2026-09-05 eran dos —"Gastos por categoría" también—, ver el bullet siguiente. Tres cosas que no se ven en el código:
+  - Se observa la `<section>`, **nunca el `<gridster-item>`**: el item tiene el alto que le impone la rejilla, así que observarlo se realimenta (crece → se mide más alto → crece) y es el bucle infinito clásico de `ResizeObserver`.
+  - El `ResizeObserver` se crea **fuera de la zona**: al redimensionar en horizontal el texto se remaqueta y dispara decenas de veces por segundo. Solo se vuelve a entrar en la zona cuando el número de filas cambia de verdad.
+  - Crecer **empuja hacia abajo** con `GridsterPush`. `compactType: 'compactUp'` solo tapa huecos hacia arriba: no resuelve solapamientos, así que sin el empujón una tarjeta que crece se mete por debajo de su vecina.
+  - Y por eso la tarjeta automática **no se redimensiona en vertical** (`handlesFor()`): si pudiera, el usuario la estiraría, llegarían datos y el observador la devolvería a su tamaño. Dos fuerzas escribiendo el mismo número.
+- **Una tarjeta de contenido elige una de dos relaciones con su celda, y se declara.** O **alto automático** (hoy solo `recent`): manda el contenido y la celda se ajusta. O **`.dashboard__card--fill`** (`byCategory`, `pace`, `flow`): manda la celda y el contenido se reparte ese alto — dentro de la tarjeta, lo único que se estira es el área de trazado o la lista (`flex: 1 1 $plot-height` en vez de `block-size` fijo), porque todo lo demás mide lo que mide su texto y estirarlo solo haría huecos. Es lo que hace que redimensionar la tarjeta sirva para algo. Precisiones:
+  - Las dos formas se separan con `:not(.dashboard__card--fill)`, no confiando en el orden del archivo: un empate de especificidad se resolvería por orden de aparición, que es la fragilidad que ya documentan `.card-metric` y las media queries de `app-header.scss`.
+  - **`--fill` no lleva `overflow`.** `monthly-flow` deja su área de trazado en `overflow: visible` para que el emergente de cada columna se salga por arriba, y un contenedor de scroll lo cortaría. `expense-by-category` es la excepción con motivo propio: su `<ul class="chart">` pone `overflow-y: auto` **sobre sí misma**, no sobre la celda, así que una lista que no quepa hace scroll interno en vez de recortarse o desbordar.
+  - **Y no se pone nunca sobre la tarjeta de alto automático** (`recent`): `block-size: 100%` haría que el `ResizeObserver` midiera el alto que la rejilla acaba de imponer — el bucle de realimentación.
+  - **"Gastos por categoría" pasó de alto automático a `--fill` el 2026-09-05.** Antes crecía con el número de categorías del periodo y nunca hacía scroll; ahora es una tarjeta de tamaño fijo y redimensionable, como `pace`/`flow`, y el precio es el `overflow-y: auto` del punto anterior — con pocas categorías sobra hueco debajo de la lista, con muchas hay que deslizar dentro de la tarjeta para verlas todas. Es la pieza que faltaba para que las tres cifras y los tres gráficos compartan el mismo idioma de personalización; "Últimos movimientos" se quedó fuera a propósito, sin que nadie lo pidiera cambiar.
+  - Las declaraciones que ponen al host de `spending-pace`, `monthly-flow` y `expense-by-category` en columna flexible viven todas en `overview.scss`, no en un `:host` de cada componente: dónde está montado no es una propiedad del componente. Fuera del panel, los tres se comportan igual que siempre.
+- **`cards` es un campo plano, no un `signal`.** Gridster muta esos objetos en su sitio y nunca cambia su identidad; un signal no emitiría jamás. Es una excepción consciente a la regla general, y el corolario es que escribir en ellos desde nuestro código exige sincronizar también el `$item` del componente (`syncEngine()`), que es la copia contra la que el motor calcula.
+- **Persistencia en `localStorage`, una clave por variante** (`align_finance_layout` para escritorio, `align_finance_mobile_layout` para móvil, 2026-09-05), porque **no hay endpoint de preferencias** en el backend. Las dos comparten forma y validación (`version` + ids conocidos: un layout de otra versión o con tarjetas que no cuadran se descarta entero en vez de dejar alguna sin colocar), pero son independientes — mover algo en el teléfono no reescribe lo guardado para el escritorio. El alto de la tarjeta automática no se guarda en ninguna de las dos.
+- **Accesibilidad: el contenido sí, la personalización no.** `useTransformPositioning` coloca solo visualmente, así que el orden del DOM —y con él la tabulación y el lector de pantalla— sigue siendo el de la plantilla aunque el usuario mueva las tarjetas. Lo que es solo-puntero es el gesto de recolocar: gridster no trae equivalente de teclado. El recambio es **"Restablecer disposición"**, que por eso no es un botón de comodidad sino el único camino accesible para salir de un layout roto. El modo edición se anuncia con `aria-pressed`, que los lectores sí reannuncian con el foco encima (al revés que un nombre accesible que cambia — el problema que en el botón de tema obligó a una región `aria-live`).
+- **Se arrastra desde CUALQUIER punto de la tarjeta** (`ignoreContent: false` + `ignoreContentClass: 'dashboard__no-drag'`), revisado 2026-09-05. La primera versión ponía una franja con un tirador y `ignoreContent: true`, y eso convertía la franja en el **único** punto de agarre: quien lo intentaba desde otro sitio no veía pasar nada ni por qué. Con siete tarjetas pequeñas la franja se comía además media tarjeta. No hay conflicto con seleccionar texto ni con pulsar enlaces porque **el arrastre solo existe en modo edición**; lo que sigue siendo pulsable ahí dentro (el "Ver todo (83)", la lista de movimientos, el enlace del estado vacío) lleva `dashboard__no-drag`, que es la clase que gridster mira para dejar pasar el evento. La señal visual es `cursor: move` sobre la celda más el borde discontinuo.
+- **Las tres cifras son tres tarjetas, no una** (2026-09-05). Nacieron agrupadas en un `<ul>` dentro de una sola tarjeta, y así no se podían recolocar por separado — que es exactamente para lo que está la rejilla. Cada una es ahora una `<section class="card metric">` con su propio `h2`, que es la etiqueta ("Ingresos") y le da nombre accesible: el elemento marca la estructura y el CSS marca la jerarquía visual, así que se pinta pequeño y apagado mientras la cifra es lo grande. El precio es que se pueden separar y dejan de compararse de un vistazo; a cambio la disposición de fábrica las deja en fila y del mismo tamaño, y volver a ella es un botón. Con el `<ul>` se fue también el encabezado "Resumen · septiembre": el periodo ya se lee en el botón del selector, que muestra el rango.
+- **La retícula de fondo de gridster no se enciende nunca** (`displayGrid: 'none'`): son doce guías verticales que ensucian más de lo que orientan, y las pinta la librería con bordes blancos literales fuera del alcance de la encapsulación. El borde discontinuo por celda en modo edición dice lo mismo y es nuestro.
+- **Coste medido** (`ng build`): el chunk lazy `overview` pasa de 8.71 kB a 24.44 kB transferidos; el bundle inicial sube 2.5 kB (iconos nuevos y `_gridster.scss` — gridster **no** entra en ningún chunk inicial, comprobado sobre `dist/`).
+- **`anyComponentStyle` subió de 4 kB a 6 kB** en `angular.json` (2026-09-05). No es para tapar nada: `spending-pace.scss` ya estaba en ~3,98 kB **antes** de tocarlo, o sea al 99,5% del umbral, y habría saltado con cualquier edición siguiente. 4 kB es el default genérico del CLI, nunca ajustado a este repo, y un componente con tres sistemas de coordenadas no es un estilo desbocado. El tope de **error** se queda en 8 kB, que es el guardián de verdad.
+- **Eventos de ratón y táctiles, no Pointer Events.** La librería no ofrece alternativa. Es la única inconsistencia con el resto de la app (el dictado del chat sí es Pointer Events) y no tiene arreglo desde fuera.
+
+## `gridster-drag.spec.ts` y `dashboard-layout.spec.ts`, y por qué existen
+
+Diez pruebas en `features/finance/overview/gridster-drag.spec.ts` (seis del arrastre de escritorio, cuatro del de una sola columna añadidas el 2026-09-05), escritas **después** de que las tarjetas no se dejaran mover y ni el build ni el tipado dijeran nada. Fijan el contrato con la librería, no la implementación de la pantalla:
+
+- Que la rejilla no se cree móvil aunque la ventana sea estrecha, que `options.api` existe (sin ella, mutar las opciones no hace nada), que el arrastre está apagado fuera del modo edición y encendido dentro, que arranca desde el **cuerpo** de la tarjeta, y que un elemento con `dashboard__no-drag` no se convierte en arrastre.
+- Que una rejilla configurada con `minCols`/`maxCols` en 1 (el móvil) sigue sin activar el modo `.mobile` de gridster y sigue dejando arrastrar — la prueba que habría fallado si el arreglo de "personalizar en el teléfono" hubiera vuelto a apoyarse en `mobileBreakpoint` en vez de en el número de columnas.
+
+El banco de pruebas es un componente mínimo con la misma configuración, no `Overview`: así no depende de servicios, rutas ni peticiones, y si mañana una opción de gridster rompe el arrastre, falla por eso y solo por eso. El iframe de Karma mide ~732px, que es además el escenario exacto que destapó el fallo original.
+
+`features/finance/dashboard-layout.spec.ts` (8 pruebas, 2026-09-05) cubre las funciones puras de `dashboard-layout.ts` sin gridster ni DOM: que la disposición de escritorio reparte las tres cifras en fila, que la de móvil apila en el orden de `DASHBOARD_CARD_IDS` reutilizando el `rows` de escritorio sin recalcularlo, y que guardar/cargar una variante no toca la otra ni resucita un layout con una forma distinta a la de hoy.
+
+## Sin verificar todavía
+
+`ng build` limpio, `tsc --noEmit` limpio y la suite en 133/134 (el fallo es previo: falta el proveedor de `SwPush` en `app.spec.ts`). El arrastre —en escritorio y en una sola columna— sí está verificado en un navegador real por las pruebas de arriba. **Lo que sigue sin verse a mano**: el resultado contra el backend vivo, el crecimiento de "Gastos por categoría" y su scroll interno con datos reales, el tema oscuro, y sobre todo la personalización en móvil de verdad — en un teléfono, con el dedo, no con `MouseEvent` sintéticos.
+
+---
+
 # Design system
 
 Built 2026-08-19 from a written brand spec + light/dark reference boards. Lives in `src/styles/`, wired through `src/styles.scss` (the only file listed in `angular.json` → `styles`).
@@ -146,7 +209,10 @@ src/styles/_tokens.scss  paleta + semántica + tema oscuro
 src/styles/_base.scss    reset y defaults de elementos HTML (sin clases)
 src/styles/_components.scss  primitivas globales (.btn, .card, .field, .badge…)
 src/styles/_layout.scss  variables/mixins del shell — NO emite CSS, NO va en styles.scss
+src/styles/_gridster.scss  correcciones a angular-gridster2 — el ÚLTIMO @use
 ```
+
+`_gridster.scss` es la única excepción a "aquí solo vive lo nuestro", y tiene su motivo escrito en la cabecera del archivo: gridster declara sus componentes con `ViewEncapsulation.None`, así que sus estilos son globales y traen colores literales. Los elementos que escribe **nuestra** plantilla (`<gridster>`, `<gridster-item>`) se corrigen desde `overview.scss`, que gana por especificidad; los que renderiza **la librería** en su propia plantilla no llevan nuestro atributo de encapsulación y ningún `.scss` de componente los alcanza. Solo eso vive aquí, y va el último porque solo puede pisar, nunca definir.
 
 ## Tokens: dos niveles, y la separación es la regla
 
@@ -321,9 +387,13 @@ src/app/
     ├── tasks/                   task.service.ts, models/, task-list/, task-form/         [hoy]
     │                            + components/ (task-filter-tabs/, task-section/, task-item/)
     ├── finance/                 transaction.service.ts, models/, transaction-labels.ts,
-    │                            date-ranges.ts                                           [hoy]
-    │                            overview/ sigue siendo un marcador de posición vacío     [hoy]
-    │                            activity/, transaction-form/, finance.ts + .routes.ts    [luego]
+    │                            date-ranges.ts, money.ts, spending-pace.ts,
+    │                            dashboard-layout.ts ← posiciones de la rejilla    [hoy]
+    │                            overview/, transaction-history/, transaction-form/,
+    │                            transaction-detail/                               [hoy]
+    │                            + components/ (expense-by-category/, monthly-flow/,
+    │                            spending-pace/, transaction-row/)                 [hoy]
+    │                            finance.ts + .routes.ts                           [luego]
     └── chat/                    chat.service.ts (HTTP), chat.store.ts (signals),         [hoy]
                                  models/, speech-recognition.ts
                                  + components/ (chat-thread/, chat-composer/)  [hoy]
@@ -459,6 +529,7 @@ La versión instalada es **20.3.28**, y eso decide qué se puede usar. La guía 
 - **`@switch` con `@default never;`** para uniones cerradas (`TaskStatus`, `Priority`, y la futura union de tipos de mensaje del chat). Convierte "añadí una variante y me olvidé de pintarla" en error de compilación en vez de en una celda vacía.
 - **`HttpParams` y `HttpHeaders` son inmutables**: `.set()`/`.append()` devuelven una instancia nueva, no mutan. Es la trampa clásica en los filtros opcionales de Finance (`type`, `category`, `from`, `to`) — construirlos en un bucle ignorando el retorno manda la petición sin filtros y sin ningún error.
 - **`HttpErrorResponse.status === 0` significa red caída o timeout**, no un error del backend: no hay body, y no tiene sentido buscar `.error.message`. `extractErrorMessage` debe caer al mensaje genérico ahí. No confundir con el `401`, que sí es una respuesta real del servidor y tiene su propia rama en `authInterceptor`.
+- **`angular-gridster2` está fijado en `^20.2.4` y sube DESPUÉS de Angular, nunca antes.** Su versionado sigue al de Angular una a una: `21.x` exige `@angular/core ^21`, `22.x` exige `^22`. Un `npm i angular-gridster2` a secas instala `latest` (hoy 22.0.0) y falla al resolver peers. Al subir el repo a Angular 21, esta dependencia entra en la misma tanda.
 
 ## Deuda conocida (detectada en revisión)
 
