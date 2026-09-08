@@ -1,0 +1,108 @@
+<dialog
+  #dialog
+  class="event-detail__dialog"
+  [attr.aria-labelledby]="titleId"
+  (click)="onBackdropClick($event)"
+  (close)="onNativeClose()"
+>
+  <div class="event-detail__panel">
+    <header class="event-detail__header">
+      <h2 class="event-detail__title" [id]="titleId">{{ event()?.title ?? 'Evento' }}</h2>
+
+      <div class="event-detail__actions">
+        @if (event()) {
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon"
+            aria-label="Editar evento"
+            title="Editar evento"
+            (click)="onEditClick()"
+          >
+            <app-icon name="bi:pencil" />
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon"
+            [disabled]="deleting()"
+            aria-label="Eliminar evento"
+            title="Eliminar evento"
+            (click)="onDeleteClick()"
+          >
+            <app-icon name="bi:trash3" />
+          </button>
+        }
+
+        <button
+          type="button"
+          class="btn btn-ghost btn-icon"
+          aria-label="Cerrar"
+          title="Cerrar"
+          (click)="onCloseClick()"
+        >
+          <app-icon name="bi:x-lg" />
+        </button>
+      </div>
+    </header>
+
+    @if (deleteError(); as message) {
+      <p class="form-error" role="alert">{{ message }}</p>
+    }
+
+    @if (errorMessage()) {
+      <p class="form-error" role="alert">{{ errorMessage() }}</p>
+    }
+
+    @if (loading()) {
+      <p class="empty-state">Cargando...</p>
+    } @else if (event(); as event) {
+      <dl class="event-detail__fields">
+        <div class="event-detail__field">
+          <dt>Empieza</dt>
+          <dd>{{ dateTimeLabel(event.startAt) }}</dd>
+        </div>
+
+        @if (event.endAt) {
+          <div class="event-detail__field">
+            <dt>Termina</dt>
+            <dd>{{ dateTimeLabel(event.endAt) }}</dd>
+          </div>
+        }
+
+        @if (event.location) {
+          <div class="event-detail__field">
+            <dt>Ubicación</dt>
+            <dd>{{ event.location }}</dd>
+          </div>
+        }
+
+        @if (event.description) {
+          <div class="event-detail__field">
+            <dt>Descripción</dt>
+            <dd>{{ event.description }}</dd>
+          </div>
+        }
+
+        @if (event.reminderMinutesBefore !== null) {
+          <div class="event-detail__field">
+            <dt>Recordatorio</dt>
+            <dd>{{ event.reminderMinutesBefore }} min antes</dd>
+          </div>
+        }
+      </dl>
+
+      <p class="event-detail__meta">
+        Creado {{ timestampLabel(event.createdAt) }} · Actualizado {{ timestampLabel(event.updatedAt) }}
+      </p>
+    }
+  </div>
+
+  <app-confirm-dialog
+    [(open)]="confirmOpen"
+    heading="Eliminar evento"
+    [message]="confirmMessage()"
+    confirmLabel="Eliminar"
+    tone="danger"
+    (confirm)="onConfirmDelete()"
+  />
+</dialog>
