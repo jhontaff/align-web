@@ -215,6 +215,11 @@
   color: var(--color-primary-soft-text);
 }
 
+.badge--status-expired {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-soft-text);
+}
+
 .badge--status-completed {
   background: var(--color-success-soft);
   color: var(--color-success-soft-text);
