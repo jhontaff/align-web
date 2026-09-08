@@ -140,6 +140,15 @@ export class HabitDetail {
     return streak === 1 ? '1 día' : `${streak} días`;
   }
 
+  /**
+   * `"09:00:00"` -> `"09:00"`. El backend recorta los segundos cuando son cero,
+   * pero no siempre, y aqui los segundos se leerian como una precision que el
+   * dato no tiene.
+   */
+  protected timeLabel(scheduledTime: string): string {
+    return scheduledTime.slice(0, 5);
+  }
+
   protected timestampLabel(iso: string): string {
     return new Date(iso).toLocaleString('es-ES', {
       day: 'numeric',

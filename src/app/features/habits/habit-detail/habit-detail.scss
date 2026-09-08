@@ -168,6 +168,16 @@
   }
 }
 
+// Qué HACE la hora, debajo de la hora. Que dispare un aviso no se deduce del
+// dato, y este es el único sitio de la app donde se puede explicar sin ocupar
+// una fila entera.
+.habit-detail__field-note {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 @include layout.below-tablet {
   .habit-detail__fields {
     grid-template-columns: minmax(0, 1fr);

@@ -1,9 +1,20 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  inject,
+  signal,
+  viewChild
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
+import { optional } from '../../../core/http/optional';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { HabitRequest, HabitResponse } from '../models/habit.model';
 import { HABIT_NAME_MAX_LENGTH } from '../habit-rules';
@@ -24,6 +35,11 @@ export class HabitEdit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
+
+  /** Ver el comentario homonimo de `HabitList`: existen para mover el foco. */
+  private readonly timeInput = viewChild<ElementRef<HTMLInputElement>>('timeInput');
+  private readonly addTimeButton = viewChild<ElementRef<HTMLButtonElement>>('addTimeButton');
 
   protected readonly habit = signal<HabitResponse | null>(null);
   protected readonly loading = signal(true);
@@ -36,8 +52,20 @@ export class HabitEdit {
   protected readonly nameMaxLength = HABIT_NAME_MAX_LENGTH;
 
   protected readonly form = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(HABIT_NAME_MAX_LENGTH)]]
+    name: ['', [Validators.required, Validators.maxLength(HABIT_NAME_MAX_LENGTH)]],
+    /** Siempre en el grupo aunque el input este plegado. Ver `HabitList`. */
+    scheduledTime: ['']
   });
+
+  /**
+   * Si el campo de hora esta desplegado.
+   *
+   * **Aqui arranca segun el dato, no siempre en falso**: un habito que ya tiene
+   * hora la ensena de entrada, porque plegada obligaria a descubrir con un clic
+   * un valor que ya existe — y quien no lo diera lo estaria borrando sin
+   * saberlo al guardar, ya que el `PUT` es un reemplazo.
+   */
+  protected readonly showTime = signal(false);
 
   constructor() {
     this.route.paramMap
@@ -65,9 +93,34 @@ export class HabitEdit {
         this.loading.set(habit === null && error === null);
 
         if (habit) {
-          this.form.setValue({ name: habit.name });
+          // `setValue` exige TODOS los controles del grupo, asi que anadir
+          // `scheduledTime` al formulario obliga a nombrarlo aqui: omitirlo no
+          // compila, que es justo la red que se quiere.
+          this.form.setValue({
+            name: habit.name,
+            scheduledTime: habit.scheduledTime ?? ''
+          });
+
+          this.showTime.set(habit.scheduledTime !== null);
         }
       });
+  }
+
+  /** Ver `HabitList.revealTime`. */
+  protected revealTime(): void {
+    this.showTime.set(true);
+    this.focusAfterRender(() => this.timeInput()?.nativeElement.focus());
+  }
+
+  /** Ver `HabitList.clearTime`: pliega y borra, que son la misma accion. */
+  protected clearTime(): void {
+    this.form.controls.scheduledTime.setValue('');
+    this.showTime.set(false);
+    this.focusAfterRender(() => this.addTimeButton()?.nativeElement.focus());
+  }
+
+  private focusAfterRender(focus: () => void): void {
+    afterNextRender(focus, { injector: this.injector });
   }
 
   protected onSubmit(): void {
@@ -85,7 +138,13 @@ export class HabitEdit {
     this.submitting.set(true);
     this.saveError.set(null);
 
-    this.habits.update(habit.id, this.form.getRawValue() as HabitRequest).subscribe({
+    // Igual que en el alta: `''` no es una `LocalTime` y el backend responde
+    // 400. Y como el `PUT` es un reemplazo, omitir la clave es exactamente como
+    // se BORRA una hora ya guardada — que es lo que hace el boton "Quitar hora".
+    const { name, scheduledTime } = this.form.getRawValue();
+    const request: HabitRequest = { name, scheduledTime: optional(scheduledTime) };
+
+    this.habits.update(habit.id, request).subscribe({
       next: updated => this.router.navigate(['/habits', updated.id]),
       error: err => {
         this.submitting.set(false);

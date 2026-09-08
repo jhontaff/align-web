@@ -76,7 +76,16 @@
           </button>
         </div>
       } @else {
-        <p class="habit-notify__text">Recibe un aviso de los hábitos que te quedan por marcar.</p>
+        <!--
+          Nombra las DOS cosas que el backend manda, porque son dos trabajos
+          distintos: `HabitReminderJob` avisa a la hora de cada hábito que la
+          tenga, y `HabitAtRiskJob` avisa por la tarde de lo que sigue sin
+          marcar. Con sólo la segunda, poner una hora parecería no servir de
+          nada.
+        -->
+        <p class="habit-notify__text">
+          Recibe un aviso a la hora de cada hábito, y un recordatorio de lo que te quede por marcar.
+        </p>
 
         <div class="habit-notify__actions">
           <button
@@ -102,27 +111,80 @@
     vez de al fondo de un scroll.
   -->
   <form class="habit-create" [formGroup]="form" (ngSubmit)="onSubmit()">
-    <div class="field habit-create__field">
-      <!--
-        Etiqueta visible, no un `aria-label` sobre el input: un placeholder
-        desaparece al escribir y deja el campo sin nombre a la vista.
-      -->
-      <label for="habit-name">Nuevo hábito</label>
-      <input
-        #nameInput
-        id="habit-name"
-        type="text"
-        formControlName="name"
-        autocomplete="off"
-        [maxlength]="nameMaxLength"
-        placeholder="Leer 20 minutos"
-      />
+    <div class="habit-create__row">
+      <div class="field habit-create__field">
+        <!--
+          Etiqueta visible, no un `aria-label` sobre el input: un placeholder
+          desaparece al escribir y deja el campo sin nombre a la vista.
+        -->
+        <label for="habit-name">Nuevo hábito</label>
+        <input
+          #nameInput
+          id="habit-name"
+          type="text"
+          formControlName="name"
+          autocomplete="off"
+          [maxlength]="nameMaxLength"
+          placeholder="Leer 20 minutos"
+        />
+      </div>
+
+      <button class="btn btn-primary habit-create__submit" type="submit" [disabled]="submitting()">
+        <app-icon name="bi:plus-lg" />
+        Añadir
+      </button>
     </div>
 
-    <button class="btn btn-primary habit-create__submit" type="submit" [disabled]="submitting()">
-      <app-icon name="bi:plus-lg" />
-      Añadir
-    </button>
+    <!--
+      La hora, bajo demanda.
+
+      El caso mayoritario es un hábito SIN hora, y el flujo al empezar es dar de
+      alta varios seguidos. Un segundo campo siempre visible ensancharía la fila
+      para todo el mundo a cambio de servir a la minoría; así el coste lo paga
+      —un clic— sólo quien la quiere.
+
+      El control `scheduledTime` existe en el `FormGroup` esté o no montado el
+      input: lo que el `@if` decide es la pintura, no el formulario.
+    -->
+    @if (!showTime()) {
+      <button
+        #addTimeButton
+        type="button"
+        class="btn btn-ghost btn-sm habit-create__add-time"
+        aria-expanded="false"
+        aria-controls="habit-time-field"
+        (click)="revealTime()"
+      >
+        <app-icon name="bi:clock" />
+        Añadir hora
+      </button>
+    } @else {
+      <div class="field habit-create__time" id="habit-time-field">
+        <label for="habit-time">Hora</label>
+
+        <div class="habit-create__time-control">
+          <input #timeInput id="habit-time" type="time" formControlName="scheduledTime" />
+
+          <!--
+            Quitar la hora PLIEGA y BORRA a la vez: dejar el valor puesto y sólo
+            ocultarlo mandaría al backend una hora que el usuario cree haber
+            quitado. El nombre accesible va en `aria-label` porque el botón sólo
+            tiene icono, y `<app-icon>` lleva `aria-hidden` fijo.
+          -->
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon habit-create__time-clear"
+            aria-label="Quitar hora"
+            title="Quitar hora"
+            (click)="clearTime()"
+          >
+            <app-icon name="bi:x-lg" />
+          </button>
+        </div>
+
+        <p class="habit-create__time-hint">Recibirás un aviso a esa hora.</p>
+      </div>
+    }
   </form>
 
   @if (createError(); as message) {
@@ -157,9 +219,30 @@
           [class.is-done]="isDone(habit)"
           [class.is-marking]="isMarking(habit)"
         >
-          <h2 class="habit-card__name">
-            <a class="habit-card__link" [routerLink]="['/habits', habit.id]">{{ habit.name }}</a>
-          </h2>
+          <!--
+            Nombre y hora van juntos en una cabecera propia para que la tarjeta
+            siga teniendo DOS bloques: el `space-between` del `.habit-card`
+            reparte a sus hijos directos, y con la hora suelta como tercero el
+            pie dejaría de estar pegado abajo en las tarjetas cortas.
+          -->
+          <div class="habit-card__head">
+            <h2 class="habit-card__name">
+              <a class="habit-card__link" [routerLink]="['/habits', habit.id]">{{ habit.name }}</a>
+            </h2>
+
+            @if (habit.scheduledTime) {
+              <!--
+                El prefijo va en un `visually-hidden` porque el reloj es
+                decorativo (`<app-icon>` lleva `aria-hidden` fijo): sin él, un
+                lector de pantalla leería "09:00" suelto detrás del nombre, sin
+                decir qué es esa cifra.
+              -->
+              <p class="habit-card__time">
+                <app-icon name="bi:clock" />
+                <span class="visually-hidden">Hora: </span>{{ timeLabel(habit) }}
+              </p>
+            }
+          </div>
 
           <div class="habit-card__footer">
             <!--

@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TaskService } from '../task.service';
 import { TaskRequest, TaskResponse, TaskUpdateRequest } from '../models/task.model';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
+import { optional } from '../../../core/http/optional';
 
 /**
  * Mismo criterio que en `task-detail`: los ids son UUID, y comprobarlo antes
@@ -186,15 +187,4 @@ export class TaskForm {
       dueTime: optional(dueTime)
     };
   }
-}
-
-/**
- * Un control vacío vale `''`, y `''` no es un valor válido para los campos que
- * el contrato declara opcionales: una `LocalDate` no se parsea desde cadena
- * vacía. `undefined` desaparece del JSON, que es lo que "no hay fecha"
- * significa para el backend.
- */
-function optional(value: string): string | undefined {
-  const trimmed = value.trim();
-  return trimmed === '' ? undefined : trimmed;
 }
