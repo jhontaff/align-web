@@ -50,7 +50,8 @@ const ICON_NAMES = [
   'bi:check-circle-fill',
   'bi:circle',
   'bi:arrows-move',
-  'bi:arrow-counterclockwise'
+  'bi:arrow-counterclockwise',
+  'bi:clock'
 ];
 
 const OUT = 'src/app/shared/ui/icon/icon-set.ts';

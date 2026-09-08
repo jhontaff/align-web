@@ -26,7 +26,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 
 const PORT = Number(process.env.PORT ?? 4300);
-const BACKEND = { host: 'localhost', port: 1010 };
+const BACKEND = { host: 'localhost', port: 8080 };
 const PROXIED = ['/api', '/auth'];
 
 // El builder `application` deja los archivos del navegador en `browser/`. Se

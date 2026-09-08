@@ -22,3 +22,51 @@
   font-weight: var(--weight-semibold);
   color: var(--color-text);
 }
+
+// -----------------------------------------------------------------------------
+// La hora, plegada y desplegada (mismas reglas que en `habit-list`)
+// -----------------------------------------------------------------------------
+//
+// No se comparten con el alta a través de una clase global: son cuatro reglas
+// de posición para dos consumidores dentro de la MISMA feature. `_components.scss`
+// es para primitivas que atraviesan features, y `.btn`/`.field`/`.btn-icon` —que
+// es lo que de verdad pinta esto— ya salen de ahí.
+.habit-edit__add-time {
+  // El `.field` que lo precede trae `margin-bottom`, así que aquí sólo hace
+  // falta el hueco de abajo para separarlo de las acciones del formulario.
+  margin-bottom: var(--space-5);
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-primary);
+  }
+}
+
+.habit-edit__time-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.habit-edit__time-control input {
+  inline-size: auto;
+  min-inline-size: 7rem;
+}
+
+.habit-edit__time-clear {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-danger);
+  }
+}
+
+.habit-edit__time-hint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}

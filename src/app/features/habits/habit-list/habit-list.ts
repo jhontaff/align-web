@@ -18,6 +18,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
+import { optional } from '../../../core/http/optional';
 import { PushService } from '../../../core/notifications/push.service';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { HabitRequest, HabitResponse } from '../models/habit.model';
@@ -112,6 +113,16 @@ export class HabitList implements OnInit {
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
 
   /**
+   * Los dos extremos del despliegue de la hora. Existen para MOVER EL FOCO, que
+   * es lo unico que un `@if` no resuelve solo: al desplegar hay que llevarlo al
+   * campo nuevo, y al plegar devolverlo al disparador — si no, el foco se queda
+   * en un boton que acaba de desmontarse y cae al `<body>`, o sea que quien
+   * navega con teclado vuelve al principio de la pagina.
+   */
+  private readonly timeInput = viewChild<ElementRef<HTMLInputElement>>('timeInput');
+  private readonly addTimeButton = viewChild<ElementRef<HTMLButtonElement>>('addTimeButton');
+
+  /**
    * La rejilla, para medir las tarjetas antes y despues de reordenarlas.
    *
    * Se lee el contenedor y no una `viewChildren` de las tarjetas porque el
@@ -173,8 +184,35 @@ export class HabitList implements OnInit {
    * `form.invalid` no seria cierto.
    */
   protected readonly form = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(HABIT_NAME_MAX_LENGTH)]]
+    name: ['', [Validators.required, Validators.maxLength(HABIT_NAME_MAX_LENGTH)]],
+
+    /**
+     * **Siempre en el grupo, aunque el input no este montado.** Declararlo
+     * condicionalmente obligaria a `addControl`/`removeControl` en tiempo de
+     * ejecucion y a que la plantilla se defendiera de que el control todavia no
+     * exista; con el valor por defecto correcto, tenerlo plegado simplemente lo
+     * ignora. Mismo criterio que el `status` de `task-form` en modo creacion.
+     *
+     * Sin validadores: un `<input type="time">` solo puede devolver una hora
+     * valida o cadena vacia, asi que no hay nada que validar. Igual que
+     * `dueTime` en `task-form`.
+     */
+    scheduledTime: ['']
   });
+
+  /**
+   * Si el campo de hora esta desplegado.
+   *
+   * **La hora se pide bajo demanda y no de entrada**: el caso mayoritario es un
+   * habito sin hora, y el flujo real al empezar es dar de alta varios seguidos
+   * —nombre, Enter, nombre, Enter—. Un segundo campo siempre visible ensancharia
+   * esa fila para todo el mundo a cambio de servir a la minoria; el disparador
+   * cuesta un clic solo a quien si la quiere.
+   *
+   * Es estado de PRESENTACION, no del formulario: el control existe igual
+   * plegado. Lo unico que decide es si se pinta.
+   */
+  protected readonly showTime = signal(false);
 
   /**
    * **Lo que queda por hacer primero, lo hecho al final**; dentro de cada grupo,
@@ -269,8 +307,47 @@ export class HabitList implements OnInit {
    */
   protected readonly nameMaxLength = HABIT_NAME_MAX_LENGTH;
 
+  /**
+   * Despliega el campo de hora y lleva el foco dentro.
+   *
+   * **`afterNextRender` y no un `focus()` a secas**: el `@if` de la plantilla
+   * todavia no ha pintado el input cuando corre este handler, asi que
+   * `timeInput()` seria `undefined`. Es el mismo motivo por el que
+   * `reorderAnimated()` mide ahi y no en un `effect`.
+   */
+  protected revealTime(): void {
+    this.showTime.set(true);
+    this.focusAfterRender(() => this.timeInput()?.nativeElement.focus());
+  }
+
+  /**
+   * Pliega el campo y **borra la hora**, que son la misma accion: el boton dice
+   * "Quitar hora", asi que dejar el valor guardado y solo ocultarlo mandaria al
+   * backend una hora que el usuario cree haber quitado.
+   *
+   * El foco vuelve al disparador, que es el elemento que sustituye al campo.
+   */
+  protected clearTime(): void {
+    this.form.controls.scheduledTime.setValue('');
+    this.showTime.set(false);
+    this.focusAfterRender(() => this.addTimeButton()?.nativeElement.focus());
+  }
+
+  private focusAfterRender(focus: () => void): void {
+    afterNextRender(focus, { injector: this.injector });
+  }
+
   protected isDone(habit: HabitResponse): boolean {
     return habit.isCompletedToday;
+  }
+
+  /**
+   * `"09:00:00"` -> `"09:00"`. El backend recorta los segundos cuando son cero,
+   * pero no siempre, y en una tarjeta los segundos se leen como una precision
+   * que el dato no tiene.
+   */
+  protected timeLabel(habit: HabitResponse): string {
+    return habit.scheduledTime?.slice(0, 5) ?? '';
   }
 
   /** Marcado hace un instante y todavia retenido en su sitio. */
@@ -293,10 +370,23 @@ export class HabitList implements OnInit {
     this.submitting.set(true);
     this.createError.set(null);
 
-    this.habits.create(this.form.getRawValue() as HabitRequest).subscribe({
+    // **No se manda `getRawValue()` tal cual.** Con el campo plegado (o
+    // desplegado y vacio) `scheduledTime` vale `''`, y el backend responde 400
+    // al no poder parsear una cadena vacia como `LocalTime`. `optional()` la
+    // convierte en `undefined`, que desaparece del JSON.
+    const { name, scheduledTime } = this.form.getRawValue();
+    const request: HabitRequest = { name, scheduledTime: optional(scheduledTime) };
+
+    this.habits.create(request).subscribe({
       next: habit => {
         this.all.update(habits => [...habits, habit]);
         this.form.reset();
+
+        // Se pliega tras cada alta: el caso comun es encadenar habitos sin
+        // hora, y dejarlo abierto arrastraria un campo vacio a todos los
+        // siguientes. Quien quiera hora otra vez la despliega con un clic.
+        this.showTime.set(false);
+
         this.submitting.set(false);
         this.statusMessage.set(`Habito "${habit.name}" creado.`);
 

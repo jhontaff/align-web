@@ -76,6 +76,21 @@
       </div>
 
       <dl class="habit-detail__fields">
+        <!--
+          Sólo si la tiene: una fila "Hora — Sin hora" ocuparía el mismo sitio
+          que un dato para decir que no hay dato. Que se pueda poner ya lo
+          ofrece "Editar".
+        -->
+        @if (habit.scheduledTime) {
+          <div class="habit-detail__field">
+            <dt>Hora</dt>
+            <dd>
+              {{ timeLabel(habit.scheduledTime) }}
+              <span class="habit-detail__field-note">Recibes un aviso a esa hora</span>
+            </dd>
+          </div>
+        }
+
         <div class="habit-detail__field">
           <dt>Creado</dt>
           <dd>{{ timestampLabel(habit.createdAt) }}</dd>
