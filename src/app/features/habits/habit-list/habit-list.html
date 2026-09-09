@@ -246,11 +246,23 @@
 
           <div class="habit-card__footer">
             <!--
-              `aria-disabled` y NO `disabled`: un botón deshabilitado sale del
-              orden de tabulación, así que quien navega con teclado no
-              encontraría nada dentro de la tarjeta en vez de encontrar un
-              control que anuncia "ya marcado". Como `aria-disabled` no impide
-              el clic, el bloqueo real está en `onComplete()`.
+              Un TOGGLE: marca lo pendiente y desmarca lo hecho.
+
+              Por eso el nombre accesible es FIJO ("Hecho hoy: Leer 20 minutos")
+              y el estado lo lleva `aria-pressed`. Un nombre que cambiara con el
+              estado sería el antipatrón: los lectores de pantalla no reanuncian
+              de forma fiable el nombre de un elemento que ya tiene el foco —el
+              problema que en el botón de tema obligó a una región `aria-live`—
+              pero `aria-pressed` sí lo reanuncian. Misma decisión que el botón
+              de modo edición del panel de Finanzas.
+
+              El `title` sí dice la acción, porque es un tooltip y no el nombre
+              accesible: quien usa ratón ve qué va a pasar antes de pulsar.
+
+              `aria-disabled` queda sólo para la petición en vuelo. Ya NO se
+              apaga por estar hecho: eso existía porque no había vuelta atrás, y
+              ahora la hay. Como `aria-disabled` no impide el clic, el bloqueo
+              real sigue estando en `onToggle()`.
 
               El nombre accesible lleva el del hábito: en una rejilla, ocho
               botones llamados "Marcar" son indistinguibles al navegar por
@@ -259,12 +271,11 @@
             <button
               type="button"
               class="habit-check"
-              [attr.aria-disabled]="isDone(habit) || completingId() === habit.id"
-              [attr.aria-label]="
-                (isDone(habit) ? 'Ya marcado hoy: ' : 'Marcar hoy como hecho: ') + habit.name
-              "
-              [title]="isDone(habit) ? 'Ya marcado hoy' : 'Marcar hoy como hecho'"
-              (click)="onComplete(habit)"
+              [attr.aria-pressed]="isDone(habit)"
+              [attr.aria-disabled]="markingId() === habit.id"
+              [attr.aria-label]="'Hecho hoy: ' + habit.name"
+              [title]="isDone(habit) ? 'Desmarcar hoy' : 'Marcar hoy como hecho'"
+              (click)="onToggle(habit)"
             >
               <app-icon class="habit-check__icon" name="bi:check-lg" />
             </button>

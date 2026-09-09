@@ -132,8 +132,14 @@ export class HabitList implements OnInit {
    */
   private readonly grid = viewChild<ElementRef<HTMLElement>>('grid');
 
-  /** Temporizadores de la pausa, para poder cancelarlos al destruir. */
-  private readonly releaseTimers = new Set<ReturnType<typeof setTimeout>>();
+  /**
+   * Temporizadores de la pausa, **indexados por habito**.
+   *
+   * Un `Map` y no un `Set` porque hay que poder cancelar el de UNO: si se
+   * desmarca durante la pausa, su temporizador sigue vivo y soltaria la
+   * retencion de un habito que ya no esta retenido. Ver `releaseHold`.
+   */
+  private readonly releaseTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   private readonly all = signal<HabitResponse[]>([]);
   protected readonly loading = signal(true);
@@ -152,12 +158,17 @@ export class HabitList implements OnInit {
   protected readonly submitting = signal(false);
 
   /**
-   * Id del habito que se esta marcando ahora mismo, o `null`. Es un id y no un
-   * booleano porque hay un check por tarjeta: un `completing` global bloquearia
-   * todos y el usuario no sabria cual esta en vuelo. Mismo criterio que
-   * `deletingId` en `TaskList`.
+   * Id del habito con una peticion de marcado en vuelo, **en cualquiera de los
+   * dos sentidos**, o `null`.
+   *
+   * Es un id y no un booleano porque hay un check por tarjeta: uno global
+   * bloquearia los ocho y el usuario no sabria cual esta en vuelo. Mismo
+   * criterio que `deletingId` en `TaskList`.
+   *
+   * No se separa en marcar/desmarcar: `isCompletedToday` ya dice cual de los
+   * dos esta corriendo, y un segundo signal solo podria contradecirlo.
    */
-  protected readonly completingId = signal<string | null>(null);
+  protected readonly markingId = signal<string | null>(null);
 
   /**
    * Ids ya marcados que **todavia no han cambiado de sitio**: se pintan como
@@ -415,12 +426,22 @@ export class HabitList implements OnInit {
    * encuentra con que la tarjeta no tiene nada dentro. Como `aria-disabled` no
    * impide el clic, el bloqueo real tiene que estar aqui.
    */
-  protected onComplete(habit: HabitResponse): void {
-    if (this.isDone(habit) || this.completingId() === habit.id) {
+  protected onToggle(habit: HabitResponse): void {
+    // Lo unico que corta es la peticion en vuelo. Que el habito ya este hecho
+    // dejo de ser motivo para no hacer nada: ahora elige verbo.
+    if (this.markingId() === habit.id) {
       return;
     }
 
-    this.completingId.set(habit.id);
+    if (this.isDone(habit)) {
+      this.uncomplete(habit);
+    } else {
+      this.complete(habit);
+    }
+  }
+
+  private complete(habit: HabitResponse): void {
+    this.markingId.set(habit.id);
     this.errorMessage.set(null);
 
     this.habits.complete(habit.id).subscribe({
@@ -435,7 +456,7 @@ export class HabitList implements OnInit {
         // recalculada, asi que sustituir la fila deja la tarjeta en su estado
         // final sin tocar nada mas ni volver a pedir la lista.
         this.all.update(habits => habits.map(h => (h.id === updated.id ? updated : h)));
-        this.completingId.set(null);
+        this.markingId.set(null);
 
         this.scheduleRelease(updated.id);
 
@@ -448,7 +469,50 @@ export class HabitList implements OnInit {
         );
       },
       error: err => {
-        this.completingId.set(null);
+        this.markingId.set(null);
+        this.errorMessage.set(extractErrorMessage(err));
+      }
+    });
+  }
+
+  /**
+   * Deshace la completacion de hoy y devuelve la tarjeta a los pendientes.
+   *
+   * **Sin pausa, al contrario que marcar.** `holding` existe para que se vea la
+   * confirmacion verde antes de que la tarjeta se vaya: marcar es el logro y
+   * hay algo que celebrar. Desmarcar es corregir un error, y ahi lo que se
+   * quiere es que la lista quede bien cuanto antes — retenerla seria alargar el
+   * estado equivocado. El viaje si se anima, para poder seguirlo con la vista.
+   *
+   * **Sin confirmacion**, al contrario que borrar el habito: esto es reversible
+   * en un clic y `<app-confirm-dialog>` se reserva para lo que no tiene vuelta
+   * atras. Que la racha pueda caer no lo cambia — el numero se recalcula y se
+   * ve cambiar, que avisa mejor que un dialogo prediciendolo.
+   */
+  private uncomplete(habit: HabitResponse): void {
+    this.markingId.set(habit.id);
+    this.errorMessage.set(null);
+
+    this.habits.uncomplete(habit.id).subscribe({
+      next: updated => {
+        this.markingId.set(null);
+
+        // Las DOS mutaciones van dentro del mismo `mutate`: `reorderAnimated`
+        // mide ANTES de invocarlo, y soltar la retencion tambien cambia el
+        // orden. En dos llamadas separadas, la primera mediria un estado que la
+        // segunda ya habria movido, y el viaje saldria desde el sitio
+        // equivocado.
+        this.reorderAnimated(() => {
+          this.releaseHold(updated.id);
+          this.all.update(habits => habits.map(h => (h.id === updated.id ? updated : h)));
+        });
+
+        this.statusMessage.set(
+          `${updated.name} desmarcado. ${this.streakLabel(updated)}. Vuelve a los pendientes.`
+        );
+      },
+      error: err => {
+        this.markingId.set(null);
         this.errorMessage.set(extractErrorMessage(err));
       }
     });
@@ -466,14 +530,42 @@ export class HabitList implements OnInit {
   private scheduleRelease(id: string): void {
     this.zone.runOutsideAngular(() => {
       const timer = setTimeout(() => {
-        this.releaseTimers.delete(timer);
+        this.releaseTimers.delete(id);
         this.zone.run(() => {
           this.reorderAnimated(() => this.holding.update(ids => ids.filter(x => x !== id)));
         });
       }, MARK_HOLD_MS);
 
-      this.releaseTimers.add(timer);
+      this.releaseTimers.set(id, timer);
     });
+  }
+
+  /**
+   * Saca un habito de la retencion **y cancela su temporizador**, para el caso
+   * de desmarcar dentro de la pausa: marcas, ves que era la tarjeta de al lado
+   * y vuelves a pulsar antes de los 420ms.
+   *
+   * Sin el `clearTimeout` ese temporizador sigue vivo, y el fallo NO es que
+   * suelte una retencion ya soltada —eso es inocuo— sino que suelta **la
+   * siguiente**: si tras desmarcar se vuelve a marcar el mismo habito, el
+   * temporizador viejo vence antes que el nuevo y manda la tarjeta al final sin
+   * haber completado su pausa. Hace falta la secuencia marcar -> desmarcar ->
+   * marcar dentro de la misma ventana, y no se ve salvo que se busque: de ahi
+   * la prueba que la reproduce con tiempos explicitos.
+   *
+   * Escribir `holding` aunque el id no este es inofensivo: `filter` devuelve un
+   * array nuevo y el signal reemite, pero `sorted()` da lo mismo y con `OnPush`
+   * eso no repinta nada de mas.
+   */
+  private releaseHold(id: string): void {
+    const timer = this.releaseTimers.get(id);
+
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      this.releaseTimers.delete(id);
+    }
+
+    this.holding.update(ids => ids.filter(x => x !== id));
   }
 
   /**

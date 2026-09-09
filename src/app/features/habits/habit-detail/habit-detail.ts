@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
+import { Observable, catchError, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '../../../shared/ui/icon/icon';
@@ -52,9 +52,17 @@ export class HabitDetail {
 
   private readonly state = linkedSignal(() => this.loaded());
 
-  protected readonly completing = signal(false);
+  /**
+   * Una operacion de marcado EN VUELO, en cualquiera de los dos sentidos.
+   *
+   * Un solo signal y no `completing` + `uncompleting`: son mutuamente
+   * excluyentes por estado —solo se puede marcar lo pendiente y desmarcar lo
+   * hecho—, asi que `isCompletedToday` ya dice cual de los dos esta corriendo y
+   * un segundo booleano solo abriria la puerta a que se contradigan.
+   */
+  protected readonly marking = signal(false);
 
-  protected readonly completeError = signal<string | null>(null);
+  protected readonly markError = signal<string | null>(null);
 
   protected readonly statusMessage = signal('');
 
@@ -109,25 +117,62 @@ export class HabitDetail {
   protected onComplete(): void {
     const habit = this.habit();
 
-    if (!habit || habit.isCompletedToday || this.completing()) {
+    if (!habit || habit.isCompletedToday || this.marking()) {
       return;
     }
 
-    this.completing.set(true);
-    this.completeError.set(null);
+    this.run(this.habits.complete(habit.id), updated =>
+      `${updated.name} marcado. Racha actual: ${this.streakLabel(updated.currentStreak)}.`
+    );
+  }
 
-    this.habits.complete(habit.id).subscribe({
+  /**
+   * Deshace la completacion de hoy.
+   *
+   * **Sin confirmacion, al contrario que borrar.** Es reversible en un clic
+   * —se vuelve a marcar— y `<app-confirm-dialog>` se reserva para lo que no
+   * tiene vuelta atras. Que la racha pueda caer no lo cambia: el numero se
+   * recalcula y se ve cambiar en la misma pantalla, que es mejor aviso que un
+   * dialogo prediciendolo.
+   *
+   * El anuncio dice la racha RESULTANTE y no "se perdio la racha": lo que el
+   * backend devuelve puede no ser cero —un record viejo mas largo sobrevive al
+   * recalculo— y afirmarlo aqui seria adivinar.
+   */
+  protected onUncomplete(): void {
+    const habit = this.habit();
+
+    if (!habit || !habit.isCompletedToday || this.marking()) {
+      return;
+    }
+
+    this.run(this.habits.uncomplete(habit.id), updated =>
+      `${updated.name} desmarcado. Racha actual: ${this.streakLabel(updated.currentStreak)}.`
+    );
+  }
+
+  /**
+   * Lo comun a marcar y desmarcar: las dos sustituyen el estado con la
+   * respuesta, que trae las dos rachas ya recalculadas por el servidor.
+   *
+   * **Ninguna toca `currentStreak` en local.** La frontera del dia la decide el
+   * backend con su reloj y su zona; una segunda version del calculo aqui
+   * divergiria de la suya a la primera medianoche. Vale igual al desmarcar, que
+   * ademas puede mover `longestStreak` — verificado el 2026-09-09.
+   */
+  private run(request: Observable<HabitResponse>, announce: (habit: HabitResponse) => string): void {
+    this.marking.set(true);
+    this.markError.set(null);
+
+    request.subscribe({
       next: updated => {
         this.state.set({ status: 'ready', habit: updated });
-        this.completing.set(false);
-
-        this.statusMessage.set(
-          `${updated.name} marcado. Racha actual: ${this.streakLabel(updated.currentStreak)}.`
-        );
+        this.marking.set(false);
+        this.statusMessage.set(announce(updated));
       },
       error: err => {
-        this.completing.set(false);
-        this.completeError.set(extractErrorMessage(err));
+        this.marking.set(false);
+        this.markError.set(extractErrorMessage(err));
       }
     });
   }
