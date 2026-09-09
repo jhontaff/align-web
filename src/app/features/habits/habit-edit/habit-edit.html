@@ -35,6 +35,46 @@
           />
         </div>
 
+        <!--
+          Mismo widget que el alta, con una diferencia: aquí arranca desplegado
+          si el hábito ya tiene hora. Plegarla obligaría a descubrir con un clic
+          un valor que ya existe, y como el `PUT` es un reemplazo, quien no lo
+          diera la estaría borrando sin enterarse.
+        -->
+        @if (!showTime()) {
+          <button
+            #addTimeButton
+            type="button"
+            class="btn btn-ghost btn-sm habit-edit__add-time"
+            aria-expanded="false"
+            aria-controls="habit-time-field"
+            (click)="revealTime()"
+          >
+            <app-icon name="bi:clock" />
+            Añadir hora
+          </button>
+        } @else {
+          <div class="field habit-edit__time" id="habit-time-field">
+            <label for="habit-time">Hora</label>
+
+            <div class="habit-edit__time-control">
+              <input #timeInput id="habit-time" type="time" formControlName="scheduledTime" />
+
+              <button
+                type="button"
+                class="btn btn-ghost btn-icon habit-edit__time-clear"
+                aria-label="Quitar hora"
+                title="Quitar hora"
+                (click)="clearTime()"
+              >
+                <app-icon name="bi:x-lg" />
+              </button>
+            </div>
+
+            <p class="habit-edit__time-hint">Recibirás un aviso a esa hora.</p>
+          </div>
+        }
+
         <div class="form-actions">
           <a class="btn btn-ghost" [routerLink]="['/habits', habit.id]">Cancelar</a>
           <button class="btn btn-primary" type="submit" [disabled]="submitting()">

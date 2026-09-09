@@ -60,7 +60,9 @@ export class TaskList implements OnInit {
   private readonly statusLabels: Record<TaskResponse['status'], string> = {
     PENDING: 'Pendiente',
     IN_PROGRESS: 'En progreso',
-    COMPLETED: 'Completada'
+    COMPLETED: 'Completada',
+    CANCELLED: 'Cancelada',
+    EXPIRED: 'Expirada'
   };
 
   private readonly priorityLabels: Record<TaskResponse['priority'], string> = {

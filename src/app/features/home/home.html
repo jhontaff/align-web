@@ -5,27 +5,7 @@
 -->
 <div class="page page--wide">
   <div class="page-header">
-    <h1>Hola, {{ authState.user()?.firstName }}</h1>
-
-    <!--
-      Vive aquí y no dentro de `app-calendar-widget` a propósito: el widget
-      dejó de tener su propio marco de tarjeta en móvil (ver
-      `calendar-widget.html`), así que un botón propio ahí ya no tenía
-      dónde anclarse visualmente. La referencia de plantilla (`#calendar`)
-      dispara el método público `openCreate()` del widget — no hace falta
-      un `output()` porque Home no posee ningún estado del alta, solo
-      reenvía el disparo, y la variable de plantilla resuelve hacia
-      adelante sin importar el orden del DOM.
-    -->
-    <button
-      type="button"
-      class="btn btn-primary btn-icon"
-      aria-label="Nuevo evento"
-      title="Nuevo evento"
-      (click)="calendar.openCreate()"
-    >
-      <app-icon name="bi:plus-lg" />
-    </button>
+    <h1>Hola, {{ authState.user()?.firstName | titlecase }}</h1>
   </div>
 
   <div class="home-grid">
