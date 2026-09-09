@@ -75,25 +75,41 @@
       <button
         class="btn btn-ghost btn-icon drp__nav"
         type="button"
-        aria-label="Mes anterior"
-        (click)="shiftMonth(-1)"
+        [attr.aria-label]="view() === 'days' ? 'Mes anterior' : 'Año anterior'"
+        (click)="view() === 'days' ? shiftMonth(-1) : shiftYear(-1)"
       >
         <app-icon name="bi:chevron-left" />
       </button>
 
       <!--
-        `aria-live="polite"` porque al pulsar las flechas de mes lo único que
-        cambia es esta cadena y la rejilla: sin la región, quien no ve la
-        pantalla pulsa "mes siguiente" y no recibe ninguna confirmación de a
-        qué mes ha llegado.
+        `aria-live="polite"` porque al pulsar las flechas lo único que cambia
+        es esta cadena y la rejilla de debajo: sin la región, quien no ve la
+        pantalla pulsa "siguiente" y no recibe ninguna confirmación de a dónde
+        ha llegado.
       -->
-      <h2 class="drp__month-label" [id]="monthId" aria-live="polite">{{ monthLabel() }}</h2>
+      <h2 class="drp__month-label" [id]="monthId" aria-live="polite">
+        <!--
+          El propio texto es el disparador para saltar a la lista de meses del
+          año: se recorre con las mismas dos flechas de arriba, no un tercer
+          control aparte. El texto visible sigue siendo el nombre accesible
+          completo — no hace falta un `aria-label` que lo sustituya.
+        -->
+        <button
+          class="drp__month-toggle"
+          type="button"
+          [attr.aria-expanded]="view() === 'months'"
+          (click)="toggleView()"
+        >
+          {{ view() === 'days' ? monthLabel() : yearLabel() }}
+          <app-icon [name]="view() === 'days' ? 'bi:chevron-down' : 'bi:chevron-up'" />
+        </button>
+      </h2>
 
       <button
         class="btn btn-ghost btn-icon drp__nav"
         type="button"
-        aria-label="Mes siguiente"
-        (click)="shiftMonth(1)"
+        [attr.aria-label]="view() === 'days' ? 'Mes siguiente' : 'Año siguiente'"
+        (click)="view() === 'days' ? shiftMonth(1) : shiftYear(1)"
       >
         <app-icon name="bi:chevron-right" />
       </button>
@@ -109,61 +125,82 @@
       de 42, y el estado que consulta (`focusedIso`) es del componente, no de la
       casilla que lo recibió.
     -->
-    <table
-      class="drp__grid"
-      role="grid"
-      [attr.aria-labelledby]="monthId"
-      (keydown)="onGridKeydown($event)"
-      (mouseleave)="onGridLeave()"
-    >
-      <thead>
-        <tr>
-          @for (weekday of weekdays(); track weekday.long) {
-            <th class="drp__weekday" scope="col">
-              <!--
-                La inicial es ambigua leída en voz alta ("L", "M", "X"), así que
-                el nombre completo va oculto y la inicial se esconde del árbol
-                de accesibilidad. Se anuncia "lunes", se lee "L".
-              -->
-              <span aria-hidden="true">{{ weekday.narrow }}</span>
-              <span class="visually-hidden">{{ weekday.long }}</span>
-            </th>
-          }
-        </tr>
-      </thead>
-
-      <tbody>
-        @for (week of weeks(); track week[0].iso) {
+    @if (view() === 'days') {
+      <table
+        class="drp__grid"
+        role="grid"
+        [attr.aria-labelledby]="monthId"
+        (keydown)="onGridKeydown($event)"
+        (mouseleave)="onGridLeave()"
+      >
+        <thead>
           <tr>
-            @for (cell of week; track cell.iso) {
-              <!--
-                `aria-selected` va en la celda, no en el botón: es la celda la
-                que la guía ARIA considera seleccionada dentro de una `grid`.
-              -->
-              <td class="drp__cell" role="gridcell" [attr.aria-selected]="isSelected(cell.iso)">
-                <button
-                  class="drp__day"
-                  type="button"
-                  [attr.data-iso]="cell.iso"
-                  [attr.aria-label]="cell.label"
-                  [attr.aria-current]="cell.isToday ? 'date' : null"
-                  [class.drp__day--outside]="cell.outside"
-                  [class.drp__day--today]="cell.isToday"
-                  [class.drp__day--start]="isStart(cell.iso)"
-                  [class.drp__day--end]="isEnd(cell.iso)"
-                  [class.drp__day--between]="isBetween(cell.iso)"
-                  [tabindex]="cell.iso === focusedIso() ? 0 : -1"
-                  (click)="selectDay(cell)"
-                  (mouseenter)="onDayEnter(cell)"
-                >
-                  {{ cell.day }}
-                </button>
-              </td>
+            @for (weekday of weekdays(); track weekday.long) {
+              <th class="drp__weekday" scope="col">
+                <!--
+                  La inicial es ambigua leída en voz alta ("L", "M", "X"), así que
+                  el nombre completo va oculto y la inicial se esconde del árbol
+                  de accesibilidad. Se anuncia "lunes", se lee "L".
+                -->
+                <span aria-hidden="true">{{ weekday.narrow }}</span>
+                <span class="visually-hidden">{{ weekday.long }}</span>
+              </th>
             }
           </tr>
+        </thead>
+
+        <tbody>
+          @for (week of weeks(); track week[0].iso) {
+            <tr>
+              @for (cell of week; track cell.iso) {
+                <!--
+                  `aria-selected` va en la celda, no en el botón: es la celda la
+                  que la guía ARIA considera seleccionada dentro de una `grid`.
+                -->
+                <td class="drp__cell" role="gridcell" [attr.aria-selected]="isSelected(cell.iso)">
+                  <button
+                    class="drp__day"
+                    type="button"
+                    [attr.data-iso]="cell.iso"
+                    [attr.aria-label]="cell.label"
+                    [attr.aria-current]="cell.isToday ? 'date' : null"
+                    [class.drp__day--outside]="cell.outside"
+                    [class.drp__day--today]="cell.isToday"
+                    [class.drp__day--start]="isStart(cell.iso)"
+                    [class.drp__day--end]="isEnd(cell.iso)"
+                    [class.drp__day--between]="isBetween(cell.iso)"
+                    [tabindex]="cell.iso === focusedIso() ? 0 : -1"
+                    (click)="selectDay(cell)"
+                    (mouseenter)="onDayEnter(cell)"
+                  >
+                    {{ cell.day }}
+                  </button>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <!--
+        Doce botones, no una rejilla ARIA: es la lista de meses del año
+        visible, un atajo para saltar lejos sin recorrer mes a mes. Elegir uno
+        selecciona el mes completo y cierra — ver `selectMonth`.
+      -->
+      <div class="drp__months" role="list" [attr.aria-labelledby]="monthId">
+        @for (month of months(); track month.index) {
+          <button
+            class="drp__month-btn"
+            type="button"
+            role="listitem"
+            [class.drp__month-btn--current]="month.isCurrent"
+            (click)="selectMonth(month.index)"
+          >
+            {{ month.label }}
+          </button>
         }
-      </tbody>
-    </table>
+      </div>
+    }
 
     <!--
       El pie dice en qué punto está la selección. `role="status"` porque el

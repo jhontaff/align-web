@@ -83,6 +83,23 @@ describe('DateRangePicker', () => {
     await estabilizar();
   }
 
+  function mesesVisibles(): boolean {
+    return host.querySelector('.drp__months') !== null;
+  }
+
+  function botonesDeMes(): HTMLButtonElement[] {
+    return Array.from(host.querySelectorAll<HTMLButtonElement>('.drp__month-btn'));
+  }
+
+  async function alternarVista(): Promise<void> {
+    host.querySelector<HTMLButtonElement>('.drp__month-toggle')!.click();
+    await estabilizar();
+  }
+
+  function encabezado(): string {
+    return host.querySelector('.drp__month-toggle')!.textContent!.trim();
+  }
+
   // ---------------------------------------------------------------------------
 
   it('el boton muestra el rango aplicado, y el popover nace cerrado', async () => {
@@ -287,5 +304,80 @@ describe('DateRangePicker', () => {
 
     await teclear('End');
     expect(dia('2026-09-06')!.tabIndex).toBe(0); // domingo
+  });
+
+  // ---------------------------------------------------------------------------
+  // La lista de meses. Rango de partida en todos: septiembre de 2026 (ver
+  // `SEPTIEMBRE`), así que `abrir()` deja `visibleMonth` en ese mes.
+  // ---------------------------------------------------------------------------
+
+  it('arranca en la rejilla de dias por defecto, y el encabezado alterna la vista', async () => {
+    await montar();
+    await abrir();
+
+    expect(mesesVisibles()).toBe(false);
+    expect(panel()!.querySelector('.drp__grid')).not.toBeNull();
+
+    await alternarVista();
+
+    expect(mesesVisibles()).toBe(true);
+    expect(panel()!.querySelector('.drp__grid')).toBeNull();
+
+    await alternarVista();
+
+    expect(mesesVisibles()).toBe(false);
+  });
+
+  it('`initialView` en months abre directo en la lista de meses', async () => {
+    await montar();
+    fixture.componentRef.setInput('initialView', 'months');
+    await estabilizar();
+    await abrir();
+
+    expect(mesesVisibles()).toBe(true);
+  });
+
+  it('elegir un mes de la lista emite ese mes completo y cierra', async () => {
+    await montar();
+    await abrir();
+    await alternarVista();
+
+    // Septiembre es el indice 8; julio (indice 6) tiene 31 dias.
+    botonesDeMes()[6].click();
+    await estabilizar();
+
+    expect(emitidos).toEqual([{ from: '2026-07-01', to: '2026-07-31' }]);
+    expect(panel()).toBeNull();
+  });
+
+  it('las flechas cambian de anio en la lista de meses, y de mes en la rejilla', async () => {
+    await montar();
+    await abrir();
+    await alternarVista();
+
+    expect(encabezado()).toBe('2026');
+
+    host.querySelectorAll<HTMLButtonElement>('.drp__nav')[1].click();
+    await estabilizar();
+    expect(encabezado()).toBe('2027');
+
+    host.querySelectorAll<HTMLButtonElement>('.drp__nav')[0].click();
+    await estabilizar();
+    expect(encabezado()).toBe('2026');
+  });
+
+  it('cerrar sin elegir un mes no deja la vista pegada al reabrir', async () => {
+    await montar();
+    await abrir();
+    await alternarVista();
+    expect(mesesVisibles()).toBe(true);
+
+    host.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await estabilizar();
+    await abrir();
+
+    // Vuelve a `initialView` ('days' por defecto), no se queda en la vista
+    // que tenia abierta cuando se cerro.
+    expect(mesesVisibles()).toBe(false);
   });
 });

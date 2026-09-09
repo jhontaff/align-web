@@ -228,14 +228,30 @@
   color: var(--color-danger);
 }
 
+// `wrap`, no una sola línea forzada: los dos consumidores de hoy
+// (`dueDate`/`dueTime` en Tareas, el rango de un evento en Calendario) son
+// siempre pares fecha/hora, y un `<input type="time">` con AM/PM nativo no
+// entra en la mitad de una pantalla de móvil sin recortarse — el reloj y la
+// "a. m." se montaban uno sobre otro. Con `wrap` el segundo campo baja de
+// línea solo cuando de verdad no cabe, en vez de encogerse hasta cortar su
+// propio contenido.
 .field-row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-4);
 }
 
+// 150px es el ancho de un `<input type="time">` en 12 horas con AM/PM, el
+// más ancho de los dos tipos que hoy comparten esta fila. `flex: 0 0 150px`
+// y no `flex: 1`: con `1` cada campo se estiraba a la mitad de la fila
+// (~210px en un diálogo de 480px) y el navegador dejaba el valor pegado a
+// la izquierda con un hueco vacío antes del icono — un campo de fecha no
+// necesita ni se ve bien ocupando ese ancho. Sin crecimiento ni encogimiento,
+// cada campo mide siempre lo mismo, compacto; el `flex-wrap` de arriba es
+// lo único que reacciona al ancho disponible, bajando el segundo campo de
+// línea cuando los dos no caben.
 .field-row .field {
-  flex: 1;
-  min-width: 0;
+  flex: 0 0 150px;
 }
 
 .form-error {

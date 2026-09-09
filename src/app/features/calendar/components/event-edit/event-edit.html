@@ -1,0 +1,94 @@
+<dialog
+  #dialog
+  class="event-edit__dialog"
+  [attr.aria-labelledby]="titleId"
+  (click)="onBackdropClick($event)"
+  (close)="onNativeClose()"
+>
+  <div class="event-edit__panel">
+    <header class="event-edit__header">
+      <h2 class="event-edit__title" [id]="titleId">
+        {{ editing() ? 'Editar evento' : 'Nuevo evento' }}
+      </h2>
+
+      <button
+        type="button"
+        class="btn btn-ghost btn-icon"
+        aria-label="Cerrar"
+        title="Cerrar"
+        (click)="onCloseClick()"
+      >
+        <app-icon name="bi:x-lg" />
+      </button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      @if (errorMessage()) {
+        <p class="form-error" role="alert">{{ errorMessage() }}</p>
+      }
+
+      <div class="field">
+        <label for="event-title">Título</label>
+        <input id="event-title" type="text" formControlName="title" />
+      </div>
+
+      <div class="field">
+        <label for="event-description">Descripción</label>
+        <textarea id="event-description" formControlName="description" rows="2"></textarea>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="event-start-date">Empieza</label>
+          <input id="event-start-date" type="date" formControlName="startDate" />
+        </div>
+
+        <div class="field">
+          <label for="event-start-time" class="visually-hidden">Hora de inicio</label>
+          <input id="event-start-time" type="time" formControlName="startTime" />
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="event-end-date">Termina (opcional)</label>
+          <input id="event-end-date" type="date" formControlName="endDate" />
+        </div>
+
+        <div class="field">
+          <label for="event-end-time" class="visually-hidden">Hora de fin</label>
+          <input id="event-end-time" type="time" formControlName="endTime" />
+        </div>
+      </div>
+
+      @if (form.errors?.['endBeforeStart']) {
+        <p class="form-error" role="alert">La hora de fin debe ser posterior al inicio.</p>
+      }
+
+      <div class="field">
+        <label for="event-location">Ubicación</label>
+        <input id="event-location" type="text" formControlName="location" />
+      </div>
+
+      <div class="field">
+        <label for="event-reminder">Recordatorio</label>
+        <select id="event-reminder" formControlName="reminderMinutesBefore">
+          @for (option of reminderOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-ghost" type="button" (click)="onCloseClick()">Cancelar</button>
+        <button class="btn btn-primary" type="submit" [disabled]="submitting()">
+          @if (editing()) {
+            {{ submitting() ? 'Guardando...' : 'Guardar cambios' }}
+          } @else {
+            {{ submitting() ? 'Creando...' : 'Crear evento' }}
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+</dialog>
