@@ -8,6 +8,7 @@ import {
   inject,
   input
 } from '@angular/core';
+import { prefersReducedMotion } from '../../../../core/dom/prefers-reduced-motion';
 import { ChatMessage } from '../../models/chat.model';
 import { renderMarkdown } from '../../render-markdown';
 
@@ -160,8 +161,4 @@ export class ChatThread {
     // que hacen autoscroll incondicional.
     return this.atBottom;
   }
-}
-
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
