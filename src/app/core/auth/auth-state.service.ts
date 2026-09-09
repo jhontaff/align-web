@@ -56,7 +56,24 @@ export class AuthStateService {
 
     hydrateUser(): Observable<UserResponse> {
         return this.http.get<UserResponse>('/auth/me').pipe(
-            tap(user => this.session.setUser(user))
+            tap(user => {
+                this.session.setUser(user);
+
+                // El único punto por el que pasan login, registro y el arranque
+                // con token guardado, y además sólo en éxito: es decir, el sitio
+                // donde hay sesión válida garantizada para el POST que esto hace
+                // —`/api/notifications/subscribe` responde 401 sin token—.
+                //
+                // Repara la suscripción que el navegador tiene y el backend no
+                // (rotación del push service, o un `subscribe()` que funcionó
+                // con el POST caído). Sin esto, los push se pierden en silencio
+                // hasta que alguien desactiva y reactiva a mano. Ver
+                // `PushService.syncSubscription()`.
+                //
+                // `void` porque no hay nada que esperar: es fire-and-forget y no
+                // debe retrasar ni hacer fallar la hidratación del usuario.
+                void this.push.syncSubscription();
+            })
         );
     }
 
