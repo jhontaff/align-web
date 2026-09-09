@@ -1,0 +1,139 @@
+@use '../../../../../styles/layout';
+
+// Mismo motivo que `confirm-dialog`: el host no pinta nada, su único hijo es
+// un `<dialog>`, y sin `display: contents` el elemento seguiría ocupando una
+// caja de línea vacía en medio del flujo del widget.
+:host {
+  display: contents;
+}
+
+// Sin `padding` en el `<dialog>` a propósito: el relleno también reportaría
+// el diálogo como `target` del clic y cerraría al pulsar el borde del panel
+// (ver `onBackdropClick`). El respiro lo pone `__panel`, que sí es contenido.
+.event-detail__dialog {
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  width: min(480px, calc(100vw - var(--space-8)));
+  max-height: calc(100vh - var(--space-8));
+
+  opacity: 0;
+  scale: 0.96;
+  transition:
+    opacity 160ms ease,
+    scale 160ms ease,
+    display 160ms allow-discrete,
+    overlay 160ms allow-discrete;
+}
+
+.event-detail__dialog[open] {
+  opacity: 1;
+  scale: 1;
+}
+
+@starting-style {
+  .event-detail__dialog[open] {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+.event-detail__dialog::backdrop {
+  background: transparent;
+  transition:
+    background 160ms ease,
+    display 160ms allow-discrete,
+    overlay 160ms allow-discrete;
+}
+
+.event-detail__dialog[open]::backdrop {
+  background: var(--color-scrim);
+}
+
+@starting-style {
+  .event-detail__dialog[open]::backdrop {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-detail__dialog,
+  .event-detail__dialog::backdrop {
+    transition: none;
+  }
+}
+
+.event-detail__panel {
+  padding: var(--space-5);
+  overflow-y: auto;
+  max-height: calc(100vh - var(--space-8));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.event-detail__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.event-detail__title {
+  margin: 0;
+  font-size: var(--text-h2);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.event-detail__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-1);
+}
+
+.event-detail__fields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.event-detail__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+
+  dt {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+  }
+}
+
+.event-detail__meta {
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+@include layout.below-tablet {
+  .event-detail__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

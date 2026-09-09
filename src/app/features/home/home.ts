@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { AuthStateService } from '../../core/auth/auth-state.service';
+import { Icon } from '../../shared/ui/icon/icon';
+import { CalendarWidget } from './components/calendar-widget/calendar-widget';
 import { FinanceSummary } from './components/finance-summary/finance-summary';
 import { HabitsSummary } from './components/habits-summary/habits-summary';
 import { TasksSummary } from './components/tasks-summary/tasks-summary';
@@ -16,7 +18,7 @@ import { TasksSummary } from './components/tasks-summary/tasks-summary';
  */
 @Component({
   selector: 'app-home',
-  imports: [TasksSummary, FinanceSummary, HabitsSummary],
+  imports: [TasksSummary, FinanceSummary, HabitsSummary, CalendarWidget, Icon],
   templateUrl: './home.html',
   styleUrl: './home.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
