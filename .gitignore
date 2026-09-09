@@ -48,4 +48,4 @@ Thumbs.db
 /serve-pwa.mjs
 
 # Certificado local para servir el build por HTTPS (npm run serve:pwa)
-/.certs
+/certs/

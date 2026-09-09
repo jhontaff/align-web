@@ -14,7 +14,7 @@ import {
   viewChild
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
@@ -224,6 +224,47 @@ export class HabitList implements OnInit {
    * plegado. Lo unico que decide es si se pinta.
    */
   protected readonly showTime = signal(false);
+
+  /**
+   * El nombre tecleado, como signal.
+   *
+   * `toSignal` y no un `subscribe` a `valueChanges`: lo unico que se quiere es
+   * que la plantilla lea el valor, y con `OnPush` eso tiene que ser un signal o
+   * deja de repintarse. Es la misma regla por la que `draft` dejo de ser una
+   * propiedad plana en el compositor del chat.
+   *
+   * No hace falta `takeUntilDestroyed`: `toSignal` se da de baja solo al
+   * destruirse el contexto de inyeccion en el que se crea, que es este
+   * componente. El `changes` de `DataRefreshService` si lo lleva porque aquello
+   * es un `subscribe` manual sobre un Subject que no completa nunca.
+   */
+  private readonly nameValue = toSignal(this.form.controls.name.valueChanges, {
+    initialValue: ''
+  });
+
+  /**
+   * Si hay algo escrito en el campo de nombre. **Es lo que decide si la hora se
+   * ofrece siquiera.**
+   *
+   * La hora es un detalle DE un habito, asi que no tiene sentido pedirla antes
+   * de que exista el habito al que califica: con el campo vacio, "Añadir hora"
+   * es un control que no puede llevar a ningun sitio —el submit lo bloquea
+   * `Validators.required`— y ademas es ruido en la unica fila que hay en
+   * pantalla cuando la lista esta vacia. Progressive disclosure de segundo
+   * nivel: el nombre revela el disparador, y el disparador revela el campo.
+   *
+   * **`trim()` para que unos espacios no cuenten como nombre.** Es a proposito
+   * mas estricto que `Validators.required`, que da por bueno `'   '`: aqui lo
+   * que se decide es si merece la pena ensenar un control, y para eso el
+   * criterio honesto es si hay texto de verdad.
+   *
+   * Ocultar NO borra: `showTime` y el valor de `scheduledTime` sobreviven a
+   * vaciar el nombre, asi que reponerlo devuelve el campo tal y como estaba. Lo
+   * contrario tiraria lo que el usuario ya habia tecleado por corregir una
+   * errata en el nombre. Y no puede colarse una hora huerfana al backend porque
+   * `onSubmit()` sale antes por `form.invalid`.
+   */
+  protected readonly hasName = computed(() => this.nameValue().trim().length > 0);
 
   /**
    * **Lo que queda por hacer primero, lo hecho al final**; dentro de cada grupo,
