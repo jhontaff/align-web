@@ -6,7 +6,6 @@ import { CalendarWidget } from './components/calendar-widget/calendar-widget';
 import { FinanceSummary } from './components/finance-summary/finance-summary';
 import { HabitsSummary } from './components/habits-summary/habits-summary';
 import { TasksSummary } from './components/tasks-summary/tasks-summary';
-
 /**
  * El panel de Inicio: el saludo y una tarjeta por dominio.
  *
@@ -19,7 +18,7 @@ import { TasksSummary } from './components/tasks-summary/tasks-summary';
  */
 @Component({
   selector: 'app-home',
-  imports: [TitleCasePipe, TasksSummary, FinanceSummary, HabitsSummary],
+  imports: [TitleCasePipe, TasksSummary, FinanceSummary, HabitsSummary, CalendarWidget],
   templateUrl: './home.html',
   styleUrl: './home.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
