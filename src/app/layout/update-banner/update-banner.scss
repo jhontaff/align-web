@@ -1,0 +1,61 @@
+@use '../../../styles/layout';
+
+// El host es la región viva y el ancla de posición a la vez, así que está
+// siempre en el DOM. Sin contenido mide 0×0 y `pointer-events: none` garantiza
+// que ni así se coma un clic destinado a lo que tenga debajo.
+:host {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  // Por debajo del panel de chat (50) y de la barra inferior (60): con el chat
+  // abierto a pantalla completa en móvil, el aviso queda detrás en vez de
+  // flotar sobre la conversación. No se pierde nada, sigue ahí al cerrarlo.
+  z-index: 45;
+  pointer-events: none;
+}
+
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: min(420px, calc(100vw - var(--space-8)));
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+}
+
+.update-banner__text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.update-banner .btn {
+  flex-shrink: 0;
+}
+
+// Los bloques de media query van al final de la hoja, no junto a la regla que
+// modifican: una media query no añade especificidad, así que lo único que
+// decide quién gana es el orden de aparición.
+@include layout.below-desktop {
+  :host {
+    // Encima de la barra inferior, que es `fixed` y no ocupa flujo. Sin esto
+    // el aviso queda justo debajo del recorrido del pulgar, medio tapado.
+    bottom: calc(
+      #{layout.$bottom-nav-height} + var(--space-3) + env(safe-area-inset-bottom, 0px)
+    );
+  }
+
+  // Misma corrección que hace el shell: en apaisado la barra se compacta.
+  @include layout.short-viewport {
+    :host {
+      bottom: calc(
+        #{layout.$bottom-nav-height-compact} + var(--space-3) + env(safe-area-inset-bottom, 0px)
+      );
+    }
+  }
+}
