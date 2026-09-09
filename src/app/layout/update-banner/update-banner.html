@@ -1,0 +1,9 @@
+@if (ready()) {
+  <div class="update-banner">
+    <p class="update-banner__text">Hay una versión nueva de Align.</p>
+
+    <button type="button" class="btn btn-primary btn-sm" (click)="apply()" [disabled]="applying()">
+      {{ applying() ? 'Actualizando…' : 'Actualizar' }}
+    </button>
+  </div>
+}

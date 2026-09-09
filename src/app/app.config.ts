@@ -12,6 +12,7 @@ import {
   provideRouter,
   withComponentInputBinding,
   withInMemoryScrolling,
+  withNavigationErrorHandler,
   withRouterConfig
 } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -20,6 +21,7 @@ import { routes } from './app.routes';
 import { provideServiceWorker } from '@angular/service-worker';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { unwrapInterceptor } from './core/interceptors/unwrap-interceptor';
+import { reloadOnStaleChunk } from './core/pwa/reload-on-stale-chunk';
 
 // Angular trae `en-US` compilado por defecto y los demás locales hay que
 // registrarlos a mano; sin esto `CurrencyPipe` y `DatePipe` formatean a la
@@ -66,7 +68,13 @@ export const appConfig: ApplicationConfig = {
       // Hace visibles los params y la data del padre en las rutas hijas. Es la
       // pieza que falta para que withComponentInputBinding funcione en las
       // pantallas anidadas de Finance (overview / activity).
-      withRouterConfig({ paramsInheritanceStrategy: 'always' })
+      withRouterConfig({ paramsInheritanceStrategy: 'always' }),
+
+      // Con todas las rutas en `loadComponent` y hash en el nombre de cada
+      // chunk, un despliegue deja a la pestaña abierta pidiendo archivos que ya
+      // no existen. Sin esto el router aborta la navegación en silencio y la
+      // app deja de responder a los enlaces sin decir por qué.
+      withNavigationErrorHandler(reloadOnStaleChunk)
     ),
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
