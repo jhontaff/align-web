@@ -23,6 +23,17 @@ export type PushStatus = 'unsupported' | 'default' | 'granted' | 'denied';
 const TEST_NOTIFICATION_URL = '/habits';
 
 /**
+ * Cuanto se espera a que el Service Worker este ACTIVO antes de rendirse.
+ *
+ * `navigator.serviceWorker.ready` no rechaza nunca: si el SW no llega a
+ * instalarse —un `ngsw-worker.js` que no cuadra con su manifiesto, una capa de
+ * cache delante sirviendo esos archivos descoordinados— se queda pendiente para
+ * siempre, y con el el boton en "Activando...". El timeout lo convierte en un
+ * mensaje en vez de un cuelgue.
+ */
+const SW_READY_TIMEOUT_MS = 15_000;
+
+/**
  * Suscripcion a Web Push, alta y baja del dispositivo, y notificacion de prueba.
  *
  * **Excepcion al servicio stateless**, por el mismo motivo que `ChatStore`: el
@@ -116,9 +127,27 @@ export class PushService {
     // preguntarselo en cada arranque en vez de recordarlo en `localStorage`.
     // El usuario pudo borrar los datos del sitio o revocar el permiso desde la
     // configuracion, y ahi no hay ningun evento que avise.
-    this.swPush.subscription
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(subscription => this._subscribed.set(subscription !== null));
+    //
+    // Se lee de `pushManager.getSubscription()` a traves de
+    // `navigator.serviceWorker.ready` y NO del observable `swPush.subscription`:
+    // ese no emite hasta que el SW CONTROLA la pestana, asi que en la primera
+    // carga tras un despliegue —o en la PWA recien instalada— dejaria
+    // `_subscribed` en falso con una suscripcion viva, y la pantalla ofreceria
+    // "Activar" cuando ya estan activadas. `enable()`, `disable()` y
+    // `syncSubscription()` mantienen el signal al dia despues; esto solo lo
+    // siembra al arrancar.
+    void this.readSubscribed();
+  }
+
+  /** Siembra `_subscribed` al arrancar. Ver el constructor. */
+  private async readSubscribed(): Promise<void> {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      this._subscribed.set(subscription !== null);
+    } catch {
+      // Sin SW activo no hay suscripcion que valga: se queda en falso.
+    }
   }
 
   /**
@@ -168,9 +197,22 @@ export class PushService {
    * arranque de la app es como se consigue que la gente pulse "Bloquear" sin
    * leer, y `denied` no tiene vuelta atras desde la pagina.
    *
-   * Es reintentable a proposito: si el permiso ya esta concedido,
-   * `requestSubscription()` devuelve la suscripcion existente en vez de crear
-   * otra, asi que volver a llamarlo solo reenvia el registro al backend.
+   * Es reintentable a proposito: si el permiso ya esta concedido y con la MISMA
+   * clave, `pushManager.subscribe()` devuelve la suscripcion existente en vez de
+   * crear otra, asi que volver a pulsar solo reenvia el registro al backend. Con
+   * una clave distinta lanza `InvalidStateError` — de ahi ese caso en `describe()`.
+   *
+   * ---
+   *
+   * **API cruda del navegador, no `swPush.requestSubscription()`.** Esa espera a
+   * que el SW CONTROLE la pestana (`navigator.serviceWorker.controller` no nulo),
+   * cosa que no pasa en la primera carga tras un despliegue ni en la PWA recien
+   * instalada hasta recargar: el `await` se cuelga sin resolver ni rechazar y el
+   * boton se queda en "Activando..." para siempre —el `finally` no llega a
+   * correr—. `navigator.serviceWorker.ready` pide solo un SW ACTIVO, que es la
+   * condicion real de `pushManager.subscribe()`. Mismo cambio que en
+   * `syncSubscription()`, y `withTimeout` cubre el caso peor: un SW que no llega
+   * a activarse nunca, donde `ready` tampoco resuelve.
    */
   async enable(): Promise<void> {
     if (this._busy() || this._status() === 'unsupported') {
@@ -181,8 +223,15 @@ export class PushService {
     this._error.set(null);
 
     try {
-      const subscription = await this.swPush.requestSubscription({
-        serverPublicKey: await this.vapidKey()
+      const registration = await this.withTimeout(
+        navigator.serviceWorker.ready,
+        SW_READY_TIMEOUT_MS,
+        'Las notificaciones no están disponibles ahora mismo. Recarga la página; puede haber una actualización pendiente.'
+      );
+
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: this.decodeVapidKey(await this.vapidKey())
       });
 
       await firstValueFrom(
@@ -200,6 +249,66 @@ export class PushService {
       this._error.set(this.describe(err));
     } finally {
       this._busy.set(false);
+    }
+  }
+
+  /**
+   * Reenvia al backend la suscripcion que este navegador ya tiene, si la hay.
+   *
+   * **Por que hace falta si `enable()` ya la registro.** Hay dos formas de
+   * acabar con una suscripcion viva en el navegador que el servidor no conoce,
+   * y en las dos los push se pierden en SILENCIO —no hay error, simplemente no
+   * llega nada— hasta que alguien desactiva y vuelve a activar a mano:
+   *
+   * - **El push service rota la suscripcion.** El navegador lo avisa con
+   *   `pushsubscriptionchange` dentro del Service Worker, que `ngsw-worker.js`
+   *   no maneja y que este frontend tampoco puede manejar por su cuenta: el SW
+   *   no tiene el JWT —no lee `localStorage`— y `/subscribe` exige
+   *   `Authorization`. Reenviarla en cada arranque es la mitigacion que si
+   *   esta a nuestro alcance.
+   * - **`subscribe()` funciono y el POST no.** Es exactamente el estado en el
+   *   que deja `enable()` cuando el backend esta caido: el navegador ya tiene
+   *   su suscripcion —y con ella el permiso gastado, que no se vuelve a
+   *   preguntar— pero el servidor no se entero.
+   *
+   * El backend deduplica por `endpoint`, asi que en el caso normal esto es un
+   * no-op: actualiza sobre si misma la fila que ya existe.
+   *
+   * **Fire-and-forget a proposito.** Esto no sale de un gesto del usuario, asi
+   * que un fallo no le da nada que hacer; escribir `_error` pintaria un aviso
+   * en la pantalla de Habitos por algo que no provoco nadie. El arranque
+   * siguiente reintenta.
+   */
+  async syncSubscription(): Promise<void> {
+    if (!this.swPush.isEnabled) {
+      return;
+    }
+
+    try {
+      // `navigator.serviceWorker.ready` y no `swPush.subscription`, que es de
+      // donde la lee `disable()`. Ese stream no emite hasta que el Service
+      // Worker CONTROLA la pagina, y con
+      // `registrationStrategy: 'registerWhenStable:30000'` eso no ha pasado
+      // todavia durante el arranque —en la primera visita no pasa en toda la
+      // sesion—: `firstValueFrom` se quedaria esperando para siempre justo en
+      // el unico momento en el que esto se llama. `disable()` no tiene el
+      // problema porque sale de un clic, con `subscribed` ya en cierto.
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+
+      // Nadie activo las notificaciones en este navegador. Salir aqui es lo que
+      // hace que esto no pida ningun permiso ni moleste a quien no las quiere.
+      if (!subscription) {
+        return;
+      }
+
+      await firstValueFrom(
+        this.http.post<void>('/api/notifications/subscribe', toRequest(subscription))
+      );
+
+      this._subscribed.set(true);
+    } catch {
+      // Ver el bloque de arriba: ni `_error` ni reintento inmediato.
     }
   }
 
@@ -228,7 +337,17 @@ export class PushService {
     this._error.set(null);
 
     try {
-      const subscription = await firstValueFrom(this.swPush.subscription);
+      // `navigator.serviceWorker.ready` + API cruda, no `swPush.subscription` /
+      // `swPush.unsubscribe()`: los dos esperan a que el SW controle la pestana
+      // y colgarian el boton en "Desactivando..." en el mismo escenario que
+      // `enable()` arregla. `subscription.unsubscribe()` es del propio objeto,
+      // no pasa por el canal del SW.
+      const registration = await this.withTimeout(
+        navigator.serviceWorker.ready,
+        SW_READY_TIMEOUT_MS,
+        'No se pudo contactar con el Service Worker. Recarga la página e inténtalo de nuevo.'
+      );
+      const subscription = await registration.pushManager.getSubscription();
 
       if (subscription) {
         await firstValueFrom(
@@ -239,9 +358,10 @@ export class PushService {
             params: new HttpParams().set('endpoint', subscription.endpoint)
           })
         );
+
+        await subscription.unsubscribe();
       }
 
-      await this.swPush.unsubscribe();
       this._subscribed.set(false);
     } catch (err) {
       this._error.set(this.describe(err));
@@ -301,6 +421,40 @@ export class PushService {
     }
   }
 
+  /**
+   * base64url (`-`/`_`, sin `=`) -> `Uint8Array`, que es lo que
+   * `pushManager.subscribe()` quiere en `applicationServerKey`.
+   *
+   * `SwPush.requestSubscription()` hacia esta conversion por dentro; al pasar a
+   * la API cruda en `enable()` hay que traerla. Es la funcion estandar de las
+   * guias de Web Push, sin dependencias.
+   */
+  private decodeVapidKey(base64url: string): Uint8Array {
+    const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
+    const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+
+    return Uint8Array.from(raw, char => char.charCodeAt(0));
+  }
+
+  /**
+   * Corta una promesa que puede no resolver nunca. La usan `enable()` y
+   * `disable()` sobre `navigator.serviceWorker.ready`, que **no rechaza** aunque
+   * el SW no llegue a activarse: sin esto el boton se queda girando sin fin.
+   *
+   * El `message` viaja como `Error.message` y `describe()` lo muestra tal cual,
+   * asi que es texto para el usuario, no para el log.
+   */
+  private withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout>;
+
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), ms);
+    });
+
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+  }
+
   /** Ver `serverPublicKey`. El `unwrapInterceptor` deja la cadena pelada. */
   private vapidKey(): Promise<string> {
     this.serverPublicKey ??= firstValueFrom(
@@ -347,6 +501,8 @@ export class PushService {
           return 'Este navegador ya está suscrito con otra clave. Desactiva y vuelve a activar.';
         case 'NotSupportedError':
           return 'Este navegador no admite notificaciones push.';
+        case 'AbortError':
+          return 'El navegador no pudo registrar las notificaciones con su servicio de push. En un equipo de escritorio suele ser una extensión (bloqueador de anuncios o de privacidad) o una red que bloquea googleapis.com.';
       }
     }
 
