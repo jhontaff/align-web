@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
+import { optional } from '../../../core/http/optional';
 import { today } from '../date-ranges';
 import {
   TransactionCategory,
@@ -170,9 +171,4 @@ export class TransactionForm {
       date
     };
   }
-}
-
-function optional(value: string): string | undefined {
-  const trimmed = value.trim();
-  return trimmed === '' ? undefined : trimmed;
 }

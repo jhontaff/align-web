@@ -78,6 +78,92 @@
   overflow-wrap: anywhere;
 }
 
+// Los dos controles del dia, agrupados: `.habit-detail__header` reparte con
+// `space-between` entre sus hijos DIRECTOS, y sueltos serian tres — el titulo se
+// quedaria sin el ancho que le sobra y el desmarcar flotaria en medio.
+.habit-detail__today {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+// Menos peso que el botón de al lado, pero la MISMA altura.
+//
+// La jerarquía la marca el relleno —verde sólido contra fantasma— y no el
+// tamaño: llevó `.btn-sm` un rato, y 32px junto a los 40px del botón de estado
+// no se leían como jerarquía sino como un descuido de maquetación. Con la misma
+// caja, el par se lee como lo que es: un estado y su forma de deshacerlo.
+//
+// **No declara `color` ni el color del hover.** `.btn-ghost` ya pone
+// `--color-text-muted` en reposo y `--color-text` sobre `--color-surface-muted`
+// al apuntarlo. Repetirlos aquí empataría en especificidad (0,3,0) con la regla
+// global y quién gana dependería del orden de inyección de los estilos, que con
+// un chunk lazy no está garantizado. Es la misma trampa que hace que
+// `.card-metric` no declare `color`.
+.habit-detail__uncomplete {
+  flex-shrink: 0;
+
+  // El anillo de foco global no pinta fondo, así que el botón fantasma enfocado
+  // por teclado se quedaba sin el realce que sí tiene con el ratón. Esto iguala
+  // los dos caminos; el color lo sigue poniendo `.btn-ghost`.
+  &:focus-visible:not(:disabled) {
+    background: var(--color-surface-muted);
+  }
+
+  // `.btn:disabled` pesa (0,2,0) y `&:disabled` también, así que empatarían y
+  // decidiría el orden. La clase extra sube a (0,3,0) y gana siempre — sin
+  // `!important`, que aquí no haría falta para nada.
+  //
+  // `progress` y no el `not-allowed` global: no está prohibido, está ocurriendo.
+  &.btn:disabled {
+    cursor: progress;
+  }
+
+  // 40px del `.btn` global se quedan por debajo del mínimo de 44px para un
+  // objetivo táctil, y en móvil la cabecera apila: este botón deja de tener al
+  // lado nada que lo sostenga.
+  @include layout.below-tablet {
+    min-height: 44px;
+  }
+}
+
+// 16px y no los 14px que heredaría del texto.
+//
+// Una flecha antihoraria es un glifo de trazo fino y hueco: al tamaño exacto de
+// su etiqueta desaparece al lado de las mayúsculas, mientras que el check
+// macizo del botón de al lado se sostiene solo. Un punto por encima del texto
+// la iguala ópticamente en vez de matemáticamente.
+.habit-detail__uncomplete-icon {
+  font-size: var(--text-base);
+  // Sin esto el SVG se encoge si el contenedor aprieta y la flecha sale ovalada.
+  flex-shrink: 0;
+  transition: rotate var(--transition-fast);
+}
+
+// La flecha retrocede un cuarto de vuelta al apuntar o enfocar: el movimiento
+// dice hacia dónde va la acción —deshacer— en vez de decorar. Es el mismo
+// recurso que el enlace de vuelta de `task-detail`, donde la flecha se desplaza
+// hacia atrás.
+.habit-detail__uncomplete:hover:not(:disabled) .habit-detail__uncomplete-icon,
+.habit-detail__uncomplete:focus-visible .habit-detail__uncomplete-icon {
+  rotate: -45deg;
+}
+
+// El bloque global de `_base.scss` neutraliza la transición, pero NO el valor
+// final: sin esto la flecha seguiría girando, sólo que de golpe. Mismo remate
+// que en `task-detail.scss`.
+@media (prefers-reduced-motion: reduce) {
+  .habit-detail__uncomplete-icon {
+    transition: none;
+  }
+
+  .habit-detail__uncomplete:hover:not(:disabled) .habit-detail__uncomplete-icon,
+  .habit-detail__uncomplete:focus-visible .habit-detail__uncomplete-icon {
+    rotate: none;
+  }
+}
+
 .habit-detail__complete {
   flex-shrink: 0;
   gap: var(--space-2);
@@ -166,6 +252,16 @@
     color: var(--color-text);
     overflow-wrap: anywhere;
   }
+}
+
+// Qué HACE la hora, debajo de la hora. Que dispare un aviso no se deduce del
+// dato, y este es el único sitio de la app donde se puede explicar sin ocupar
+// una fila entera.
+.habit-detail__field-note {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 @include layout.below-tablet {

@@ -60,11 +60,23 @@
 // -----------------------------------------------------------------------------
 // Alta en línea
 // -----------------------------------------------------------------------------
+// El formulario dejó de SER la fila y pasó a contenerla: debajo del nombre
+// cuelga el disparador de la hora, o el campo desplegado.
 .habit-create {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.habit-create__row {
   display: flex;
   align-items: flex-end;
   gap: var(--space-3);
-  margin-bottom: var(--space-6);
+  // El contenedor es `align-items: flex-start`, así que la fila necesita pedir
+  // el ancho entero explícitamente o se encoge a su contenido.
+  align-self: stretch;
 }
 
 // `.field` global trae `margin-bottom`, que aquí desalinearía el campo respecto
@@ -78,6 +90,58 @@
 .habit-create__submit {
   flex-shrink: 0;
   gap: var(--space-2);
+}
+
+// -----------------------------------------------------------------------------
+// La hora, plegada y desplegada
+// -----------------------------------------------------------------------------
+//
+// Apagado y pequeño: es una acción secundaria y opcional, y compitiendo en peso
+// con "Añadir" convertiría un formulario de un campo en uno de dos.
+.habit-create__add-time {
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-primary);
+  }
+}
+
+.habit-create__time {
+  margin-bottom: 0;
+}
+
+.habit-create__time-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+// El input de hora se mide solo; sin el tope, algunos motores lo estiran a todo
+// el ancho disponible y una hora ocupando la pantalla entera se lee como un
+// campo de texto vacío.
+.habit-create__time-control input {
+  inline-size: auto;
+  min-inline-size: 7rem;
+}
+
+.habit-create__time-clear {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-danger);
+  }
+}
+
+// Dice lo que la hora HACE. Sin esto, el campo parece una anotación: que
+// dispare un aviso no se deduce de poner una hora.
+.habit-create__time-hint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 // -----------------------------------------------------------------------------
@@ -179,6 +243,15 @@
   box-shadow: var(--shadow-sm);
 }
 
+// Nombre + hora. Existe para que `.habit-card` siga repartiendo entre DOS
+// bloques con su `space-between` y el pie no se despegue del fondo.
+.habit-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 .habit-card__name {
   margin: 0;
   font-size: var(--text-base);
@@ -211,6 +284,22 @@
       box-shadow: var(--focus-ring);
     }
   }
+}
+
+// Metadato, no titular: apagado y pequeño para que la tarjeta se siga leyendo
+// por el nombre. No lleva `z-index`, a diferencia del check y de editar, porque
+// no es pulsable y puede quedarse debajo del `::after` que hace clicable la
+// tarjeta entera.
+.habit-card__time {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  // Cifras de ancho fijo: en una rejilla, las horas de tarjetas contiguas se
+  // leen como una columna y sin esto bailan según los dígitos.
+  font-variant-numeric: tabular-nums;
 }
 
 .habit-card__footer {
@@ -268,19 +357,23 @@
 
 // Marcado: relleno verde y check en blanco. El color NO es el único canal —
 // también cambian el borde de la tarjeta y, sobre todo, aparece la racha.
+//
+// **Conserva el `cursor: pointer` de `.habit-check`**: el círculo marcado SÍ
+// invita a pulsarlo, porque pulsarlo desmarca. Tuvo `cursor: default` mientras
+// el gesto era de una sola dirección.
 .habit-card.is-done .habit-check {
   background: var(--color-success);
   border-color: var(--color-success);
   // Blanco literal y no un token: es texto sobre un fondo de marca sólido, y
   // no depende del tema. Mismo caso que `.btn-danger` en `_components.scss`.
   color: #ffffff;
-  cursor: default;
 }
 
-// No hay vuelta atrás: el backend no expone forma de deshacer una completación,
-// así que el círculo marcado deja de invitar a pulsarlo.
+// `aria-disabled` ya sólo aparece con la petición en vuelo, así que aquí no se
+// dice "no se puede" sino "está ocurriendo" — de ahí `progress` y no
+// `not-allowed`. El rebote al pulsar se apaga porque no hay nada que acusar.
 .habit-check[aria-disabled='true'] {
-  cursor: default;
+  cursor: progress;
 }
 
 .habit-check[aria-disabled='true']:active {
@@ -352,7 +445,12 @@
   // El campo ocupa la fila entera y el botón cae debajo a todo el ancho: lado a
   // lado en una pantalla estrecha, el campo se queda con ~180px, que no da ni
   // para ver lo que se escribe.
-  .habit-create {
+  //
+  // Apunta a `__row` y no a `.habit-create`: el formulario ya es una columna, y
+  // lo que hay que apilar aquí son el nombre y el botón. Estirarlo entero
+  // dejaría además el disparador de la hora a todo el ancho, con el peso visual
+  // de una acción principal que no es.
+  .habit-create__row {
     flex-direction: column;
     align-items: stretch;
   }

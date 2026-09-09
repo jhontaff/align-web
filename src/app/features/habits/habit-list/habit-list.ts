@@ -18,6 +18,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
+import { optional } from '../../../core/http/optional';
 import { PushService } from '../../../core/notifications/push.service';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { HabitRequest, HabitResponse } from '../models/habit.model';
@@ -112,6 +113,16 @@ export class HabitList implements OnInit {
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
 
   /**
+   * Los dos extremos del despliegue de la hora. Existen para MOVER EL FOCO, que
+   * es lo unico que un `@if` no resuelve solo: al desplegar hay que llevarlo al
+   * campo nuevo, y al plegar devolverlo al disparador — si no, el foco se queda
+   * en un boton que acaba de desmontarse y cae al `<body>`, o sea que quien
+   * navega con teclado vuelve al principio de la pagina.
+   */
+  private readonly timeInput = viewChild<ElementRef<HTMLInputElement>>('timeInput');
+  private readonly addTimeButton = viewChild<ElementRef<HTMLButtonElement>>('addTimeButton');
+
+  /**
    * La rejilla, para medir las tarjetas antes y despues de reordenarlas.
    *
    * Se lee el contenedor y no una `viewChildren` de las tarjetas porque el
@@ -121,8 +132,14 @@ export class HabitList implements OnInit {
    */
   private readonly grid = viewChild<ElementRef<HTMLElement>>('grid');
 
-  /** Temporizadores de la pausa, para poder cancelarlos al destruir. */
-  private readonly releaseTimers = new Set<ReturnType<typeof setTimeout>>();
+  /**
+   * Temporizadores de la pausa, **indexados por habito**.
+   *
+   * Un `Map` y no un `Set` porque hay que poder cancelar el de UNO: si se
+   * desmarca durante la pausa, su temporizador sigue vivo y soltaria la
+   * retencion de un habito que ya no esta retenido. Ver `releaseHold`.
+   */
+  private readonly releaseTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   private readonly all = signal<HabitResponse[]>([]);
   protected readonly loading = signal(true);
@@ -141,12 +158,17 @@ export class HabitList implements OnInit {
   protected readonly submitting = signal(false);
 
   /**
-   * Id del habito que se esta marcando ahora mismo, o `null`. Es un id y no un
-   * booleano porque hay un check por tarjeta: un `completing` global bloquearia
-   * todos y el usuario no sabria cual esta en vuelo. Mismo criterio que
-   * `deletingId` en `TaskList`.
+   * Id del habito con una peticion de marcado en vuelo, **en cualquiera de los
+   * dos sentidos**, o `null`.
+   *
+   * Es un id y no un booleano porque hay un check por tarjeta: uno global
+   * bloquearia los ocho y el usuario no sabria cual esta en vuelo. Mismo
+   * criterio que `deletingId` en `TaskList`.
+   *
+   * No se separa en marcar/desmarcar: `isCompletedToday` ya dice cual de los
+   * dos esta corriendo, y un segundo signal solo podria contradecirlo.
    */
-  protected readonly completingId = signal<string | null>(null);
+  protected readonly markingId = signal<string | null>(null);
 
   /**
    * Ids ya marcados que **todavia no han cambiado de sitio**: se pintan como
@@ -173,8 +195,35 @@ export class HabitList implements OnInit {
    * `form.invalid` no seria cierto.
    */
   protected readonly form = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(HABIT_NAME_MAX_LENGTH)]]
+    name: ['', [Validators.required, Validators.maxLength(HABIT_NAME_MAX_LENGTH)]],
+
+    /**
+     * **Siempre en el grupo, aunque el input no este montado.** Declararlo
+     * condicionalmente obligaria a `addControl`/`removeControl` en tiempo de
+     * ejecucion y a que la plantilla se defendiera de que el control todavia no
+     * exista; con el valor por defecto correcto, tenerlo plegado simplemente lo
+     * ignora. Mismo criterio que el `status` de `task-form` en modo creacion.
+     *
+     * Sin validadores: un `<input type="time">` solo puede devolver una hora
+     * valida o cadena vacia, asi que no hay nada que validar. Igual que
+     * `dueTime` en `task-form`.
+     */
+    scheduledTime: ['']
   });
+
+  /**
+   * Si el campo de hora esta desplegado.
+   *
+   * **La hora se pide bajo demanda y no de entrada**: el caso mayoritario es un
+   * habito sin hora, y el flujo real al empezar es dar de alta varios seguidos
+   * —nombre, Enter, nombre, Enter—. Un segundo campo siempre visible ensancharia
+   * esa fila para todo el mundo a cambio de servir a la minoria; el disparador
+   * cuesta un clic solo a quien si la quiere.
+   *
+   * Es estado de PRESENTACION, no del formulario: el control existe igual
+   * plegado. Lo unico que decide es si se pinta.
+   */
+  protected readonly showTime = signal(false);
 
   /**
    * **Lo que queda por hacer primero, lo hecho al final**; dentro de cada grupo,
@@ -269,8 +318,47 @@ export class HabitList implements OnInit {
    */
   protected readonly nameMaxLength = HABIT_NAME_MAX_LENGTH;
 
+  /**
+   * Despliega el campo de hora y lleva el foco dentro.
+   *
+   * **`afterNextRender` y no un `focus()` a secas**: el `@if` de la plantilla
+   * todavia no ha pintado el input cuando corre este handler, asi que
+   * `timeInput()` seria `undefined`. Es el mismo motivo por el que
+   * `reorderAnimated()` mide ahi y no en un `effect`.
+   */
+  protected revealTime(): void {
+    this.showTime.set(true);
+    this.focusAfterRender(() => this.timeInput()?.nativeElement.focus());
+  }
+
+  /**
+   * Pliega el campo y **borra la hora**, que son la misma accion: el boton dice
+   * "Quitar hora", asi que dejar el valor guardado y solo ocultarlo mandaria al
+   * backend una hora que el usuario cree haber quitado.
+   *
+   * El foco vuelve al disparador, que es el elemento que sustituye al campo.
+   */
+  protected clearTime(): void {
+    this.form.controls.scheduledTime.setValue('');
+    this.showTime.set(false);
+    this.focusAfterRender(() => this.addTimeButton()?.nativeElement.focus());
+  }
+
+  private focusAfterRender(focus: () => void): void {
+    afterNextRender(focus, { injector: this.injector });
+  }
+
   protected isDone(habit: HabitResponse): boolean {
     return habit.isCompletedToday;
+  }
+
+  /**
+   * `"09:00:00"` -> `"09:00"`. El backend recorta los segundos cuando son cero,
+   * pero no siempre, y en una tarjeta los segundos se leen como una precision
+   * que el dato no tiene.
+   */
+  protected timeLabel(habit: HabitResponse): string {
+    return habit.scheduledTime?.slice(0, 5) ?? '';
   }
 
   /** Marcado hace un instante y todavia retenido en su sitio. */
@@ -293,10 +381,23 @@ export class HabitList implements OnInit {
     this.submitting.set(true);
     this.createError.set(null);
 
-    this.habits.create(this.form.getRawValue() as HabitRequest).subscribe({
+    // **No se manda `getRawValue()` tal cual.** Con el campo plegado (o
+    // desplegado y vacio) `scheduledTime` vale `''`, y el backend responde 400
+    // al no poder parsear una cadena vacia como `LocalTime`. `optional()` la
+    // convierte en `undefined`, que desaparece del JSON.
+    const { name, scheduledTime } = this.form.getRawValue();
+    const request: HabitRequest = { name, scheduledTime: optional(scheduledTime) };
+
+    this.habits.create(request).subscribe({
       next: habit => {
         this.all.update(habits => [...habits, habit]);
         this.form.reset();
+
+        // Se pliega tras cada alta: el caso comun es encadenar habitos sin
+        // hora, y dejarlo abierto arrastraria un campo vacio a todos los
+        // siguientes. Quien quiera hora otra vez la despliega con un clic.
+        this.showTime.set(false);
+
         this.submitting.set(false);
         this.statusMessage.set(`Habito "${habit.name}" creado.`);
 
@@ -325,12 +426,22 @@ export class HabitList implements OnInit {
    * encuentra con que la tarjeta no tiene nada dentro. Como `aria-disabled` no
    * impide el clic, el bloqueo real tiene que estar aqui.
    */
-  protected onComplete(habit: HabitResponse): void {
-    if (this.isDone(habit) || this.completingId() === habit.id) {
+  protected onToggle(habit: HabitResponse): void {
+    // Lo unico que corta es la peticion en vuelo. Que el habito ya este hecho
+    // dejo de ser motivo para no hacer nada: ahora elige verbo.
+    if (this.markingId() === habit.id) {
       return;
     }
 
-    this.completingId.set(habit.id);
+    if (this.isDone(habit)) {
+      this.uncomplete(habit);
+    } else {
+      this.complete(habit);
+    }
+  }
+
+  private complete(habit: HabitResponse): void {
+    this.markingId.set(habit.id);
     this.errorMessage.set(null);
 
     this.habits.complete(habit.id).subscribe({
@@ -345,7 +456,7 @@ export class HabitList implements OnInit {
         // recalculada, asi que sustituir la fila deja la tarjeta en su estado
         // final sin tocar nada mas ni volver a pedir la lista.
         this.all.update(habits => habits.map(h => (h.id === updated.id ? updated : h)));
-        this.completingId.set(null);
+        this.markingId.set(null);
 
         this.scheduleRelease(updated.id);
 
@@ -358,7 +469,50 @@ export class HabitList implements OnInit {
         );
       },
       error: err => {
-        this.completingId.set(null);
+        this.markingId.set(null);
+        this.errorMessage.set(extractErrorMessage(err));
+      }
+    });
+  }
+
+  /**
+   * Deshace la completacion de hoy y devuelve la tarjeta a los pendientes.
+   *
+   * **Sin pausa, al contrario que marcar.** `holding` existe para que se vea la
+   * confirmacion verde antes de que la tarjeta se vaya: marcar es el logro y
+   * hay algo que celebrar. Desmarcar es corregir un error, y ahi lo que se
+   * quiere es que la lista quede bien cuanto antes — retenerla seria alargar el
+   * estado equivocado. El viaje si se anima, para poder seguirlo con la vista.
+   *
+   * **Sin confirmacion**, al contrario que borrar el habito: esto es reversible
+   * en un clic y `<app-confirm-dialog>` se reserva para lo que no tiene vuelta
+   * atras. Que la racha pueda caer no lo cambia — el numero se recalcula y se
+   * ve cambiar, que avisa mejor que un dialogo prediciendolo.
+   */
+  private uncomplete(habit: HabitResponse): void {
+    this.markingId.set(habit.id);
+    this.errorMessage.set(null);
+
+    this.habits.uncomplete(habit.id).subscribe({
+      next: updated => {
+        this.markingId.set(null);
+
+        // Las DOS mutaciones van dentro del mismo `mutate`: `reorderAnimated`
+        // mide ANTES de invocarlo, y soltar la retencion tambien cambia el
+        // orden. En dos llamadas separadas, la primera mediria un estado que la
+        // segunda ya habria movido, y el viaje saldria desde el sitio
+        // equivocado.
+        this.reorderAnimated(() => {
+          this.releaseHold(updated.id);
+          this.all.update(habits => habits.map(h => (h.id === updated.id ? updated : h)));
+        });
+
+        this.statusMessage.set(
+          `${updated.name} desmarcado. ${this.streakLabel(updated)}. Vuelve a los pendientes.`
+        );
+      },
+      error: err => {
+        this.markingId.set(null);
         this.errorMessage.set(extractErrorMessage(err));
       }
     });
@@ -376,14 +530,42 @@ export class HabitList implements OnInit {
   private scheduleRelease(id: string): void {
     this.zone.runOutsideAngular(() => {
       const timer = setTimeout(() => {
-        this.releaseTimers.delete(timer);
+        this.releaseTimers.delete(id);
         this.zone.run(() => {
           this.reorderAnimated(() => this.holding.update(ids => ids.filter(x => x !== id)));
         });
       }, MARK_HOLD_MS);
 
-      this.releaseTimers.add(timer);
+      this.releaseTimers.set(id, timer);
     });
+  }
+
+  /**
+   * Saca un habito de la retencion **y cancela su temporizador**, para el caso
+   * de desmarcar dentro de la pausa: marcas, ves que era la tarjeta de al lado
+   * y vuelves a pulsar antes de los 420ms.
+   *
+   * Sin el `clearTimeout` ese temporizador sigue vivo, y el fallo NO es que
+   * suelte una retencion ya soltada —eso es inocuo— sino que suelta **la
+   * siguiente**: si tras desmarcar se vuelve a marcar el mismo habito, el
+   * temporizador viejo vence antes que el nuevo y manda la tarjeta al final sin
+   * haber completado su pausa. Hace falta la secuencia marcar -> desmarcar ->
+   * marcar dentro de la misma ventana, y no se ve salvo que se busque: de ahi
+   * la prueba que la reproduce con tiempos explicitos.
+   *
+   * Escribir `holding` aunque el id no este es inofensivo: `filter` devuelve un
+   * array nuevo y el signal reemite, pero `sorted()` da lo mismo y con `OnPush`
+   * eso no repinta nada de mas.
+   */
+  private releaseHold(id: string): void {
+    const timer = this.releaseTimers.get(id);
+
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      this.releaseTimers.delete(id);
+    }
+
+    this.holding.update(ids => ids.filter(x => x !== id));
   }
 
   /**

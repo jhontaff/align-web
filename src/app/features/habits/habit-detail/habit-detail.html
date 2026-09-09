@@ -24,7 +24,7 @@
     }
   </div>
 
-  @if (completeError(); as message) {
+  @if (markError(); as message) {
     <p class="form-error" role="alert">{{ message }}</p>
   }
 
@@ -43,22 +43,58 @@
       <header class="habit-detail__header">
         <h1 class="habit-detail__title">{{ habit.name }}</h1>
 
-        <button
-          type="button"
-          class="btn habit-detail__complete"
-          [class.is-done]="habit.isCompletedToday"
-          [attr.aria-disabled]="habit.isCompletedToday || completing()"
-          (click)="onComplete()"
-        >
-          <app-icon class="habit-detail__complete-icon" name="bi:check-lg" />
+        <!--
+          Dos controles y no un toggle, al contrario que el check redondo de la
+          lista.
+
+          Este boton lleva TEXTO, y un boton con texto anuncia la accion que va
+          a ocurrir. Convertirlo en toggle dejaria el relleno verde de logro
+          envolviendo la palabra "Desmarcar", que se lee al reves de lo que es.
+          Asi el verde sigue diciendo "hecho" y la accion contraria vive al lado,
+          explicita y con menos peso visual.
+        -->
+        <div class="habit-detail__today">
+          <button
+            type="button"
+            class="btn habit-detail__complete"
+            [class.is-done]="habit.isCompletedToday"
+            [attr.aria-disabled]="habit.isCompletedToday || marking()"
+            (click)="onComplete()"
+          >
+            <app-icon class="habit-detail__complete-icon" name="bi:check-lg" />
+            @if (habit.isCompletedToday) {
+              Hecho hoy
+            } @else if (marking()) {
+              Marcando...
+            } @else {
+              Marcar hoy como hecho
+            }
+          </button>
+
           @if (habit.isCompletedToday) {
-            Hecho hoy
-          } @else if (completing()) {
-            Marcando...
-          } @else {
-            Marcar hoy como hecho
+            <!--
+              `disabled` normal y no `aria-disabled`, al reves que el boton de al
+              lado: aqui lo unico que lo apaga es la peticion en vuelo, nunca un
+              estado permanente, y durante ese instante no debe poder pulsarse
+              dos veces. El de al lado no podia hacerlo porque su estado
+              "apagado" es definitivo mientras el habito siga marcado.
+            -->
+            <button
+              type="button"
+              class="btn btn-ghost habit-detail__uncomplete"
+              [disabled]="marking()"
+              (click)="onUncomplete()"
+            >
+              <!--
+                Flecha antihoraria y no una "x": esto DESHACE la marca de hoy,
+                no borra nada. La equis es el glifo de quitar —lo usa "Quitar
+                hora" en el formulario— y aquí prometería otra cosa.
+              -->
+              <app-icon class="habit-detail__uncomplete-icon" name="bi:arrow-counterclockwise" />
+              {{ marking() ? 'Desmarcando...' : 'Desmarcar' }}
+            </button>
           }
-        </button>
+        </div>
       </header>
 
       <div class="habit-detail__streaks">
@@ -76,6 +112,21 @@
       </div>
 
       <dl class="habit-detail__fields">
+        <!--
+          Sólo si la tiene: una fila "Hora — Sin hora" ocuparía el mismo sitio
+          que un dato para decir que no hay dato. Que se pueda poner ya lo
+          ofrece "Editar".
+        -->
+        @if (habit.scheduledTime) {
+          <div class="habit-detail__field">
+            <dt>Hora</dt>
+            <dd>
+              {{ timeLabel(habit.scheduledTime) }}
+              <span class="habit-detail__field-note">Recibes un aviso a esa hora</span>
+            </dd>
+          </div>
+        }
+
         <div class="habit-detail__field">
           <dt>Creado</dt>
           <dd>{{ timestampLabel(habit.createdAt) }}</dd>
