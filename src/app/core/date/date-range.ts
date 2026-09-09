@@ -87,6 +87,39 @@ export function addDays(date: Date, days: number): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 }
 
+/** Iniciales y nombre completo de un día de la semana, en el orden que se pinta. */
+export interface Weekday {
+  readonly narrow: string;
+  readonly long: string;
+}
+
+/**
+ * Las cabeceras de una semana, derivadas del locale y no escritas a mano.
+ *
+ * **La semana empieza en lunes**, fijo. Sacarlo del locale exigiría
+ * `Intl.Locale.prototype.getWeekInfo`, que no está en todos los motores; y la
+ * app es `es-*`, donde la semana empieza en lunes en los dos casos. Si algún
+ * día entra un locale de semana en domingo, este es el sitio.
+ *
+ * El 1 de enero de 2024 fue lunes. Se usa una fecha fija y no "el lunes de
+ * esta semana" para que las cabeceras no dependan de qué día se abra la app.
+ *
+ * Sube aquí en su segundo consumidor real (el widget de Calendario en Home):
+ * `DateRangePicker` la tenía como cómputo privado, y duplicarla ahí y en
+ * Calendario hubiera sido la misma lógica fija en dos sitios sin ninguna
+ * razón para divergir — mismo criterio que ya subió `toHttpParams`.
+ */
+export function weekdayLabels(locale: string): Weekday[] {
+  const monday = new Date(2024, 0, 1);
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = addDays(monday, index);
+    return {
+      narrow: date.toLocaleDateString(locale, { weekday: 'narrow' }),
+      long: date.toLocaleDateString(locale, { weekday: 'long' })
+    };
+  });
+}
+
 /**
  * Devuelve `[desde, hasta]` ordenado.
  *

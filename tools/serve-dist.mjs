@@ -12,11 +12,18 @@
  * reproduce esa pieza: reenvia `/api` y `/auth` a localhost:1010, asi que el
  * navegador ve un unico origen igual que en desarrollo.
  *
- * `localhost` cuenta como contexto seguro, asi que no hace falta HTTPS aqui.
- * Desde el movil contra `http://<ip-local>:4300` **si** falla: el navegador
- * exige contexto seguro para Service Workers y notificaciones.
+ * `localhost` cuenta como contexto seguro, asi que no hace falta HTTPS ahi.
+ * El servidor escucha en `0.0.0.0` para que el movil, en la misma red, pueda
+ * entrar por la IP LAN de esta maquina — pero esa IP **no** es un contexto
+ * seguro sin HTTPS: el navegador del movil carga la app igual, mas Service
+ * Worker y notificaciones push siguen deshabilitados ahi (Chrome Android
+ * exceptua `localhost`, no una IP LAN). Sirve para probar layout/responsive
+ * en el dispositivo real; para probar Push desde el movil hace falta HTTPS
+ * (o `chrome://flags/#unsafely-treat-insecure-origin-as-secure` en el propio
+ * telefono, apuntando a la IP:PUERTO exactos).
  *
- * Uso: `npm run serve:pwa` (compila y arranca esto).
+ * Uso: `npm run serve:pwa` (compila y arranca esto). La IP LAN a usar desde
+ * el movil se imprime en consola al arrancar.
  *
  * Sin dependencias a proposito: todo lo que hace cabe en el `node:http` que ya
  * hay, y este repo no instala paquetes para envolver una llamada que ya existe.
@@ -24,10 +31,19 @@
 import { createServer, request as httpRequest } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
+import { networkInterfaces } from 'node:os';
 
 const PORT = Number(process.env.PORT ?? 4300);
-const BACKEND = { host: 'localhost', port: 8080 };
+const HOST = process.env.HOST ?? '0.0.0.0';
+const BACKEND = { host: 'localhost', port: 1010 };
 const PROXIED = ['/api', '/auth'];
+
+function lanAddresses() {
+  return Object.values(networkInterfaces())
+    .flat()
+    .filter(addr => addr && addr.family === 'IPv4' && !addr.internal)
+    .map(addr => addr.address);
+}
 
 // El builder `application` deja los archivos del navegador en `browser/`. Se
 // comprueban las dos rutas porque un cambio de builder mueve la carpeta y el
@@ -109,7 +125,10 @@ createServer((req, res) => {
   // Cualquier otra ruta es una ruta de Angular: la resuelve el router del
   // cliente sobre index.html.
   sendFile(res, join(ROOT, 'index.html'), { noStore: true });
-}).listen(PORT, () => {
+}).listen(PORT, HOST, () => {
   console.log(`Build servido en http://localhost:${PORT}`);
+  for (const ip of lanAddresses()) {
+    console.log(`  también en http://${ip}:${PORT}  ← usar esta desde el móvil`);
+  }
   console.log(`  /api y /auth → http://${BACKEND.host}:${BACKEND.port}`);
 });

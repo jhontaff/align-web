@@ -44,6 +44,8 @@ const ICON_NAMES = [
   'bi:calendar3',
   'bi:chevron-left',
   'bi:chevron-right',
+  'bi:chevron-down',
+  'bi:chevron-up',
   'bi:arrow-up',
   'bi:arrow-down',
   'bi:fire',

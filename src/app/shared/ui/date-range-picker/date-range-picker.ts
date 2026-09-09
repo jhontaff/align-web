@@ -20,7 +20,8 @@ import {
   lastDayOfMonth,
   orderedRange,
   parseIsoDate,
-  toIsoDate
+  toIsoDate,
+  weekdayLabels
 } from '../../../core/date/date-range';
 import { Icon } from '../icon/icon';
 
@@ -44,11 +45,6 @@ interface DayCell {
   readonly isToday: boolean;
   /** "12 de septiembre de 2026" — el nombre accesible del botón. */
   readonly label: string;
-}
-
-interface Weekday {
-  readonly narrow: string;
-  readonly long: string;
 }
 
 /**
@@ -127,6 +123,20 @@ export class DateRangePicker {
   readonly clearable = input(false);
 
   /**
+   * Con qué vista arranca el popover al abrirse: la rejilla de días (por
+   * defecto, el comportamiento de siempre) o la lista de meses del año en
+   * curso.
+   *
+   * Quien lo usa sobre todo para saltar de mes en mes lejos de hoy —el widget
+   * de Calendario, que abre casi siempre en `'months'`— ahorra la fila de
+   * clics en "mes siguiente"; Finanzas, que filtra rangos concretos con más
+   * frecuencia que salta de mes, se queda en el valor por defecto sin tocar
+   * nada. Las dos vistas conviven en la misma sesión del popover — el
+   * encabezado alterna entre ellas sin cerrar nada, ver `toggleView()`.
+   */
+  readonly initialView = input<'days' | 'months'>('days');
+
+  /**
    * Se emite **solo con un rango completo**: al pulsar un atajo, o al cerrar
    * los dos extremos en el calendario. Nunca a medias — quien escucha esto
    * dispara una petición, y un rango con un solo extremo no es una pregunta
@@ -175,6 +185,14 @@ export class DateRangePicker {
   private readonly visibleMonth = signal(startOfMonth(new Date()));
 
   /**
+   * Qué se pinta dentro del popover: la rejilla de días o la lista de meses
+   * del año visible. Es estado de presentación puro que nace de un clic
+   * dentro de la propia plantilla (el encabezado) — vive aquí y no como algo
+   * que el padre empuje desde fuera, mismo criterio que `anchor`/`hovered`.
+   */
+  protected readonly view = signal<'days' | 'months'>('days');
+
+  /**
    * El día que tiene el `tabindex="0"`.
    *
    * Una rejilla de 42 botones con todos tabulables obligaría a pulsar Tab
@@ -207,6 +225,9 @@ export class DateRangePicker {
     return text.charAt(0).toLocaleUpperCase(this.locale) + text.slice(1);
   });
 
+  /** El año del mes visible, para el encabezado cuando `view()` es `'months'`. */
+  protected readonly yearLabel = computed(() => `${this.visibleMonth().getFullYear()}`);
+
   /**
    * Lo que se pinta marcado: el rango aplicado cuando no hay selección en
    * curso, y el tramo entre el ancla y el día señalado cuando la hay.
@@ -230,27 +251,8 @@ export class DateRangePicker {
     return preview ? formatDateRange(preview, this.locale) : this.emptyLabel();
   });
 
-  /**
-   * Las cabeceras, derivadas del locale y no escritas a mano.
-   *
-   * **La semana empieza en lunes**, fijo. Sacarlo del locale exigiría
-   * `Intl.Locale.prototype.getWeekInfo`, que no está en todos los motores; y la
-   * app es `es-*`, donde la semana empieza en lunes en los dos casos. Si algún
-   * día entra un locale de semana en domingo, este es el sitio.
-   *
-   * El 1 de enero de 2024 fue lunes. Se usa una fecha fija y no "el lunes de
-   * esta semana" para que las cabeceras no dependan de qué día se abra la app.
-   */
-  protected readonly weekdays = computed<Weekday[]>(() => {
-    const monday = new Date(2024, 0, 1);
-    return Array.from({ length: 7 }, (_, index) => {
-      const date = addDays(monday, index);
-      return {
-        narrow: date.toLocaleDateString(this.locale, { weekday: 'narrow' }),
-        long: date.toLocaleDateString(this.locale, { weekday: 'long' })
-      };
-    });
-  });
+  /** Las cabeceras de la semana — ver `weekdayLabels` en `core/date/date-range.ts`. */
+  protected readonly weekdays = computed(() => weekdayLabels(this.locale));
 
   /**
    * Seis semanas **siempre**, aunque el mes quepa en cinco.
@@ -285,6 +287,28 @@ export class DateRangePicker {
         };
       })
     );
+  });
+
+  /**
+   * Los doce meses del año visible, para la lista de meses.
+   *
+   * Sin tabindex móvil ni flechas como en la rejilla de días: doce paradas de
+   * Tab es razonable, cuarenta y dos no lo era — por eso el día sí necesita
+   * ese mecanismo y esto no.
+   */
+  protected readonly months = computed(() => {
+    const year = this.visibleMonth().getFullYear();
+    const now = new Date();
+
+    return Array.from({ length: 12 }, (_, index) => {
+      const date = new Date(year, index, 1);
+      const text = date.toLocaleDateString(this.locale, { month: 'short' });
+      return {
+        index,
+        label: text.charAt(0).toLocaleUpperCase(this.locale) + text.slice(1),
+        isCurrent: year === now.getFullYear() && index === now.getMonth()
+      };
+    });
   });
 
   constructor() {
@@ -353,6 +377,7 @@ export class DateRangePicker {
     this.focusedIso.set(range ? range.from : toIsoDate(start));
     this.anchor.set(null);
     this.hovered.set(null);
+    this.view.set(this.initialView());
     this.shouldFocusDay = true;
     this.open.set(true);
   }
@@ -373,6 +398,7 @@ export class DateRangePicker {
     this.open.set(false);
     this.anchor.set(null);
     this.hovered.set(null);
+    this.view.set(this.initialView());
 
     if (options.returnFocus !== false) {
       this.trigger().nativeElement.focus();
@@ -421,6 +447,33 @@ export class DateRangePicker {
 
   protected shiftMonth(months: number): void {
     this.visibleMonth.update(current => addMonths(current, months));
+  }
+
+  /**
+   * Alterna entre la rejilla de días y la lista de meses. Nace de un clic en
+   * el propio encabezado del popover, así que es interno — nadie desde fuera
+   * lo empuja mientras el popover está abierto (ver `initialView`).
+   */
+  protected toggleView(): void {
+    this.view.set(this.view() === 'days' ? 'months' : 'days');
+  }
+
+  /** El equivalente de `shiftMonth` cuando la vista es la lista de meses. */
+  protected shiftYear(years: number): void {
+    this.visibleMonth.update(current => new Date(current.getFullYear() + years, current.getMonth(), 1));
+  }
+
+  /**
+   * Elegir un mes en la lista selecciona ese mes completo y cierra, igual que
+   * un preset — no hace falta un tercer clic para confirmar algo que ya es
+   * inequívoco (mismo razonamiento que `applyPreset`).
+   */
+  protected selectMonth(monthIndex: number): void {
+    const year = this.visibleMonth().getFullYear();
+    const from = new Date(year, monthIndex, 1);
+    const to = new Date(year, monthIndex, lastDayOfMonth(year, monthIndex));
+    this.rangeChange.emit({ from: toIsoDate(from), to: toIsoDate(to) });
+    this.close();
   }
 
   /**
