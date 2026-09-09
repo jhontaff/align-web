@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthStateService } from './core/auth/auth-state.service';
+import { AppUpdateService } from './core/pwa/app-update.service';
 import { PushService } from './core/notifications/push.service';
 import { AppHeader } from './layout/app-header/app-header';
 import { BottomNav } from './layout/bottom-nav/bottom-nav';
 import { ChatPanel } from './layout/chat-panel/chat-panel';
 import { SidebarNav } from './layout/sidebar-nav/sidebar-nav';
+import { UpdateBanner } from './layout/update-banner/update-banner';
 
 /**
  * El shell. Un solo `<router-outlet />` que no se desmonta nunca, y a su lado
@@ -24,7 +26,7 @@ import { SidebarNav } from './layout/sidebar-nav/sidebar-nav';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, AppHeader, SidebarNav, BottomNav, ChatPanel],
+  imports: [RouterOutlet, AppHeader, SidebarNav, BottomNav, ChatPanel, UpdateBanner],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -52,6 +54,7 @@ export class App {
   }
 
   private readonly push = inject(PushService);
+  private readonly appUpdate = inject(AppUpdateService);
 
   constructor() {
     // Un token guardado tiene que rehidratar user/isAuthenticated antes de que
@@ -63,5 +66,11 @@ export class App {
     // app desde una notificación cayendo en Inicio no engancharía nada. El
     // shell está montado siempre, que es la única condición que esto pide.
     this.push.listen();
+
+    // Una PWA instalada no se recarga sola: sin esto, el móvil se queda en la
+    // versión con la que se instaló aunque el despliegue ya esté hecho. Va aquí
+    // por el mismo motivo que `push.listen()` — el shell es lo único montado
+    // en todo momento.
+    this.appUpdate.listen();
   }
 }
