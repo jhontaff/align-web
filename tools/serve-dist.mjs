@@ -35,7 +35,7 @@ import { networkInterfaces } from 'node:os';
 
 const PORT = Number(process.env.PORT ?? 4300);
 const HOST = process.env.HOST ?? '0.0.0.0';
-const BACKEND = { host: 'localhost', port: 1010 };
+const BACKEND = { host: 'localhost', port: 8080 };
 const PROXIED = ['/api', '/auth'];
 
 function lanAddresses() {

@@ -17,6 +17,13 @@
     <router-outlet />
   </main>
 
+  <!--
+    Fuera del `@if` de sesión: un despliegue nuevo hay que poder aplicarlo
+    también desde login, y el aviso no depende de estar autenticado. Se
+    posiciona solo (`position: fixed`), así que no ocupa celda de la rejilla.
+  -->
+  <app-update-banner />
+
   @if (authState.isAuthenticated()) {
     <!--
       `[(open)]` y no un signal interno del panel: en móvil el chat se abre
