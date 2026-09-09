@@ -357,19 +357,23 @@
 
 // Marcado: relleno verde y check en blanco. El color NO es el único canal —
 // también cambian el borde de la tarjeta y, sobre todo, aparece la racha.
+//
+// **Conserva el `cursor: pointer` de `.habit-check`**: el círculo marcado SÍ
+// invita a pulsarlo, porque pulsarlo desmarca. Tuvo `cursor: default` mientras
+// el gesto era de una sola dirección.
 .habit-card.is-done .habit-check {
   background: var(--color-success);
   border-color: var(--color-success);
   // Blanco literal y no un token: es texto sobre un fondo de marca sólido, y
   // no depende del tema. Mismo caso que `.btn-danger` en `_components.scss`.
   color: #ffffff;
-  cursor: default;
 }
 
-// No hay vuelta atrás: el backend no expone forma de deshacer una completación,
-// así que el círculo marcado deja de invitar a pulsarlo.
+// `aria-disabled` ya sólo aparece con la petición en vuelo, así que aquí no se
+// dice "no se puede" sino "está ocurriendo" — de ahí `progress` y no
+// `not-allowed`. El rebote al pulsar se apaga porque no hay nada que acusar.
 .habit-check[aria-disabled='true'] {
-  cursor: default;
+  cursor: progress;
 }
 
 .habit-check[aria-disabled='true']:active {
