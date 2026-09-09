@@ -204,6 +204,66 @@ export class PushService {
   }
 
   /**
+   * Reenvia al backend la suscripcion que este navegador ya tiene, si la hay.
+   *
+   * **Por que hace falta si `enable()` ya la registro.** Hay dos formas de
+   * acabar con una suscripcion viva en el navegador que el servidor no conoce,
+   * y en las dos los push se pierden en SILENCIO —no hay error, simplemente no
+   * llega nada— hasta que alguien desactiva y vuelve a activar a mano:
+   *
+   * - **El push service rota la suscripcion.** El navegador lo avisa con
+   *   `pushsubscriptionchange` dentro del Service Worker, que `ngsw-worker.js`
+   *   no maneja y que este frontend tampoco puede manejar por su cuenta: el SW
+   *   no tiene el JWT —no lee `localStorage`— y `/subscribe` exige
+   *   `Authorization`. Reenviarla en cada arranque es la mitigacion que si
+   *   esta a nuestro alcance.
+   * - **`subscribe()` funciono y el POST no.** Es exactamente el estado en el
+   *   que deja `enable()` cuando el backend esta caido: el navegador ya tiene
+   *   su suscripcion —y con ella el permiso gastado, que no se vuelve a
+   *   preguntar— pero el servidor no se entero.
+   *
+   * El backend deduplica por `endpoint`, asi que en el caso normal esto es un
+   * no-op: actualiza sobre si misma la fila que ya existe.
+   *
+   * **Fire-and-forget a proposito.** Esto no sale de un gesto del usuario, asi
+   * que un fallo no le da nada que hacer; escribir `_error` pintaria un aviso
+   * en la pantalla de Habitos por algo que no provoco nadie. El arranque
+   * siguiente reintenta.
+   */
+  async syncSubscription(): Promise<void> {
+    if (!this.swPush.isEnabled) {
+      return;
+    }
+
+    try {
+      // `navigator.serviceWorker.ready` y no `swPush.subscription`, que es de
+      // donde la lee `disable()`. Ese stream no emite hasta que el Service
+      // Worker CONTROLA la pagina, y con
+      // `registrationStrategy: 'registerWhenStable:30000'` eso no ha pasado
+      // todavia durante el arranque —en la primera visita no pasa en toda la
+      // sesion—: `firstValueFrom` se quedaria esperando para siempre justo en
+      // el unico momento en el que esto se llama. `disable()` no tiene el
+      // problema porque sale de un clic, con `subscribed` ya en cierto.
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+
+      // Nadie activo las notificaciones en este navegador. Salir aqui es lo que
+      // hace que esto no pida ningun permiso ni moleste a quien no las quiere.
+      if (!subscription) {
+        return;
+      }
+
+      await firstValueFrom(
+        this.http.post<void>('/api/notifications/subscribe', toRequest(subscription))
+      );
+
+      this._subscribed.set(true);
+    } catch {
+      // Ver el bloque de arriba: ni `_error` ni reintento inmediato.
+    }
+  }
+
+  /**
    * Baja del dispositivo: lo borra del backend
    * (`DELETE /api/notifications/subscribe?endpoint=`) y luego cancela la
    * suscripcion en el navegador.
