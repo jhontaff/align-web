@@ -4,12 +4,20 @@ export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 /**
  * Filtros que acepta `GET /api/tasks`.
  *
- * Solo `status`: es lo unico que el backend soporta hoy. El tipo no promete
- * mas de lo que hay — anadir aqui un `search` o un `priority` haria que el
- * compilador aceptara una llamada que el servidor ignora en silencio.
+ * `dueFrom`/`dueTo` (`yyyy-MM-dd`, inclusivos — mismo contrato que
+ * `TransactionFilter.from/to`) se sumaron el 2026-09-09 para que el widget
+ * de Calendario pueda pedir "tareas que vencen esta semana/mes" sin traer
+ * el historial completo y filtrar en el cliente. `status` sigue aceptando
+ * solo UN valor, no una lista — para "pendientes o en progreso" hay que
+ * pedir sin `status` y filtrar esos dos en el cliente (ver `agenda.ts`),
+ * no dos peticiones. El tipo no promete más de lo que hay — añadir aquí un
+ * `search` haría que el compilador aceptara una llamada que el servidor
+ * ignora en silencio.
  */
 export interface TaskFilter {
   status?: TaskStatus;
+  dueFrom?: string;
+  dueTo?: string;
 }
 
 export interface TaskRequest {

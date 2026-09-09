@@ -54,6 +54,27 @@ export function monthBounds(reference: Date): { from: string; to: string } {
 }
 
 /**
+ * Límites `LocalDateTime` de la semana (lunes a domingo) que contiene
+ * `reference`, listos para `EventFilter`. Mismo criterio que `monthBounds`:
+ * `to` es el primer instante del lunes SIGUIENTE (límite exclusivo).
+ *
+ * La necesita el carrusel semanal móvil de `CalendarWidget`: ese carrusel
+ * navega día a día sin límite de mes (no hay selector de mes en móvil, ver
+ * el propio widget), así que no puede apoyarse en los eventos ya cargados
+ * para `visibleMonth` — una semana a caballo entre dos meses se quedaría con
+ * la mitad de sus días sin datos.
+ */
+export function weekBounds(reference: Date): { from: string; to: string } {
+  // `getDay()` cuenta desde el domingo; `+ 6) % 7` lo recoloca desde el lunes.
+  const offset = (reference.getDay() + 6) % 7;
+  const monday = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() - offset);
+  return {
+    from: toLocalDateTime(monday),
+    to: toLocalDateTime(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7))
+  };
+}
+
+/**
  * Junta lo que salen de `<input type="date">` ("yyyy-MM-dd") y
  * `<input type="time">` ("HH:mm") en un `LocalDateTime`.
  *

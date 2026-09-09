@@ -1,5 +1,7 @@
-<section class="card calendar-widget">
-  <header class="cw__header">
+<!-- `[class.card]`: escritorio necesita el marco de tarjeta; en móvil el carrusel se pinta directo sobre el fondo de la página. -->
+<section class="calendar-widget" [class.card]="breakpoint.isDesktop()">
+  <!-- Solo escritorio: en móvil el carrusel es la única navegación temporal. El botón de alta vive en el `.page-header` de Home. -->
+  <div class="cw__month-nav">
     <button
       type="button"
       class="btn btn-ghost btn-icon"
@@ -24,50 +26,31 @@
     >
       <app-icon name="bi:chevron-right" />
     </button>
+  </div>
 
-    <button
-      type="button"
-      class="btn btn-primary btn-icon cw__add"
-      aria-label="Nuevo evento"
-      title="Nuevo evento"
-      (click)="onCreateClick()"
-    >
-      <app-icon name="bi:plus-lg" />
-    </button>
-  </header>
+  @if (breakpoint.isDesktop()) {
+    @if (errorMessage()) {
+      <p class="form-error" role="alert">{{ errorMessage() }}</p>
+    }
 
-  @if (errorMessage()) {
-    <p class="form-error" role="alert">{{ errorMessage() }}</p>
-  }
+    @if (loading()) {
+      <p class="empty-state">Cargando...</p>
+    }
 
-  @if (loading()) {
-    <p class="empty-state">Cargando...</p>
-  }
+    <!-- CSS Grid, no `<table>`: una celda de grid se estira sola al alto de su fila (`align-items: stretch`), una `<td>` no. -->
+    <div class="cw__grid">
+      <div class="cw__weekdays">
+        @for (weekday of weekdays(); track weekday.long) {
+          <span class="cw__weekday">
+            <span aria-hidden="true">{{ weekday.narrow }}</span>
+            <span class="visually-hidden">{{ weekday.long }}</span>
+          </span>
+        }
+      </div>
 
-  <!--
-    CSS Grid, no `<table>`: una fila de tabla puede acabar más alta que el
-    contenido de una celda corta (un día con 4 eventos empuja a los demás de
-    su semana), y una `<td>` no reparte ese alto extra a su contenido sin
-    depender de que el porcentaje `height: 100%` resuelva bien contra una
-    celda de tabla — que es justo lo que fallaba. Un elemento de rejilla se
-    estira solo al alto de su fila por `align-items: stretch`, que es el
-    valor por defecto: no hace falta pedir nada, cada ficha ya iguala a la
-    más alta de su semana.
-  -->
-  <div class="cw__grid">
-    <div class="cw__weekdays">
-      @for (weekday of weekdays(); track weekday.long) {
-        <span class="cw__weekday">
-          <span aria-hidden="true">{{ weekday.narrow }}</span>
-          <span class="visually-hidden">{{ weekday.long }}</span>
-        </span>
-      }
-    </div>
-
-    <div class="cw__days">
-      @for (week of weeks(); track week[0].iso) {
-        @for (cell of week; track cell.iso) {
-          @if (breakpoint.isDesktop()) {
+      <div class="cw__days">
+        @for (week of weeks(); track week[0].iso) {
+          @for (cell of week; track cell.iso) {
             <div
               class="cw__cell"
               [class.cw__cell--outside]="cell.outside"
@@ -75,68 +58,211 @@
             >
               <span class="cw__day-number">{{ cell.day }}</span>
 
-              @if (cell.events.length > 0) {
+              @if (cell.totalCount > 0) {
                 <div class="cw__chips">
-                  @for (item of cell.events; track item.event.id) {
+                  @for (item of visibleChips(cell); track item.id) {
                     <button
                       type="button"
                       class="cw__chip cw__chip--{{ item.tone }}"
-                      [title]="item.event.title"
-                      (click)="onChipClick(item.event)"
+                      [title]="item.title"
+                      (click)="onItemClick(item)"
                     >
-                      {{ item.event.title }}
+                      {{ item.title }}
                     </button>
                   }
 
-                  @if (cell.moreCount > 0) {
+                  @if (moreCount(cell) > 0) {
                     <button
                       type="button"
                       class="cw__more"
                       (click)="onMoreClick(cell.iso)"
                     >
-                      +{{ cell.moreCount }} más
+                      +{{ moreCount(cell) }} más
                     </button>
                   }
                 </div>
               }
             </div>
-          } @else {
-            <button
-              type="button"
-              class="cw__cell cw__cell--button"
-              [class.cw__cell--outside]="cell.outside"
-              [class.cw__cell--today]="cell.isToday"
-              [disabled]="cell.totalCount === 0"
-              [attr.aria-label]="cell.totalCount > 0 ? cell.day + ', ' + cell.totalCount + ' eventos' : cell.day"
-              (click)="onDayClick(cell)"
-            >
-              <span class="cw__day-number" aria-hidden="true">{{ cell.day }}</span>
-
-              @if (cell.events.length > 0) {
-                <span class="cw__dots">
-                  @for (item of cell.events; track item.event.id) {
-                    <span class="cw__dot cw__dot--{{ item.tone }}"></span>
-                  }
-
-                  @if (cell.moreCount > 0) {
-                    <span class="cw__dot cw__dot--more"></span>
-                  }
-                </span>
-              }
-            </button>
           }
         }
-      }
+      </div>
     </div>
-  </div>
+  } @else {
+    @if (weekErrorMessage()) {
+      <p class="form-error" role="alert">{{ weekErrorMessage() }}</p>
+    }
 
-  <!--
-    La lista de un día se AÑADE debajo del grid, no lo sustituye: el mes
-    seguía visible detrás del clic que abrió esto. Detalle y edición, en
-    cambio, son cuadros flotantes propios (ver `event-detail`/`event-edit`)
-    — cada uno lleva su propio `<dialog>`, así que aquí solo se montan.
-  -->
-  @if (dayIso(); as iso) {
+    @if (weekLoading()) {
+      <p class="empty-state">Cargando...</p>
+    } @else if (activeCard(); as active) {
+      <!-- Carrusel de un día activo con ayer/mañana en vista previa (`peekDays()`). Swipe/flechas mueven `activeDay` ±1 sin tope. -->
+      <div class="cw__carousel">
+        <div class="cw__carousel-header">
+          <p class="cw__carousel-eyebrow">Agenda semanal</p>
+          <span class="badge cw__carousel-week-badge">{{ weekBadgeLabel() }}</span>
+        </div>
+
+        <div
+          class="cw__carousel-track"
+          (pointerdown)="onCarouselPointerDown($event)"
+          (pointerup)="onCarouselPointerUp($event)"
+          (pointercancel)="onCarouselPointerCancel($event)"
+        >
+          <!-- Sin flechas: el propio vecino es el control "día anterior", con contenido propio en vez de `aria-label` (réplica en miniatura de la tarjeta activa). -->
+          <button
+            type="button"
+            class="cw__carousel-peek cw__carousel-peek--prev"
+            (click)="setActiveDay(peekDays().prev.iso)"
+          >
+            <span class="badge cw__carousel-peek-badge">Ayer</span>
+            <p class="cw__carousel-peek-number">{{ peekDays().prev.day }}</p>
+            <p class="cw__carousel-peek-label">{{ peekDays().prev.label }}</p>
+
+            @if (peekDays().prev.card; as prevCard) {
+              @if (prevCard.totalCount > 0) {
+                <span class="cw__dots cw__carousel-peek-dots">
+                  @for (item of dotItems(prevCard); track item.id) {
+                    <span class="cw__dot cw__dot--{{ item.tone }}"></span>
+                  }
+                </span>
+
+                <!-- Verde: "ayer" ya pasó, se lee como consumado (mismo mapeo dominio→semántica que COMPLETED → success). -->
+                <span class="badge badge--success cw__carousel-peek-count">
+                  {{ prevCard.totalCount }} {{ prevCard.totalCount === 1 ? 'actividad' : 'actividades' }}
+                </span>
+              }
+            }
+          </button>
+
+          <!-- El disparador es `.cw__carousel-card-toggle` (dentro), no la tarjeta: un `<button>` dentro de otro es HTML inválido y la agenda trae los suyos por ítem. -->
+          <!-- El `@for` de un solo elemento (keyed por `card.iso`) fuerza a recrear el nodo en cada día para que `cw-carousel-card-in` (entrada) se repita; `@if`/`@else if` solo re-vincularía bindings. -->
+          @for (card of [active]; track card.iso) {
+            <div
+              class="cw__carousel-card"
+              [class.cw__carousel-card--expanded]="dayPanelExpanded()"
+              [style.--cw-slide-from]="slideDirection() === 1 ? '24px' : '-24px'"
+            >
+              <button
+                type="button"
+                class="cw__carousel-card-toggle"
+                [disabled]="card.totalCount === 0"
+                [attr.aria-expanded]="card.totalCount > 0 ? dayPanelExpanded() : null"
+                aria-controls="cw-carousel-agenda"
+                (click)="toggleDayPanel()"
+              >
+                @if (card.isToday) {
+                  <span class="badge badge--primary cw__carousel-today-badge">
+                    <span class="cw__carousel-pulse" aria-hidden="true"></span>
+                    Hoy activo
+                  </span>
+                }
+
+                <p class="card-metric cw__carousel-date-number">{{ card.day }}</p>
+                <p class="cw__carousel-date-label">{{ activeDayHeading() }}</p>
+
+                @if (card.totalCount > 0) {
+                  <span class="cw__dots cw__carousel-dots">
+                    @for (item of dotItems(card); track item.id) {
+                      <span class="cw__dot cw__dot--{{ item.tone }}"></span>
+                    }
+                  </span>
+
+                  <span class="badge badge--primary cw__carousel-count">
+                    {{ card.totalCount }} {{ card.totalCount === 1 ? 'actividad' : 'actividades' }}
+                  </span>
+                } @else {
+                  <p class="cw__carousel-empty">Sin actividades este día</p>
+                }
+              </button>
+
+              <!-- Gateado por `card.totalCount > 0`, no `dayPanelExpanded()`: el nodo debe persistir en los dos estados para que el cierre también anime (0fr↔1fr). `[inert]` colapsada evita alcanzar botones con Tab a 0px. -->
+              @if (card.totalCount > 0) {
+                <div
+                  class="cw__carousel-agenda"
+                  id="cw-carousel-agenda"
+                  [class.cw__carousel-agenda--open]="dayPanelExpanded()"
+                  [inert]="!dayPanelExpanded()"
+                >
+                  <div class="cw__carousel-agenda-inner">
+                    @if (dayAgendaGroups().length === 0) {
+                      <p class="empty-state">Sin actividades este día.</p>
+                    } @else {
+                      @for (group of dayAgendaGroups(); track group.kind) {
+                        <div class="cw__day-group">
+                          <h3 class="cw__day-group-title">{{ group.label }}</h3>
+
+                          <ul class="cw__day-events">
+                            @for (item of group.items; track item.id) {
+                              <li>
+                                <button
+                                  type="button"
+                                  class="cw__day-event cw__day-event--{{ item.tone }}"
+                                  (click)="onItemClick(item)"
+                                >
+                                  <span class="cw__day-event-title">
+                                    {{ item.title }}
+                                    <span class="visually-hidden">. {{ itemKindLabel(item) }}</span>
+                                  </span>
+                                  @if (item.time) {
+                                    <span class="cw__day-event-time">{{ item.time }}</span>
+                                  }
+                                </button>
+                              </li>
+                            }
+                          </ul>
+                        </div>
+                      }
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <button
+            type="button"
+            class="cw__carousel-peek cw__carousel-peek--next"
+            (click)="setActiveDay(peekDays().next.iso)"
+          >
+            <span class="badge cw__carousel-peek-badge">Mañana</span>
+            <p class="cw__carousel-peek-number">{{ peekDays().next.day }}</p>
+            <p class="cw__carousel-peek-label">{{ peekDays().next.label }}</p>
+
+            @if (peekDays().next.card; as nextCard) {
+              @if (nextCard.totalCount > 0) {
+                <span class="cw__dots cw__carousel-peek-dots">
+                  @for (item of dotItems(nextCard); track item.id) {
+                    <span class="cw__dot cw__dot--{{ item.tone }}"></span>
+                  }
+                </span>
+
+                <!-- Índigo, como la tarjeta activa: "mañana" todavía está por venir. -->
+                <span class="badge badge--primary cw__carousel-peek-count">
+                  {{ nextCard.totalCount }} {{ nextCard.totalCount === 1 ? 'actividad' : 'actividades' }}
+                </span>
+              }
+            }
+          </button>
+        </div>
+
+        <div class="cw__carousel-pagination">
+          @for (cell of weekDays(); track cell.iso) {
+            <button
+              type="button"
+              class="cw__carousel-dot-page"
+              [class.cw__carousel-dot-page--active]="cell.iso === activeDay()"
+              [attr.aria-label]="'Ir al día ' + cell.day"
+              [attr.aria-current]="cell.iso === activeDay() ? 'date' : null"
+              (click)="setActiveDay(cell.iso)"
+            ></button>
+          }
+        </div>
+      </div>
+    }
+  }
+
+  <!-- Solo escritorio: en móvil la agenda ya vive DENTRO de `.cw__carousel-card`, mostrarla aquí también la duplicaría. -->
+  @if (breakpoint.isDesktop() && dayIso()) {
     <div class="cw__panel" #panel>
       <div class="cw__panel-inner">
         <div class="cw__day-panel">
@@ -153,19 +279,24 @@
             </button>
           </header>
 
-          @if (dayEvents().length === 0) {
-            <p class="empty-state">Sin eventos este día.</p>
+          @if (dayAgendaItems().length === 0) {
+            <p class="empty-state">Sin actividades este día.</p>
           } @else {
             <ul class="cw__day-events">
-              @for (event of dayEvents(); track event.id) {
+              @for (item of dayAgendaItems(); track item.id) {
                 <li>
                   <button
                     type="button"
-                    class="cw__day-event"
-                    (click)="onDayEventClick(event.id)"
+                    class="cw__day-event cw__day-event--{{ item.tone }}"
+                    (click)="onItemClick(item)"
                   >
-                    <span class="cw__day-event-time">{{ eventTimeLabel(event) }}</span>
-                    <span class="cw__day-event-title">{{ event.title }}</span>
+                    <span class="cw__day-event-title">
+                      {{ item.title }}
+                      <span class="visually-hidden">. {{ itemKindLabel(item) }}</span>
+                    </span>
+                    @if (item.time) {
+                      <span class="cw__day-event-time">{{ item.time }}</span>
+                    }
                   </button>
                 </li>
               }
