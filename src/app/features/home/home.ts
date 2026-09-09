@@ -1,3 +1,4 @@
+import { TitleCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { AuthStateService } from '../../core/auth/auth-state.service';
 import { FinanceSummary } from './components/finance-summary/finance-summary';
@@ -16,7 +17,7 @@ import { TasksSummary } from './components/tasks-summary/tasks-summary';
  */
 @Component({
   selector: 'app-home',
-  imports: [TasksSummary, FinanceSummary, HabitsSummary],
+  imports: [TitleCasePipe, TasksSummary, FinanceSummary, HabitsSummary],
   templateUrl: './home.html',
   styleUrl: './home.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
