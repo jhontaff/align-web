@@ -238,22 +238,11 @@
 // Par fecha + hora
 // -----------------------------------------------------------------------------
 //
-// Sustituye a `.field-row`, que era la fila genérica de dos campos y en la
-// práctica solo se usó para pares fecha/hora (los tres que había: inicio y fin
-// de un evento, vencimiento de una tarea).
-//
-// **Un par fecha+hora es UN dato —"cuándo"—, no dos.** Con `.field-row` cada
-// mitad era un `.field` completo, con su etiqueta encima y su `margin-bottom`:
-// dos líneas de etiqueta y dos separaciones por par, y en un evento son dos
-// pares. En móvil eso se comía media pantalla antes de llegar al primer botón.
-// Aquí la etiqueta es una sola, del grupo, y la separación también.
-//
-// `role="group"` + `aria-labelledby` y NO `<fieldset>`/`<legend>`: la semántica
-// es la misma y la etiqueta va DENTRO de la caja, mientras que un `<legend>` se
-// pinta encajado en el borde y llevarlo a esta posición pelea con el navegador
-// en cada motor. Cada input conserva su propio `aria-label` porque el nombre del
-// grupo no sustituye al del control: sin él, un lector de pantalla anuncia dos
-// campos de texto seguidos sin decir cuál es cuál.
+// Sustituye a `.field-row`, que en la práctica solo se usó para pares fecha/hora.
+// Un par fecha+hora es UN dato —"cuándo"—, no dos: una sola etiqueta y una sola separación.
+// Con `.field-row` cada mitad era un `.field` completo y en móvil se comía media pantalla.
+// `role="group"` y no `<fieldset>`/`<legend>`: misma semántica y la etiqueta va dentro de la caja.
+// Cada input conserva su `aria-label`: el nombre del grupo no sustituye al del control.
 .date-time-group {
   display: flex;
   flex-direction: column;
@@ -589,28 +578,12 @@
 // -----------------------------------------------------------------------------
 // Cuadro flotante (`.dialog`)
 // -----------------------------------------------------------------------------
-// La chrome de un `<dialog>` abierto con `showModal()`: caja, velo y animación
-// de entrada/salida. Es pintura sobre elementos que el consumidor ya escribe
-// (`<dialog>` y su panel), así que por el criterio del design system es CLASE
-// GLOBAL y no un componente de `shared/ui/` — mismo caso que `.menu-item`, y
-// por la misma segunda razón: la usan componentes con encapsulación distinta,
-// y compartirla de otro modo exigiría `::ng-deep`.
-//
-// Nace con cuatro consumidores a la vez —los diálogos de detalle y de edición
-// de tarea y de movimiento—, después de que este bloque se hubiera copiado a
-// mano otras cuatro. `confirm-dialog`, `event-detail`,
-// `event-edit` y `quick-create` siguen con su copia propia: migrarlos es
-// mecánico pero toca pantallas que hoy funcionan, así que va aparte.
-//
-// El ancho se pide con `--dialog-width` desde la hoja del componente en vez de
-// con modificadores: los tres valores en uso (420/480/560px) no son una escala,
-// son "lo que pide cada contenido".
-//
-// `dvh` y no `vh`: en móvil `vh` mide con la barra del navegador retraída, así
-// que un diálogo alto se corta por abajo justo mientras la barra está visible.
+// Caja, velo y animación de un `<dialog>` abierto con `showModal()`.
+// Clase global y no componente: es pintura sobre elementos que el consumidor ya escribe.
+// El ancho lo pide cada componente con `--dialog-width`; los valores en uso no son una escala.
+// `dvh` y no `vh`: `vh` mide con la barra del navegador retraída y corta el diálogo por abajo.
 .dialog {
-  // Sin `padding` a propósito: con relleno, un clic en el borde del panel
-  // reportaría el `<dialog>` como `target` y cerraría — ver `onBackdropClick`.
+  // Sin `padding`: con relleno, un clic en el borde reportaría el `<dialog>` como `target` y cerraría.
   margin: auto;
   padding: 0;
   border: 1px solid var(--color-border);
@@ -624,8 +597,7 @@
   opacity: 0;
   scale: 0.96;
 
-  // `allow-discrete` sobre `display` y `overlay` es lo que deja ver la SALIDA:
-  // sin él el navegador saca el elemento del top layer en el mismo fotograma.
+  // `allow-discrete` deja ver la salida: sin él el navegador saca el elemento del top layer de golpe.
   transition:
     opacity 160ms ease,
     scale 160ms ease,
@@ -638,8 +610,7 @@
   scale: 1;
 }
 
-// Y `@starting-style` es lo que deja ver la ENTRADA: sin él no hay estado
-// desde el que animar y solo se anima al cerrar.
+// `@starting-style` deja ver la entrada: sin él no hay estado desde el que animar.
 @starting-style {
   .dialog[open] {
     opacity: 0;
@@ -665,8 +636,7 @@
   }
 }
 
-// Se quita el recorrido, no la modalidad: lo que provoca malestar vestibular es
-// el movimiento, no que el fondo quede inerte.
+// Se quita el recorrido, no la modalidad: molesta el movimiento, no que el fondo quede inerte.
 @media (prefers-reduced-motion: reduce) {
   .dialog,
   .dialog::backdrop {
@@ -674,9 +644,8 @@
   }
 }
 
-// El respiro va aquí y no en el `<dialog>`, por el clic en el velo de arriba.
-// `min-height: 0` es lo que hace que el `overflow-y` de un hijo flexible
-// enganche de verdad: sin él la base es `auto` y el hijo se niega a encoger.
+// El relleno va aquí y no en el `<dialog>`, por el clic en el velo.
+// `min-height: 0` es lo que hace que el `overflow-y` enganche: sin él el hijo no encoge.
 .dialog__panel {
   display: flex;
   flex-direction: column;
@@ -700,13 +669,12 @@
   font-weight: var(--weight-semibold);
   color: var(--color-text);
 
-  // Un título de una sola palabra muy larga desbordaría la caja.
+  // Un título de una palabra muy larga desbordaría la caja.
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-// Las acciones de la cabecera (editar, eliminar, cerrar) como una sola fila que
-// no se encoge: sin esto los iconos se aplastan cuando el título es largo.
+// Editar, eliminar y cerrar en una fila que no se encoge cuando el título es largo.
 .dialog__actions {
   display: flex;
   align-items: center;
@@ -716,16 +684,9 @@
 // -----------------------------------------------------------------------------
 // Rótulo de contexto (`.kicker`)
 // -----------------------------------------------------------------------------
-// Una línea pequeña que dice DE QUÉ es lo que se está mirando ("Tareas",
-// "Finanzas"), encima del título. Nace con dos consumidores —las vistas de
-// detalle de tarea y de movimiento—, que es la regla del segundo uso.
-//
-// Es un rótulo, no un badge: texto apagado y sin fondo, porque en esa misma
-// cabecera ya hay badges de verdad (el estado y la prioridad de la tarea, el
-// tipo del movimiento) y dos cosas con fondo de color compitiendo se leen como
-// dos estados del mismo objeto en vez de como contexto + estado. El único
-// color lo pone el icono, y lo elige la hoja de cada feature: el mapeo
-// dominio → token no baja a una clase global.
+// Rótulo pequeño encima del título que dice de qué es lo que se mira ("Tareas", "Finanzas").
+// Sin fondo a propósito: en esa cabecera ya hay badges, y dos fondos de color compiten entre sí.
+// El color lo pone solo el icono, y lo elige la hoja de cada feature.
 .kicker {
   display: flex;
   align-items: center;
@@ -744,24 +705,11 @@
 // `app-header.scss`.
 // -----------------------------------------------------------------------------
 @include layout.below-tablet {
-  // El par fecha+hora cabe en una línea o no cabe, y la diferencia entre las dos
-  // cosas son ~20px. Echando la cuenta a 360px de ancho —NO medido en un
-  // navegador, ver abajo—: el diálogo deja 288px de contenido, y un
-  // `<input type="date">` (~136px) más un `<input type="time">` en formato de 12
-  // horas —que lleva "a. m." dentro, ~131px— más el hueco no entran con el
-  // relleno de siempre. Apretando el grupo y el relleno lateral de sus inputs se
-  // ganan los 16px que faltaban.
-  //
-  // Los anchos intrínsecos de un input nativo los decide el motor y cambian con
-  // la fuente y el idioma del NAVEGADOR (no el `LOCALE_ID` de la app), así que
-  // estos números son una estimación: hay que comprobarlos en un teléfono real.
-  // Si aun así se parten en dos líneas, el siguiente sitio de donde sacar
-  // espacio es el relleno lateral del `.quick-create__panel`.
-  //
-  // Es la diferencia entre ahorrar ~54px por par y ahorrar ~6px: apilados, el
-  // grupo cuesta casi lo mismo que los dos `.field` que sustituye. Por debajo de
-  // ~320px con un navegador de 12 horas siguen bajando de línea, y para eso está
-  // el `flex-wrap`.
+  // El par cabe en una línea o no cabe, y la diferencia son ~20px: apretando el grupo se ganan.
+  // A 360px el diálogo deja 288px, y date (~136px) + time en 12 horas (~131px) no entran con el relleno normal.
+  // Los anchos de un input nativo los decide el motor y cambian con la fuente y el idioma del navegador:
+  // son una estimación SIN medir en un teléfono real. Si aun así se parten, apretar `.quick-create__panel`.
+  // Apilados el grupo costaría casi lo mismo que los dos `.field` que sustituye; para eso está el `flex-wrap`.
   .date-time-group {
     padding: var(--space-2);
   }

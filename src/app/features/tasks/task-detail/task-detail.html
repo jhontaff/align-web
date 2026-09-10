@@ -83,13 +83,8 @@
   @if (loading()) {
     <p class="empty-state">Cargando...</p>
   } @else if (task(); as task) {
-    <!--
-      El cuerpo vive en `TaskDetailView` porque lo comparte con el cuadro
-      flotante que abre el widget de Calendario en Inicio. Aquí solo queda la
-      chrome de página: la tarjeta, el enlace de vuelta y las dos acciones.
-      `headingLevel` se queda en su valor por defecto (1): en esta pantalla el
-      título de la tarea es el encabezado del documento.
-    -->
+    <!-- El cuerpo vive en `TaskDetailView`, compartido con el cuadro flotante de Inicio. -->
+    <!-- `headingLevel` se queda en 1: en esta pantalla el título de la tarea es el encabezado del documento. -->
     <article class="card">
       <app-task-detail-view [task]="task" />
     </article>

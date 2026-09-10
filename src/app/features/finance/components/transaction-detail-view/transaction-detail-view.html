@@ -3,7 +3,7 @@
     class="transaction-detail-view__header"
     [class.transaction-detail-view__header--with-domain]="showDomain()"
   >
-    <!-- Primero en el DOM aunque el CSS lo suba de fila — ver `task-detail-view.html`. -->
+    <!-- Primero en el DOM aunque el CSS lo suba de fila, para que se lea antes que los botones. -->
     @if (showDomain()) {
       <p class="kicker transaction-detail-view__domain">
         <app-icon class="transaction-detail-view__domain-icon" name="bi:wallet2" />
@@ -11,21 +11,10 @@
       </p>
     }
 
-    <!--
-      Importe y tipo van juntos en su PROPIA fila, y no sueltos en la cabecera.
-      Es lo que los desengancha de la columna de las acciones cuando la cabecera
-      es rejilla: ver `__title-row` en la hoja.
-    -->
+    <!-- Importe y tipo van en su propia fila: es lo que los desengancha de la columna de las acciones. -->
     <div class="transaction-detail-view__title-row">
-      <!--
-        Dos ramas y no un solo `<h1>`: ver `headingLevel`. El importe ES el
-        título aquí, así que es él quien lleva el `id` al que apunta el diálogo.
-
-        El tipo va escrito en un `visually-hidden` ADEMÁS del color y del signo:
-        el color solo excluye a quien no lo distingue, y el `−` (U+2212) no lo
-        anuncian los lectores de pantalla de forma fiable. Son tres copias del
-        mismo dato y cada una cubre a un usuario distinto.
-      -->
+      <!-- Dos ramas y no un solo `<h1>`: el importe es el título, y lleva el `id` al que apunta el diálogo. -->
+      <!-- El tipo va además en un `visually-hidden`: el color excluye a quien no lo distingue y el `−` no se anuncia. -->
       @if (headingLevel() === 1) {
         <h1
           class="transaction-detail-view__amount"
@@ -54,7 +43,7 @@
       </span>
     </div>
 
-    <!-- Hueco para las acciones de quien monta — ver `task-detail-view.html`. -->
+    <!-- Hueco para las acciones de quien monta, sin envoltorio para que la ruta no deje una caja vacía. -->
     <ng-content select="[headerActions]" />
   </header>
 

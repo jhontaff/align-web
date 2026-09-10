@@ -4,6 +4,7 @@ import {
   DestroyRef,
   ElementRef,
   LOCALE_ID,
+  NgZone,
   OnInit,
   afterRenderEffect,
   computed,
@@ -52,25 +53,10 @@ import {
 } from './agenda';
 
 /**
- * Qué CUADRO FLOTANTE está abierto: ninguno, o el detalle/edición de uno de los
- * tres dominios — unión cerrada, no signals sueltos.
- *
- * **Aquí NO está la agenda del día desplegada**, y esa ausencia es el arreglo
- * del 2026-09-10. Antes había una rama `{ kind: 'day'; iso }` conviviendo con
- * las de diálogo, y como una unión solo admite una rama viva, abrir un evento
- * desde la agenda BORRABA el día desplegado: la lista se cerraba por detrás y
- * al salir del evento el usuario se encontraba el carrusel plegado. No era un
- * estado que se perdiera, es que no había dónde guardarlo. Son dos cosas
- * ortogonales —una vive en la página, la otra flota encima— así que son dos
- * signals: éste y `expandedDay`.
- *
- * Las ramas van nombradas por dominio (`task-detail`, `transaction-edit`) y no
- * generalizadas a `{ kind: 'detail'; item: AgendaItem }`, aunque `AgendaItem` ya
- * traiga `kind` e `id`: las de edición llevan la entidad ENTERA y ya cargada
- * —`TaskEditDialog` la recibe por `input`, no la pide por id— así que una rama
- * genérica tendría que ser `EventResponse | TaskResponse | TransactionResponse`
- * y cada consumidor volvería a discriminar. Explícito son siete ramas que el
- * compilador comprueba; genérico sería una rama y un `switch` a mano dentro.
+ * Qué cuadro flotante está abierto: ninguno, o el detalle/edición de uno de los tres dominios.
+ * La agenda desplegada NO está aquí: es ortogonal —una vive en la página, la otra flota encima—
+ * y compartir unión hacía que abrir un ítem borrara el día desplegado. Vive en `expandedDay`.
+ * Ramas por dominio y no genéricas: las de edición llevan la entidad entera y ya cargada.
  */
 type WidgetOverlay =
   | { kind: 'closed' }
@@ -91,6 +77,12 @@ const WEEK_PAGE_SIZE = 50;
 
 /** Desplazamiento horizontal mínimo (px) para que un gesto cuente como swipe y no como scroll vertical. */
 const SWIPE_THRESHOLD_PX = 40;
+
+/**
+ * Duración de la animación de entrada del carrusel, duplicada a mano desde `calendar-widget.scss`.
+ * No hay forma de compartir un número entre SCSS y TS sin build tooling extra: si cambia una, cambia la otra.
+ */
+const CAROUSEL_TRANSITION_MS = 280;
 
 interface DayCell {
   readonly iso: string;
@@ -144,6 +136,7 @@ export class CalendarWidget implements OnInit {
   private readonly locale = inject(LOCALE_ID);
 
   protected readonly breakpoint = inject(BreakpointService);
+  private readonly zone = inject(NgZone);
 
   // --- Estado -----------------------------------------------------------------
 
@@ -152,19 +145,10 @@ export class CalendarWidget implements OnInit {
 
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
-  /**
-   * El diálogo abierto. `private`: fuera se consumen los `computed` de abajo,
-   * que es lo que impide que nadie ponga una rama sin pasar por su método.
-   */
+  /** El diálogo abierto. `private` para que nadie ponga una rama sin pasar por su método. */
   private readonly overlay = signal<WidgetOverlay>({ kind: 'closed' });
 
-  /**
-   * Qué día tiene la agenda desplegada (`null` = ninguno). Independiente de
-   * `overlay` a propósito — ver el comentario de `WidgetOverlay`.
-   *
-   * Se expone como `dayIso` más abajo, en solo lectura: escribirlo es siempre
-   * `toggleDayPanel()` o `onMoreClick()`.
-   */
+  /** Qué día tiene la agenda desplegada (`null` = ninguno); se expone como `dayIso` en solo lectura. */
   private readonly expandedDay = signal<string | null>(null);
 
   /** El día central del carrusel móvil. Independiente de `visibleMonth` — ver el comentario de la clase. */
@@ -177,6 +161,15 @@ export class CalendarWidget implements OnInit {
   private pointerId: number | null = null;
   private swipeStartX = 0;
   private swipeStartY = 0;
+
+  /**
+   * Bloquea `setActiveDay()` mientras la tarjeta en curso sigue animándose.
+   * Campo plano y no signal: nada en la plantilla lo lee.
+   * Evita un salto, no el parpadeo — ese se arregló en `cw-carousel-card-out`.
+   * Al cambiar `animation-name` la salida arranca del valor subyacente, no del interpolado a medio vuelo.
+   * Medido en Chrome: la tarjeta saltaba de x=321 a x=257 en un fotograma antes de empezar a irse.
+   */
+  private transitioning = false;
 
   private readonly panelEl = viewChild<ElementRef<HTMLElement>>('panel');
 
@@ -296,11 +289,7 @@ export class CalendarWidget implements OnInit {
     return overlay.kind === 'transaction-edit' ? overlay.transaction : null;
   });
 
-  /**
-   * Solo lectura sobre `expandedDay`, con el nombre que ya consumían la
-   * plantilla y los derivados de abajo. Patrón readonly del repo: el signal
-   * privado se escribe, esto se lee.
-   */
+  /** Solo lectura sobre `expandedDay`, con el nombre que ya consumían la plantilla y los derivados. */
   protected readonly dayIso = this.expandedDay.asReadonly();
 
   /** Fuente según el ancho: "+N más" en escritorio, la tarjeta del carrusel en móvil — mismo `expandedDay`. */
@@ -438,17 +427,9 @@ export class CalendarWidget implements OnInit {
   }
 
   /**
-   * Los tres dominios abren su detalle como cuadro flotante, sin salir de
-   * Inicio. Un solo disparador para los chips de la cuadrícula, las filas del
-   * panel "+N más" y las tarjetas del carrusel móvil — los tres puntos de
-   * entrada pasan por aquí.
-   *
-   * Tarea y transacción navegaban a `/tasks/:id` y `/finance/:id` hasta el
-   * 2026-09-10: tocar un chip te sacaba del panel que estabas mirando y volver
-   * costaba un "atrás" que además perdía el día activo del carrusel. Se
-   * quedaron en burbuja para igualarlos a Evento, que ya lo hacía. Sus rutas
-   * siguen existiendo intactas — llegar por la lista de Tareas o por un enlace
-   * pegado sigue abriendo la pantalla completa.
+   * Los tres dominios abren su detalle como cuadro flotante, sin salir de Inicio.
+   * Disparador único de los chips, las filas del panel "+N más" y las tarjetas del carrusel.
+   * Sus rutas siguen intactas: llegar por la lista o por un enlace pegado abre la pantalla completa.
    */
   protected onItemClick(item: AgendaItem): void {
     switch (item.kind) {
@@ -471,7 +452,7 @@ export class CalendarWidget implements OnInit {
 
   // --- Carrusel semanal (móvil) ----------------------------------------------
 
-  /** De qué lado entra la tarjeta activa en la animación: `1` derecha, `-1` izquierda. Consumida por `[style.--cw-slide-from]`. */
+  /** De qué lado entra la tarjeta: `1` derecha, `-1` izquierda. La consume `[style.--cw-dir]` en la pista. */
   protected readonly slideDirection = signal<1 | -1>(1);
 
   /** Mueve el día activo ±1, sin tope de semana ni de mes. */
@@ -479,8 +460,15 @@ export class CalendarWidget implements OnInit {
     this.setActiveDay(toIsoDate(addDays(parseIsoDate(this.activeDay()), delta)), delta > 0 ? 1 : -1);
   }
 
-  /** `direction` opcional: si falta (punto de paginación, vecino tocado) se deduce comparando ISO como cadenas. */
+  /**
+   * `direction` opcional: si falta se deduce comparando los ISO como cadenas.
+   * Punto de paso único de swipe, puntos de paginación y vecinas, por eso el guard va aquí.
+   */
   protected setActiveDay(iso: string, direction?: 1 | -1): void {
+    if (this.transitioning) {
+      return;
+    }
+
     const previousWeekStart = this.weekDays()[0]?.iso;
     this.slideDirection.set(direction ?? (iso < this.activeDay() ? -1 : 1));
     this.activeDay.set(iso);
@@ -493,6 +481,19 @@ export class CalendarWidget implements OnInit {
     if (this.expandedDay() !== null) {
       this.expandedDay.set(iso);
     }
+
+    // Con movimiento reducido no hay animación que interrumpir: el guard solo añadiría espera.
+    if (prefersReducedMotion()) {
+      return;
+    }
+
+    // Fuera de la zona: solo apaga un booleano que nadie pinta, no hace falta detección de cambios.
+    this.transitioning = true;
+    this.zone.runOutsideAngular(() => {
+      setTimeout(() => {
+        this.transitioning = false;
+      }, CAROUSEL_TRANSITION_MS);
+    });
   }
 
   /** Toggle de la tarjeta activa para desplegar/contraer la agenda del día. */
@@ -562,13 +563,8 @@ export class CalendarWidget implements OnInit {
   }
 
   /**
-   * Se creó, editó o borró una tarea o un movimiento desde una de las burbujas.
-   *
-   * Invalida en vez de llamar a `load()`/`loadWeek()` como hace el camino de
-   * evento: este widget ya escucha `DataRefreshService.changes` en su
-   * `ngOnInit`, así que invalidar lo refresca a él Y ADEMÁS a `tasks-summary` y
-   * `finance-summary`, que están en esta misma pantalla y con una recarga local
-   * se quedarían mostrando la tarea que el usuario acaba de borrar.
+   * Se creó, editó o borró algo desde una burbuja.
+   * Invalida en vez de recargar en local: así se enteran también las tarjetas de resumen de la pantalla.
    */
   protected onItemChanged(): void {
     this.overlay.set({ kind: 'closed' });
@@ -576,13 +572,8 @@ export class CalendarWidget implements OnInit {
   }
 
   /**
-   * Cierra el cuadro flotante y **no toca la agenda**: si estaba desplegada
-   * sigue desplegada, y el usuario vuelve exactamente a donde estaba.
-   *
-   * Eso no es un caso especial escrito aquí, es la consecuencia de que
-   * `expandedDay` y `overlay` sean dos signals. Con la unión de antes esta
-   * línea era `mode.set({kind:'closed'})`, y `'closed'` significaba a la vez
-   * "sin diálogo" y "agenda plegada".
+   * Cierra el cuadro flotante y no toca la agenda: si estaba desplegada sigue desplegada.
+   * No es un caso especial, es consecuencia de que `expandedDay` y `overlay` sean dos signals.
    */
   protected onPanelClose(): void {
     this.overlay.set({ kind: 'closed' });

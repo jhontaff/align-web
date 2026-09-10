@@ -15,11 +15,8 @@ import { TransactionFields } from '../transaction-fields/transaction-fields';
 let nextId = 0;
 
 /**
- * El cuadro flotante de edición de movimiento: la cáscara y nada más.
- *
- * Gemelo de `TaskEditDialog` — ver su comentario para el porqué. Los campos, la
- * validación y la petición viven en `TransactionFields`, compartido con la ruta
- * `TransactionForm` y con la pestaña "Movimiento" de `QuickCreate`.
+ * Cáscara del cuadro flotante de edición de movimiento; gemelo de `TaskEditDialog`.
+ * Los campos y la petición viven en `TransactionFields`, compartido con la ruta y con `QuickCreate`.
  */
 @Component({
   selector: 'app-transaction-edit-dialog',

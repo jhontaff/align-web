@@ -31,10 +31,7 @@ type DetailState =
 
 /**
  * Un movimiento como cuadro flotante, para abrirlo sin salir de Inicio.
- *
- * Gemelo de `TaskDetailDialog`, con el mismo reparto y las mismas razones —ver
- * su comentario, que documenta por qué la petición y el borrado se repiten
- * respecto a la ruta en vez de compartirse.
+ * Gemelo de `TaskDetailDialog`: allí está por qué la petición y el borrado se repiten y no se comparten.
  */
 @Component({
   selector: 'app-transaction-detail-dialog',

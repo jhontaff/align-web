@@ -28,23 +28,10 @@ type DetailState =
   | { status: 'ready'; task: TaskResponse };
 
 /**
- * Una tarea como cuadro flotante, para abrirla sin salir de Inicio.
- *
- * **Es el gemelo de `EventDetail`**, y nace por la misma petición: tocar una
- * tarea en el widget de Calendario navegaba a `/tasks/:id` y sacaba al usuario
- * del panel que estaba mirando. Cerrar aquí no navega a ninguna parte — el
- * widget desmonta el componente y la pantalla sigue donde estaba.
- *
- * **Comparte el cuerpo con la ruta** (`TaskDetailView`) y no la chrome: la ruta
- * quiere `.page` y "← Tareas", este quiere una X. Lo que sí se repite respecto a
- * `TaskDetail` es la petición y el borrado, y es deliberado: no son el mismo
- * código con un `if`, hacen cosas distintas al terminar —la ruta navega, este
- * emite— y el id llega de sitios distintos (`paramMap` allí, `input()` aquí).
- * Fundirlos exigiría dos fuentes para el mismo id, que es exactamente el fallo
- * que `TaskDetail` documenta en su comentario de `taskId$`.
- *
- * Sin `open` que el padre empuje: el widget lo monta y desmonta con `@if`, así
- * que "existir" ya significa "debe estar abierto".
+ * Una tarea como cuadro flotante, para abrirla sin salir de Inicio. Gemelo de `EventDetail`.
+ * Comparte el cuerpo con la ruta (`TaskDetailView`) pero no la chrome: allí `.page`, aquí una X.
+ * La petición y el borrado sí se repiten: hacen cosas distintas al terminar y el id llega de otro sitio.
+ * Sin `open` del padre: el widget lo monta con `@if`, así que existir ya significa estar abierto.
  */
 @Component({
   selector: 'app-task-detail-dialog',
@@ -59,8 +46,7 @@ export class TaskDetailDialog {
   private readonly id = nextId++;
   protected readonly titleId = `task-detail-dialog-title-${this.id}`;
 
-  // Opcional a propósito, mismo motivo que en `event-detail`: el efecto de
-  // abajo puede correr antes de que la vista exista.
+  // Opcional a propósito: el efecto de abajo puede correr antes de que la vista exista.
   private readonly dialog = viewChild<ElementRef<HTMLDialogElement>>('dialog');
 
   readonly taskId = input.required<string>();
@@ -74,8 +60,7 @@ export class TaskDetailDialog {
   /** Cerrar sin editar ni borrar. */
   readonly close = output<void>();
 
-  // Mismo patrón que `EventDetail`: `toObservable` sobre el input en vez de
-  // `ActivatedRoute.paramMap`, porque aquí no hay ruta de la que leer el id.
+  // `toObservable` sobre el input y no `ActivatedRoute`: aquí no hay ruta de la que leer el id.
   private readonly id$ = toObservable(this.taskId).pipe(distinctUntilChanged());
 
   private readonly state = toSignal(
@@ -103,7 +88,7 @@ export class TaskDetailDialog {
     return state.status === 'ready' ? state.task : null;
   });
 
-  /** Aparte de `state`, mismo motivo que en `event-detail`: ese stream no es escribible. */
+  /** Aparte de `state` porque ese stream no es escribible. */
   protected readonly deleting = signal(false);
   protected readonly deleteError = signal<string | null>(null);
   protected readonly confirmOpen = signal(false);
@@ -114,9 +99,8 @@ export class TaskDetailDialog {
   });
 
   constructor() {
-    // `afterRenderEffect` y no `effect`: `showModal()` necesita el elemento ya
-    // pintado. El guard contra `el.open` evita el `InvalidStateError` de
-    // llamarlo dos veces si el efecto se reevalúa.
+    // `afterRenderEffect` y no `effect`: `showModal()` necesita el elemento ya pintado.
+    // El guard contra `el.open` evita el `InvalidStateError` de llamarlo dos veces.
     afterRenderEffect(() => {
       const el = this.dialog()?.nativeElement;
       if (el && !el.open) {
@@ -130,11 +114,7 @@ export class TaskDetailDialog {
     this.close.emit();
   }
 
-  /**
-   * Un clic sobre el `::backdrop` llega como un `click` cuyo `target` es el
-   * propio `<dialog>`. Solo funciona con el `<dialog>` sin `padding` — ver
-   * `.dialog` en `_components.scss`.
-   */
+  /** Un clic en el velo llega con el `<dialog>` como `target`; solo funciona si no tiene `padding`. */
   protected onBackdropClick(event: MouseEvent): void {
     if (event.target === this.dialog()?.nativeElement) {
       this.dialog()?.nativeElement.close();

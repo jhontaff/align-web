@@ -6,11 +6,7 @@
   (close)="onNativeClose()"
 >
   <div class="dialog__panel">
-    <!--
-      Separado de `errorMessage`: ese sustituye al contenido (no se pudo
-      cargar), este se apila encima de una tarea que sigue siendo válida (no se
-      pudo borrar).
-    -->
+    <!-- Separado de `errorMessage`: ese sustituye al contenido, este se apila sobre una tarea aún válida. -->
     @if (deleteError(); as message) {
       <p class="form-error" role="alert">{{ message }}</p>
     }
@@ -20,11 +16,7 @@
     }
 
     @if (task(); as task) {
-      <!--
-        Las acciones se PROYECTAN dentro de la cabecera de la vista en vez de
-        vivir en una fila propia encima: así comparten línea con el título y las
-        badges, y desaparece la banda vacía que quedaba a su izquierda.
-      -->
+      <!-- Las acciones se proyectan en la cabecera de la vista: comparten línea con el título y las badges. -->
       <app-task-detail-view [task]="task" [headingLevel]="2" [titleId]="titleId" [showDomain]="true">
         <div headerActions class="dialog__actions">
           <button
@@ -60,13 +52,8 @@
         </div>
       </app-task-detail-view>
     } @else {
-      <!--
-        Mientras carga (o si la tarea no se pudo pedir) no hay cabecera de vista
-        donde proyectar nada, y un diálogo sin X visible solo se puede cerrar
-        con Escape o tocando fuera — que es justo lo que no se sabe si no se ve.
-        El botón se repite aquí a propósito: un `ng-template` compartido para
-        ocho líneas costaría más de leer que las ocho líneas.
-      -->
+      <!-- Mientras carga no hay cabecera donde proyectar, y un diálogo sin X solo se cierra a ciegas. -->
+      <!-- El botón se repite a propósito: un `ng-template` compartido costaría más de leer que estas líneas. -->
       <div class="task-detail-dialog__fallback-header">
         <button
           type="button"

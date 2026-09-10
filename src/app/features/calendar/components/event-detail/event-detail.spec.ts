@@ -24,13 +24,8 @@ class CalendarServiceDoble {
 }
 
 /**
- * La cabecera de la burbuja de evento, que sigue el mismo patrón que las de
- * tarea y movimiento: rótulo del dominio y acciones arriba, título abajo.
- *
- * Se prueba la COLOCACIÓN y no las clases porque es lo que se ha roto las dos
- * veces anteriores, y de formas que ni el build ni el tipado ven: un `order`
- * que falta deja el título arriba y baja los botones solos, y un
- * `grid-column` que falta deja el título en media cabecera.
+ * La cabecera de la burbuja de evento: rótulo del dominio y acciones arriba, título abajo.
+ * Se prueba la colocación y no las clases porque es lo que se rompe, y de formas que el tipado no ve.
  */
 describe('EventDetail (cabecera)', () => {
   let fixture: ComponentFixture<EventDetail>;
@@ -66,8 +61,7 @@ describe('EventDetail (cabecera)', () => {
     const rotulo = caja('.event-detail__domain');
     const acciones = caja('.event-detail__actions');
 
-    // Con `align-items: center` dos alturas distintas no coinciden al píxel:
-    // se compara contra la altura de la fila, no contra cero.
+    // Con `align-items: center` dos alturas distintas no coinciden al píxel.
     expect(Math.abs(rotulo.top - acciones.top)).toBeLessThan(24);
 
     // Y las acciones a la derecha del rótulo, no debajo.
@@ -81,8 +75,7 @@ describe('EventDetail (cabecera)', () => {
 
     expect(titulo.top).toBeGreaterThan(rotulo.top);
 
-    // Lo que comprueba el `grid-column: 1 / -1`: sin él el título se quedaría
-    // en la columna izquierda, con la de los botones vacía a su lado.
+    // Comprueba el `grid-column: 1 / -1`: sin él el título se quedaría en media cabecera.
     expect(titulo.width).toBeGreaterThan(header.width * 0.9);
   });
 

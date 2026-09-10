@@ -20,11 +20,7 @@
       </button>
     </header>
 
-    <!--
-      Cancelar cierra el `<dialog>` en vez de emitir `cancel` directamente: así
-      las tres salidas (Escape, clic fuera, este botón) pasan todas por el
-      evento `close` nativo y hay un solo camino que avisar al padre.
-    -->
+    <!-- Cancelar cierra el `<dialog>`: así las tres salidas pasan por el `close` nativo. -->
     <app-task-fields [task]="task()" (saved)="saved.emit($event)" (cancel)="onCloseClick()" />
   </div>
 </dialog>

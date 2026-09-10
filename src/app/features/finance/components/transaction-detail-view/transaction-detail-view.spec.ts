@@ -18,12 +18,7 @@ const TX: TransactionResponse = {
   updatedAt: '2026-09-10T00:55:00Z'
 };
 
-/**
- * Banco de pruebas que reproduce lo que hace `TransactionDetailDialog`: montar
- * la vista con `showDomain` y PROYECTAR las acciones. Sin la proyección no hay
- * cuarto elemento en la cabecera y la colocación de la rejilla no se puede
- * comprobar — que es justo lo que estas pruebas miran.
- */
+/** Reproduce lo que hace `TransactionDetailDialog`: sin proyectar las acciones no hay colocación que medir. */
 @Component({
   imports: [TransactionDetailView],
   template: `
@@ -37,12 +32,8 @@ class Host {
 }
 
 /**
- * Los dos montajes reales, uno al lado del otro y al MISMO ancho: la burbuja
- * (rótulo + acciones proyectadas) y la ruta (ni lo uno ni lo otro). Sirve para
- * comparar lo que le toca al importe en cada uno — ver la prueba del final.
- *
- * El ancho es el de un panel de diálogo en un móvil de 360px
- * (`100vw - var(--space-8)`), que es donde el reparto aprieta.
+ * Los dos montajes reales al MISMO ancho, para comparar lo que le toca al importe en cada uno.
+ * El ancho es el de un panel de diálogo en un móvil de 360px, que es donde el reparto aprieta.
  */
 @Component({
   imports: [TransactionDetailView],
@@ -86,10 +77,8 @@ describe('TransactionDetailView (cabecera con rótulo)', () => {
   });
 
   /**
-   * El importe y el tipo llevan `[class]` además de su `class` estática. Si esa
-   * unión no conservara la estática, la clase de layout desaparecería en tiempo
-   * de ejecución, `order: 1` no se aplicaría y el tipo subiría a la primera fila
-   * junto al rótulo. Es un fallo que ni el build ni el tipado ven.
+   * El importe y el tipo llevan `[class]` además de su `class` estática.
+   * Si esa unión no conservara la estática, `order: 1` no se aplicaría y el tipo subiría de fila.
    */
   it('el importe y el tipo conservan su clase de layout pese al binding [class]', () => {
     expect(fixture.nativeElement.querySelector('.transaction-detail-view__amount')).toBeTruthy();
@@ -105,27 +94,20 @@ describe('TransactionDetailView (cabecera con rótulo)', () => {
     const amount = top('.transaction-detail-view__amount');
     const badge = top('.transaction-detail-view__badge');
 
-    // Misma fila = mismo borde superior (con `align-items: center`, dos alturas
-    // distintas no coinciden al píxel: se compara contra la altura de la fila).
+    // Misma fila = mismo borde superior; con `align-items: center` no coinciden al píxel.
     expect(Math.abs(kicker - actions)).toBeLessThan(24);
     expect(Math.abs(amount - badge)).toBeLessThan(24);
 
-    // Y la segunda fila va DEBAJO, que es lo que se rompió cuando el importe
-    // llevaba `flex-basis: 100%` y empujaba el tipo a una tercera fila.
+    // Y la segunda fila va debajo: eso se rompía cuando el importe empujaba el tipo a una tercera.
     expect(amount).toBeGreaterThan(kicker);
   });
 });
 
 describe('TransactionDetailView (burbuja frente a ruta, mismo ancho)', () => {
   /**
-   * El importe tiene que disponer del MISMO ancho en la burbuja que en la ruta.
-   *
-   * Es lo que rompe que las dos filas de la rejilla compartan columnas: la
-   * columna derecha la dimensiona el elemento más ancho de TODA la columna, y
-   * ahí están los tres botones de acción de la fila de arriba. Sin nada que lo
-   * evite, el badge "Gasto" hereda el ancho de esos botones y le roba al
-   * importe unos 70px que en la ruta sí tiene — justo en el ancho de un móvil,
-   * que es donde se nota.
+   * El importe debe disponer del mismo ancho en la burbuja que en la ruta.
+   * Lo rompía que las dos filas compartieran columnas: la derecha la dimensiona el elemento más ancho
+   * de toda la columna, o sea los tres botones, y el badge le robaba al importe unos 70px.
    */
   it('el importe dispone del mismo ancho en los dos montajes', async () => {
     await TestBed.configureTestingModule({ imports: [HostComparador] }).compileComponents();

@@ -7,12 +7,7 @@
 >
   <div class="dialog__panel">
     <header class="dialog__header">
-      <!--
-        Título fijo y no el importe: a diferencia de la tarea, un movimiento no
-        tiene nombre con el que identificarlo de un vistazo, y repetir aquí la
-        cifra que el propio formulario ya trae en su primer campo sería decir lo
-        mismo dos veces.
-      -->
+      <!-- Título fijo y no el importe: el formulario ya lo trae en su primer campo. -->
       <h2 class="dialog__title" [id]="titleId">Editar movimiento</h2>
 
       <button
@@ -26,7 +21,7 @@
       </button>
     </header>
 
-    <!-- Cancelar cierra el `<dialog>`, para que las tres salidas pasen por `close`. -->
+    <!-- Cancelar cierra el `<dialog>`: así las tres salidas pasan por el `close` nativo. -->
     <app-transaction-fields
       [transaction]="transaction()"
       (saved)="saved.emit($event)"

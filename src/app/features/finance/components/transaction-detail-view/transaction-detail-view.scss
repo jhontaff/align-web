@@ -1,15 +1,13 @@
 @use '../../../../../styles/layout';
 
-// El envoltorio con pintura (`.card` en la ruta, el panel del diálogo) lo pone
-// quien monta — ver `task-detail-view.scss`.
+// El envoltorio con pintura lo pone quien monta: dentro del diálogo, otra tarjeta sería caja en caja.
 :host {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
 }
 
-// Importe, tipo y —si quien monta las proyecta— las acciones, en una fila.
-// Mismo reparto que `task-detail-view__header`; ver allí el porqué del `wrap`.
+// Importe, tipo y —si se proyectan— las acciones, en una fila. Mismo reparto que en tareas.
 .transaction-detail-view__header {
   display: flex;
   align-items: center;
@@ -17,10 +15,8 @@
   gap: var(--space-3) var(--space-4);
 }
 
-// Con rótulo la cabecera pasa a rejilla de dos columnas, igual que en
-// `task-detail-view.scss`: arriba rótulo + acciones, abajo importe + tipo. El
-// porqué completo —por qué rejilla y no flex con `wrap`, por qué sigue haciendo
-// falta `order`, y por qué no hay `grid-template-areas`— está allí.
+// Con rótulo la cabecera es rejilla: arriba rótulo + acciones, abajo importe + tipo.
+// El porqué de la rejilla, del `order` y de no usar áreas está en `task-detail-view.scss`.
 .transaction-detail-view__header--with-domain {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -48,52 +44,41 @@
   }
 }
 
-// El mismo verde con el que la pestaña "Movimiento" de `QuickCreate` marca este
-// dominio, y el par `soft-text` por lo mismo que en tareas: el esmeralda sólido
-// se queda en 2,54:1 sobre blanco.
-//
-// Es un color FIJO por dominio, no el del signo del importe: si un gasto lo
-// pintara de rojo, el rótulo diría dos cosas a la vez —de qué feature es y qué
-// tipo de movimiento— y la segunda ya la dice el badge de al lado.
+// El mismo verde con el que `QuickCreate` marca este dominio; el par `soft-text` porque el sólido da 2,54:1.
+// Color fijo por dominio y no el del signo: si un gasto lo pintara de rojo diría lo que ya dice el badge.
 .transaction-detail-view__domain-icon {
   color: var(--color-domain-money-soft-text);
   font-size: var(--text-base);
   flex-shrink: 0;
 }
 
-// Importe y tipo, juntos y siempre en una sola fila. Existe para que la
-// cabecera pueda cambiar de flex a rejilla sin que el reparto de estos dos
-// cambie con ella: aquí dentro siempre es el mismo flex, en la ruta y en la
-// burbuja, en móvil y en escritorio. Es lo que pedía "que se vea igual".
+// Importe y tipo siempre en una fila propia, con el mismo flex en la ruta y en la burbuja.
+// Es lo que impide que el reparto entre los dos cambie cuando la cabecera pasa a rejilla.
 .transaction-detail-view__title-row {
   display: flex;
   align-items: center;
   gap: var(--space-4);
 
-  // Se lleva el hueco sobrante de la cabecera cuando es flex (la ruta), donde
-  // es su único hijo. `min-width: 0` para que el importe pueda encoger en vez
-  // de desbordar.
+  // Se lleva el hueco sobrante cuando la cabecera es flex; `min-width: 0` deja encoger al importe.
   flex: 1 1 auto;
   min-width: 0;
 }
 
 .transaction-detail-view__amount {
-  // Se lleva el hueco sobrante — ver `task-detail-view__title`.
+  // Se lleva el hueco sobrante y empuja el badge al borde derecho.
   flex: 1 1 auto;
   margin: 0;
   font-size: var(--text-h1);
   font-weight: var(--weight-semibold);
 
-  // Cifras de ancho fijo: sin esto el importe "baila" al cambiar de movimiento
-  // porque el 1 es más estrecho que el resto de dígitos.
+  // Cifras de ancho fijo: sin esto el importe baila al cambiar, porque el 1 es más estrecho.
   font-variant-numeric: tabular-nums;
   color: var(--color-danger);
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-// Ver `task-detail-view__title--compact`: dentro del diálogo esto no encabeza
-// una página.
+// Dentro del diálogo esto no encabeza una página, así que baja de tamaño.
 .transaction-detail-view__amount--compact {
   font-size: var(--text-h2);
 }
@@ -102,9 +87,7 @@
   color: var(--color-success);
 }
 
-// No se encoge: es quien cede el ancho el importe, que para eso tiene
-// `min-width: 0` y `overflow-wrap`. Sin esto, un importe largo aplastaría
-// "Ingreso" hasta partirlo en dos líneas.
+// No se encoge: quien cede el ancho es el importe. Sin esto un importe largo partiría "Ingreso" en dos líneas.
 .transaction-detail-view__badge {
   flex-shrink: 0;
 }
@@ -139,20 +122,10 @@
   }
 }
 
-// Los bloques de media query van al FINAL de la hoja — ver la nota de
-// `_components.scss`.
-// La CABECERA no aparece aquí a propósito: se ve igual en móvil que en
-// escritorio, en las dos formas (la fila flexible de la ruta y la rejilla del
-// diálogo). Hubo un bloque que bajaba el tipo a una fila propia por debajo de
-// 640px, copiado de `task-detail-view.scss`, y se quitó el 2026-09-10: aquí no
-// hacía falta. La diferencia con tareas es cuánto ocupa el vecino del título
-// —dos badges ("Pendiente" + "Alta") contra una sola ("Gasto")—, así que el
-// importe conserva ancho de sobra en un panel de móvil y no se parte.
-//
-// Corolario, por si vuelve a crecer: si algún día hay un segundo badge en esta
-// cabecera, este bloque es el que habrá que reconsiderar.
-//
-// Lo que sí cambia en móvil es la lista de campos, que es otra cosa.
+// Los bloques de media query van al FINAL de la hoja.
+// La cabecera NO aparece aquí a propósito: se ve igual en móvil que en escritorio.
+// Aquí el vecino del título es un solo badge ("Gasto") y no dos como en tareas, así que el importe no se parte.
+// Si algún día hay un segundo badge en esta cabecera, este bloque es el que habrá que reconsiderar.
 @include layout.below-tablet {
   .transaction-detail-view__fields {
     grid-template-columns: minmax(0, 1fr);

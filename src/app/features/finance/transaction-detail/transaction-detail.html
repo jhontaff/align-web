@@ -40,11 +40,7 @@
   @if (loading()) {
     <p class="empty-state">Cargando...</p>
   } @else if (transaction(); as transaction) {
-    <!--
-      El cuerpo vive en `TransactionDetailView` porque lo comparte con el cuadro
-      flotante que abre el widget de Calendario en Inicio. Aquí solo queda la
-      chrome de página. Ver `TaskDetail`, que hace lo mismo.
-    -->
+    <!-- El cuerpo vive en `TransactionDetailView`, compartido con el cuadro flotante de Inicio. -->
     <article class="card">
       <app-transaction-detail-view [transaction]="transaction" />
     </article>
