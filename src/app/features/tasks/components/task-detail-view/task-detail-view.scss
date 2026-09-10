@@ -1,0 +1,211 @@
+@use '../../../../../styles/layout';
+
+// El envoltorio con pintura (`.card` en la ruta, el panel del diálogo) lo pone
+// quien monta: dentro de un `<dialog>` que ya tiene borde y sombra, una segunda
+// tarjeta se lee como una caja dentro de otra.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+// Tres piezas en una fila: título, badges y —si quien monta las proyecta— las
+// acciones. `wrap` y no `column` en móvil: ver el bloque del final de la hoja.
+.task-detail-view__header {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+
+// Con rótulo la cabecera pasa a REJILLA de dos columnas y dos filas: arriba
+// rótulo + acciones, abajo título + badges.
+//
+// Y es rejilla, no el mismo flex con `wrap`, porque el salto de fila de flex se
+// calcula sobre el tamaño hipotético de cada elemento, no sobre el que acaban
+// teniendo al crecer: para forzar que el título bajara había que darle
+// `flex-basis: 100%`, y entonces se comía la fila entera y empujaba las badges a
+// una TERCERA fila. Con auto-colocación el reparto es explícito y no depende de
+// cuánto mida el texto.
+//
+// El `order` sigue haciendo falta: la auto-colocación recorre los elementos en
+// «orden de documento modificado por order», así que es lo que sube a la
+// primera fila el par rótulo + acciones aunque las acciones lleguen proyectadas
+// y sean las últimas del DOM. Colocación resultante: rótulo (1,1),
+// acciones (1,2), título (2,1), badges (2,2).
+//
+// No se usan `grid-template-areas`, que sería más legible, porque nombrar un
+// área exige poner `grid-area` en cada hijo y a las acciones no se llega: son
+// contenido proyectado y conservan el atributo de encapsulación de quien las
+// escribió, no el de esta hoja.
+//
+// Modificador y no `:has(.kicker)` para que la ruta —que no pinta rótulo— no
+// dependa de una consulta que también acertaría por accidente si algún día se
+// proyectara otro `.kicker` ahí dentro.
+.task-detail-view__header--with-domain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+
+  // Lo que centra el rótulo contra los botones: son 40px de alto contra una
+  // línea de texto, y con el `flex-start` de la regla base el rótulo se quedaba
+  // pegado al borde superior mientras los iconos quedaban a media altura.
+  align-items: center;
+
+  // Fila más apretada que el `--space-3` de la regla base: esto es un
+  // antetítulo, y separado como un bloque más deja de leerse pegado al título.
+  gap: var(--space-2) var(--space-4);
+
+  .task-detail-view__title,
+  .task-detail-view__badges {
+    order: 1;
+
+    // La segunda fila se alinea arriba, como en la ruta: con un título de dos
+    // líneas, centrar dejaría las badges flotando a media altura.
+    align-self: start;
+  }
+}
+
+// El único color del rótulo, y el mismo con el que la pestaña "Tarea" de
+// `QuickCreate` marca este dominio. Es el par `soft-text` y no el sólido:
+// medido, el ámbar sólido se queda en 2,15:1 sobre blanco y no llega ni al 3:1
+// de un elemento no textual.
+.task-detail-view__domain-icon {
+  color: var(--color-domain-task-soft-text);
+  font-size: var(--text-base);
+  flex-shrink: 0;
+}
+
+.task-detail-view__title {
+  // Se lleva el hueco sobrante y cede el que haga falta: es lo que empuja las
+  // badges y los botones al borde derecho sin un `justify-content` que también
+  // separaría a esos dos entre sí.
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--text-h1);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+
+  // Sin esto un título de una sola palabra muy larga desborda la tarjeta y
+  // saca scroll horizontal a la página entera.
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+// Dentro del diálogo el título comparte fila con la cabecera de un cuadro
+// pequeño, no encabeza una página: al tamaño de `<h1>` se comería el panel.
+// Es el mismo tamaño que ya usa el título de `event-detail`.
+.task-detail-view__title--compact {
+  font-size: var(--text-h2);
+}
+
+.task-detail-view__badges {
+  display: flex;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.task-detail-view__fields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+
+  @include layout.below-tablet {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// La descripción es texto libre y puede ser larga: ocupa la fila entera en vez
+// de quedarse en media columna con el doble de alto.
+.task-detail-view__field--wide {
+  grid-column: 1 / -1;
+}
+
+.task-detail-view__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+
+  dt {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+
+    // El texto que escribió el usuario conserva sus saltos de línea; sin esto
+    // una descripción de varios párrafos se aplana en un bloque ilegible.
+    white-space: pre-wrap;
+  }
+}
+
+// Mapeo dominio → semántica. Duplicado respecto a `task-list.scss` porque la
+// encapsulación de Angular es por componente: estas reglas no cruzan de una
+// hoja a otra. La alternativa —subirlas a `_components.scss`— convertiría un
+// mapeo de dominio en primitiva global, que es justo lo que el design system
+// evita.
+.badge--status-pending,
+.badge--priority-medium {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-soft-text);
+}
+
+.badge--status-in_progress {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-soft-text);
+}
+
+.badge--status-completed {
+  background: var(--color-success-soft);
+  color: var(--color-success-soft-text);
+}
+
+.badge--priority-high {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-soft-text);
+}
+
+// -----------------------------------------------------------------------------
+// Los bloques de media query van al FINAL de la hoja — ver la nota de
+// `_components.scss`.
+// -----------------------------------------------------------------------------
+@include layout.below-tablet {
+  // En móvil no caben las tres piezas en una fila: el título, dos badges y tres
+  // botones de 44px dejarían el título en dos palabras por línea, o apretarían
+  // los botones por debajo del mínimo táctil y de los 8px de separación entre
+  // objetivos contiguos. Las badges bajan a su propia fila; título y acciones
+  // se quedan arriba.
+  //
+  // Bajan LAS BADGES y no los botones, y esa es la decisión: cerrar se busca
+  // arriba a la derecha, siempre y en cualquier diálogo de la app. Las badges
+  // son información, así que pueden moverse sin que nadie las pierda —siguen
+  // pegadas al título que describen y siguen a la vista, sin scroll.
+  //
+  // `order` y no reordenar el marcado: el orden del DOM es el que leen el
+  // teclado y el lector de pantalla, y ahí título → estado → acciones es
+  // correcto en los dos anchos.
+  // Con rótulo la cabecera es rejilla y estas dos propiedades no la tocan; el
+  // equivalente para ese caso está en el bloque de abajo.
+  .task-detail-view__badges {
+    order: 1;
+
+    // Lo que fuerza el salto de fila: ocupar el ancho entero no deja sitio a su
+    // izquierda. Con `order: 1` ya va la última, así que arrastra solo consigo.
+    flex-basis: 100%;
+  }
+
+  // El equivalente en rejilla: las badges se llevan las dos columnas, así que
+  // caen a una fila propia (la tercera), y el título se lleva las dos de la
+  // suya para no quedarse con media cabecera de ancho al irse su vecina.
+  .task-detail-view__header--with-domain {
+    .task-detail-view__title,
+    .task-detail-view__badges {
+      grid-column: 1 / -1;
+    }
+  }
+}

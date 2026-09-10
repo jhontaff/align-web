@@ -40,49 +40,13 @@
   @if (loading()) {
     <p class="empty-state">Cargando...</p>
   } @else if (transaction(); as transaction) {
-    <article class="card transaction-detail">
-      <header class="transaction-detail__header">
-        <h1
-          class="transaction-detail__amount"
-          [class.transaction-detail__amount--income]="isIncome()"
-        >
-          <span class="visually-hidden">{{ typeLabel() }}: </span>
-          @if (isIncome()) { + } @else { &minus; }{{ amount() | currency: undefined : 'symbol' : moneyDigits }}
-        </h1>
-
-        <span class="badge" [class]="isIncome() ? 'badge--success' : 'badge--danger'">
-          {{ typeLabel() }}
-        </span>
-      </header>
-
-      <dl class="transaction-detail__fields">
-        <div class="transaction-detail__field">
-          <dt>Categoría</dt>
-          <dd>{{ categoryLabel() }}</dd>
-        </div>
-
-        <div class="transaction-detail__field">
-          <dt>Fecha</dt>
-          <dd>{{ dateLabel() }}</dd>
-        </div>
-
-        @if (transaction.description) {
-          <div class="transaction-detail__field transaction-detail__field--wide">
-            <dt>Descripción</dt>
-            <dd>{{ transaction.description }}</dd>
-          </div>
-        }
-
-        <div class="transaction-detail__field">
-          <dt>Registrado</dt>
-          <dd>{{ timestampLabel(transaction.createdAt) }}</dd>
-        </div>
-
-        <div class="transaction-detail__field">
-          <dt>Última actualización</dt>
-          <dd>{{ timestampLabel(transaction.updatedAt) }}</dd>
-        </div>
-      </dl>
+    <!--
+      El cuerpo vive en `TransactionDetailView` porque lo comparte con el cuadro
+      flotante que abre el widget de Calendario en Inicio. Aquí solo queda la
+      chrome de página. Ver `TaskDetail`, que hace lo mismo.
+    -->
+    <article class="card">
+      <app-transaction-detail-view [transaction]="transaction" />
     </article>
   }
 

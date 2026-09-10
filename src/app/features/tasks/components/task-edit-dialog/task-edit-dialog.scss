@@ -1,0 +1,7 @@
+// La caja, el velo y la animación vienen de `.dialog` en `_components.scss`.
+// El formulario de tarea es más ancho que el detalle: con 480px los pares
+// fecha+hora se parten en dos líneas también en escritorio.
+:host {
+  display: contents;
+  --dialog-width: 560px;
+}

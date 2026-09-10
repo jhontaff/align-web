@@ -1,0 +1,96 @@
+<dialog
+  #dialog
+  class="dialog"
+  [attr.aria-labelledby]="titleId"
+  (click)="onBackdropClick($event)"
+  (close)="onNativeClose()"
+>
+  <div class="dialog__panel">
+    <!--
+      Separado de `errorMessage`: ese sustituye al contenido (no se pudo
+      cargar), este se apila encima de una tarea que sigue siendo válida (no se
+      pudo borrar).
+    -->
+    @if (deleteError(); as message) {
+      <p class="form-error" role="alert">{{ message }}</p>
+    }
+
+    @if (errorMessage(); as message) {
+      <p class="form-error" role="alert">{{ message }}</p>
+    }
+
+    @if (task(); as task) {
+      <!--
+        Las acciones se PROYECTAN dentro de la cabecera de la vista en vez de
+        vivir en una fila propia encima: así comparten línea con el título y las
+        badges, y desaparece la banda vacía que quedaba a su izquierda.
+      -->
+      <app-task-detail-view [task]="task" [headingLevel]="2" [titleId]="titleId" [showDomain]="true">
+        <div headerActions class="dialog__actions">
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon task-detail-dialog__edit"
+            aria-label="Editar tarea"
+            title="Editar tarea"
+            (click)="onEditClick()"
+          >
+            <app-icon name="bi:pencil" />
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon task-detail-dialog__delete"
+            [disabled]="deleting()"
+            aria-label="Eliminar tarea"
+            title="Eliminar tarea"
+            (click)="onDeleteClick()"
+          >
+            <app-icon name="bi:trash3" />
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon"
+            aria-label="Cerrar"
+            title="Cerrar"
+            (click)="onCloseClick()"
+          >
+            <app-icon name="bi:x-lg" />
+          </button>
+        </div>
+      </app-task-detail-view>
+    } @else {
+      <!--
+        Mientras carga (o si la tarea no se pudo pedir) no hay cabecera de vista
+        donde proyectar nada, y un diálogo sin X visible solo se puede cerrar
+        con Escape o tocando fuera — que es justo lo que no se sabe si no se ve.
+        El botón se repite aquí a propósito: un `ng-template` compartido para
+        ocho líneas costaría más de leer que las ocho líneas.
+      -->
+      <div class="task-detail-dialog__fallback-header">
+        <button
+          type="button"
+          class="btn btn-ghost btn-icon"
+          aria-label="Cerrar"
+          title="Cerrar"
+          (click)="onCloseClick()"
+        >
+          <app-icon name="bi:x-lg" />
+        </button>
+      </div>
+
+      @if (loading()) {
+        <p class="empty-state">Cargando...</p>
+      }
+    }
+
+    <app-confirm-dialog
+      [(open)]="confirmOpen"
+      heading="Eliminar tarea"
+      [message]="confirmMessage()"
+      confirmLabel="Eliminar"
+      tone="danger"
+      (confirm)="onConfirmDelete()"
+    />
+  </div>
+</dialog>

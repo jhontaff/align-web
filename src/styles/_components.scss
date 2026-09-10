@@ -585,6 +585,158 @@
   background: var(--color-border);
 }
 
+
+// -----------------------------------------------------------------------------
+// Cuadro flotante (`.dialog`)
+// -----------------------------------------------------------------------------
+// La chrome de un `<dialog>` abierto con `showModal()`: caja, velo y animación
+// de entrada/salida. Es pintura sobre elementos que el consumidor ya escribe
+// (`<dialog>` y su panel), así que por el criterio del design system es CLASE
+// GLOBAL y no un componente de `shared/ui/` — mismo caso que `.menu-item`, y
+// por la misma segunda razón: la usan componentes con encapsulación distinta,
+// y compartirla de otro modo exigiría `::ng-deep`.
+//
+// Nace con cuatro consumidores a la vez —los diálogos de detalle y de edición
+// de tarea y de movimiento—, después de que este bloque se hubiera copiado a
+// mano otras cuatro. `confirm-dialog`, `event-detail`,
+// `event-edit` y `quick-create` siguen con su copia propia: migrarlos es
+// mecánico pero toca pantallas que hoy funcionan, así que va aparte.
+//
+// El ancho se pide con `--dialog-width` desde la hoja del componente en vez de
+// con modificadores: los tres valores en uso (420/480/560px) no son una escala,
+// son "lo que pide cada contenido".
+//
+// `dvh` y no `vh`: en móvil `vh` mide con la barra del navegador retraída, así
+// que un diálogo alto se corta por abajo justo mientras la barra está visible.
+.dialog {
+  // Sin `padding` a propósito: con relleno, un clic en el borde del panel
+  // reportaría el `<dialog>` como `target` y cerraría — ver `onBackdropClick`.
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  width: min(var(--dialog-width, 480px), calc(100vw - var(--space-8)));
+  max-height: calc(100dvh - var(--space-8));
+
+  opacity: 0;
+  scale: 0.96;
+
+  // `allow-discrete` sobre `display` y `overlay` es lo que deja ver la SALIDA:
+  // sin él el navegador saca el elemento del top layer en el mismo fotograma.
+  transition:
+    opacity 160ms ease,
+    scale 160ms ease,
+    display 160ms allow-discrete,
+    overlay 160ms allow-discrete;
+}
+
+.dialog[open] {
+  opacity: 1;
+  scale: 1;
+}
+
+// Y `@starting-style` es lo que deja ver la ENTRADA: sin él no hay estado
+// desde el que animar y solo se anima al cerrar.
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+.dialog::backdrop {
+  background: transparent;
+  transition:
+    background 160ms ease,
+    display 160ms allow-discrete,
+    overlay 160ms allow-discrete;
+}
+
+.dialog[open]::backdrop {
+  background: var(--color-scrim);
+}
+
+@starting-style {
+  .dialog[open]::backdrop {
+    background: transparent;
+  }
+}
+
+// Se quita el recorrido, no la modalidad: lo que provoca malestar vestibular es
+// el movimiento, no que el fondo quede inerte.
+@media (prefers-reduced-motion: reduce) {
+  .dialog,
+  .dialog::backdrop {
+    transition: none;
+  }
+}
+
+// El respiro va aquí y no en el `<dialog>`, por el clic en el velo de arriba.
+// `min-height: 0` es lo que hace que el `overflow-y` de un hijo flexible
+// enganche de verdad: sin él la base es `auto` y el hijo se niega a encoger.
+.dialog__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+  max-height: calc(100dvh - var(--space-8));
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+.dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.dialog__title {
+  margin: 0;
+  font-size: var(--text-h2);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+
+  // Un título de una sola palabra muy larga desbordaría la caja.
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+// Las acciones de la cabecera (editar, eliminar, cerrar) como una sola fila que
+// no se encoge: sin esto los iconos se aplastan cuando el título es largo.
+.dialog__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+// -----------------------------------------------------------------------------
+// Rótulo de contexto (`.kicker`)
+// -----------------------------------------------------------------------------
+// Una línea pequeña que dice DE QUÉ es lo que se está mirando ("Tareas",
+// "Finanzas"), encima del título. Nace con dos consumidores —las vistas de
+// detalle de tarea y de movimiento—, que es la regla del segundo uso.
+//
+// Es un rótulo, no un badge: texto apagado y sin fondo, porque en esa misma
+// cabecera ya hay badges de verdad (el estado y la prioridad de la tarea, el
+// tipo del movimiento) y dos cosas con fondo de color compitiendo se leen como
+// dos estados del mismo objeto en vez de como contexto + estado. El único
+// color lo pone el icono, y lo elige la hoja de cada feature: el mapeo
+// dominio → token no baja a una clase global.
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-muted);
+}
+
 // -----------------------------------------------------------------------------
 // Los bloques de media query van al FINAL de la hoja, nunca junto a la regla que
 // modifican: una media query no añade especificidad, solo decide el orden, así

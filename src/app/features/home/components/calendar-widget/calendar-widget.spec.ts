@@ -57,6 +57,11 @@ class TaskServiceDoble {
     }
     return of(pagina(this.respuesta));
   }
+
+  /** `TaskDetailDialog` se auto-carga por id al montarse, igual que `EventDetail`. */
+  get(id: string): Observable<TaskResponse> {
+    return of(task(id));
+  }
 }
 
 class TransactionServiceDoble {
@@ -70,6 +75,11 @@ class TransactionServiceDoble {
       return throwError(() => new HttpErrorResponse({ status: 500, error: { message: 'Transacciones caídas' } }));
     }
     return of(pagina(this.respuesta));
+  }
+
+  /** Ver `TaskServiceDoble.get`. */
+  get(id: string): Observable<TransactionResponse> {
+    return of(transaction(id));
   }
 }
 
@@ -271,24 +281,117 @@ describe('CalendarWidget', () => {
       expect(router.navigate).not.toHaveBeenCalled();
     });
 
-    it('tarea: navega a /tasks/:id', async () => {
+    // Las dos pruebas de abajo afirmaban lo contrario hasta el 2026-09-10:
+    // tarea y transacción navegaban a su ruta y sacaban al usuario de Inicio.
+    // Que NO se navegue es ahora la mitad importante del contrato — sin ese
+    // `not.toHaveBeenCalled()` la prueba pasaría igual abriendo el diálogo Y
+    // navegando por detrás.
+    it('tarea: abre el detalle en burbuja (detailTaskId), no navega', async () => {
       await montar(true);
       const router = TestBed.inject(Router);
       spyOn(router, 'navigate');
 
       interno['onItemClick']({ id: 't1', kind: 'task', title: 'X', time: null, tone: 'warning' });
 
-      expect(router.navigate).toHaveBeenCalledWith(['/tasks', 't1']);
+      expect(interno['detailTaskId']()).toBe('t1');
+      expect(router.navigate).not.toHaveBeenCalled();
     });
 
-    it('transacción: navega a /finance/:id', async () => {
+    it('transacción: abre el detalle en burbuja (detailTransactionId), no navega', async () => {
       await montar(true);
       const router = TestBed.inject(Router);
       spyOn(router, 'navigate');
 
       interno['onItemClick']({ id: 'x1', kind: 'transaction', title: 'X', time: null, tone: 'danger' });
 
-      expect(router.navigate).toHaveBeenCalledWith(['/finance', 'x1']);
+      expect(interno['detailTransactionId']()).toBe('x1');
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+
+    // Las cuatro de este bloque son el contrato que se rompía cuando la agenda
+    // desplegada y el diálogo compartían un solo signal: abrir un ítem borraba
+    // la rama `day`, así que la lista se cerraba por detrás y al salir el
+    // usuario se encontraba el carrusel plegado.
+    it('abrir un ítem NO cierra la agenda del día', async () => {
+      await montar(true);
+      interno['toggleDayPanel']();
+      await estabilizar();
+      expect(interno['dayPanelExpanded']()).toBeTrue();
+
+      interno['onItemClick']({ id: 'e1', kind: 'event', title: 'X', time: null, tone: 'primary' });
+      await estabilizar();
+
+      expect(interno['detailEventId']()).toBe('e1');
+      expect(interno['dayPanelExpanded']())
+        .withContext('la agenda debe seguir desplegada por detrás del diálogo')
+        .toBeTrue();
+    });
+
+    it('cerrar el diálogo devuelve al usuario con la agenda todavía abierta', async () => {
+      await montar(true);
+      interno['toggleDayPanel']();
+      interno['onItemClick']({ id: 'e1', kind: 'event', title: 'X', time: null, tone: 'primary' });
+      await estabilizar();
+
+      interno['onPanelClose']();
+      await estabilizar();
+
+      expect(interno['detailEventId']()).toBeNull();
+      expect(interno['dayPanelExpanded']()).toBeTrue();
+    });
+
+    it('con la agenda CERRADA, abrir y cerrar un ítem no la despliega', async () => {
+      await montar(true);
+      expect(interno['dayPanelExpanded']()).toBeFalse();
+
+      interno['onItemClick']({ id: 'e1', kind: 'event', title: 'X', time: null, tone: 'primary' });
+      await estabilizar();
+      interno['onPanelClose']();
+      await estabilizar();
+
+      // El otro lado del contrato: si se abrió desde un chip de la cuadrícula,
+      // cerrar no debe desplegar una agenda que nunca estuvo abierta.
+      expect(interno['dayPanelExpanded']()).toBeFalse();
+    });
+
+    it('guardar una edición tampoco pliega la agenda', async () => {
+      await montar(true);
+      interno['toggleDayPanel']();
+      interno['onItemClick']({ id: 't1', kind: 'task', title: 'X', time: null, tone: 'warning' });
+      await estabilizar();
+
+      interno['onItemChanged']();
+      await estabilizar();
+
+      expect(interno['detailTaskId']()).toBeNull();
+      expect(interno['dayPanelExpanded']()).toBeTrue();
+    });
+
+    it('editar desde el detalle de una tarea encadena a la burbuja de edición', async () => {
+      await montar(true);
+      interno['onItemClick']({ id: 't1', kind: 'task', title: 'X', time: null, tone: 'warning' });
+      await estabilizar();
+
+      interno['onTaskEdit'](task('t1'));
+
+      // Las ramas son excluyentes: al pasar a edición, el detalle se apaga.
+      expect(interno['editTask']()?.id).toBe('t1');
+      expect(interno['detailTaskId']()).toBeNull();
+    });
+
+    it('guardar o borrar desde una burbuja cierra e invalida, no recarga solo el widget', async () => {
+      await montar(true);
+      const invalidate = spyOn(TestBed.inject(DataRefreshService), 'invalidate').and.callThrough();
+      interno['onItemClick']({ id: 't1', kind: 'task', title: 'X', time: null, tone: 'warning' });
+      await estabilizar();
+
+      interno['onItemChanged']();
+      await estabilizar();
+
+      expect(interno['detailTaskId']()).toBeNull();
+      // Invalidar y no `load()`: así se enteran también las tarjetas de resumen
+      // que comparten pantalla con el widget.
+      expect(invalidate).toHaveBeenCalled();
     });
   });
 

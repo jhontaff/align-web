@@ -12,7 +12,6 @@ import {
   viewChild
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 import { DataRefreshService } from '../../../../core/data/data-refresh.service';
@@ -35,8 +34,12 @@ import { EventFilter, EventResponse } from '../../../calendar/models/event.model
 import { EventDetail } from '../../../calendar/components/event-detail/event-detail';
 import { EventEdit } from '../../../calendar/components/event-edit/event-edit';
 import { TaskService } from '../../../tasks/task.service';
+import { TaskDetailDialog } from '../../../tasks/components/task-detail-dialog/task-detail-dialog';
+import { TaskEditDialog } from '../../../tasks/components/task-edit-dialog/task-edit-dialog';
 import { TaskFilter, TaskResponse } from '../../../tasks/models/task.model';
 import { TransactionService } from '../../../finance/transaction.service';
+import { TransactionDetailDialog } from '../../../finance/components/transaction-detail-dialog/transaction-detail-dialog';
+import { TransactionEditDialog } from '../../../finance/components/transaction-edit-dialog/transaction-edit-dialog';
 import { TransactionFilter, TransactionResponse } from '../../../finance/models/transaction.model';
 import {
   AGENDA_KIND_LABELS_SINGULAR,
@@ -48,12 +51,35 @@ import {
   weekDateBounds
 } from './agenda';
 
-/** Qué se ve encima de la cuadrícula: cerrado, día expandido, detalle o edición — unión cerrada, no signals sueltos. */
-type WidgetMode =
+/**
+ * Qué CUADRO FLOTANTE está abierto: ninguno, o el detalle/edición de uno de los
+ * tres dominios — unión cerrada, no signals sueltos.
+ *
+ * **Aquí NO está la agenda del día desplegada**, y esa ausencia es el arreglo
+ * del 2026-09-10. Antes había una rama `{ kind: 'day'; iso }` conviviendo con
+ * las de diálogo, y como una unión solo admite una rama viva, abrir un evento
+ * desde la agenda BORRABA el día desplegado: la lista se cerraba por detrás y
+ * al salir del evento el usuario se encontraba el carrusel plegado. No era un
+ * estado que se perdiera, es que no había dónde guardarlo. Son dos cosas
+ * ortogonales —una vive en la página, la otra flota encima— así que son dos
+ * signals: éste y `expandedDay`.
+ *
+ * Las ramas van nombradas por dominio (`task-detail`, `transaction-edit`) y no
+ * generalizadas a `{ kind: 'detail'; item: AgendaItem }`, aunque `AgendaItem` ya
+ * traiga `kind` e `id`: las de edición llevan la entidad ENTERA y ya cargada
+ * —`TaskEditDialog` la recibe por `input`, no la pide por id— así que una rama
+ * genérica tendría que ser `EventResponse | TaskResponse | TransactionResponse`
+ * y cada consumidor volvería a discriminar. Explícito son siete ramas que el
+ * compilador comprueba; genérico sería una rama y un `switch` a mano dentro.
+ */
+type WidgetOverlay =
   | { kind: 'closed' }
   | { kind: 'edit'; event: EventResponse | null }
   | { kind: 'detail'; eventId: string }
-  | { kind: 'day'; iso: string };
+  | { kind: 'task-detail'; taskId: string }
+  | { kind: 'task-edit'; task: TaskResponse }
+  | { kind: 'transaction-detail'; transactionId: string }
+  | { kind: 'transaction-edit'; transaction: TransactionResponse };
 
 const MAX_VISIBLE_PER_DAY = 3;
 
@@ -90,12 +116,21 @@ interface PeekDay {
  * Escritorio: cuadrícula de mes con chips. Móvil: carrusel de un día activo con vecinos en vista previa, sin tope de semana.
  * El carrusel carga su propia semana (`weekAgenda`), aparte del mes visible (`monthAgenda`) — una semana a caballo de dos meses
  * se quedaría con días sin datos si reutilizara la del mes. El panel de un día es compartido: "+N más" en escritorio, la
- * tarjeta del carrusel en móvil — mismo `mode: {kind:'day'}`, fuente según `breakpoint.isDesktop()`.
+ * tarjeta del carrusel en móvil — mismo `expandedDay`, fuente según `breakpoint.isDesktop()`.
  * Tocar un evento abre `EventDetail` (self-fetch); tocar tarea o transacción navega a `/tasks/:id`/`/finance/:id` — no duplica sus formularios.
  */
 @Component({
   selector: 'app-calendar-widget',
-  imports: [Icon, DateRangePicker, EventDetail, EventEdit],
+  imports: [
+    Icon,
+    DateRangePicker,
+    EventDetail,
+    EventEdit,
+    TaskDetailDialog,
+    TaskEditDialog,
+    TransactionDetailDialog,
+    TransactionEditDialog
+  ],
   templateUrl: './calendar-widget.html',
   styleUrl: './calendar-widget.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -104,7 +139,6 @@ export class CalendarWidget implements OnInit {
   private readonly calendar = inject(CalendarService);
   private readonly tasks = inject(TaskService);
   private readonly transactions = inject(TransactionService);
-  private readonly router = inject(Router);
   private readonly dataRefresh = inject(DataRefreshService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly locale = inject(LOCALE_ID);
@@ -118,7 +152,20 @@ export class CalendarWidget implements OnInit {
 
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly mode = signal<WidgetMode>({ kind: 'closed' });
+  /**
+   * El diálogo abierto. `private`: fuera se consumen los `computed` de abajo,
+   * que es lo que impide que nadie ponga una rama sin pasar por su método.
+   */
+  private readonly overlay = signal<WidgetOverlay>({ kind: 'closed' });
+
+  /**
+   * Qué día tiene la agenda desplegada (`null` = ninguno). Independiente de
+   * `overlay` a propósito — ver el comentario de `WidgetOverlay`.
+   *
+   * Se expone como `dayIso` más abajo, en solo lectura: escribirlo es siempre
+   * `toggleDayPanel()` o `onMoreClick()`.
+   */
+  private readonly expandedDay = signal<string | null>(null);
 
   /** El día central del carrusel móvil. Independiente de `visibleMonth` — ver el comentario de la clase. */
   protected readonly activeDay = signal(toIsoDate(new Date()));
@@ -216,25 +263,47 @@ export class CalendarWidget implements OnInit {
 
   // --- Derivados: diálogos y panel de agenda -----------------------------------
 
-  // Las cuatro ramas de `WidgetMode` como computed planos, no `@if` en la plantilla — mismo criterio que `task-detail`.
-  protected readonly editing = computed(() => this.mode().kind === 'edit');
+  // Las ramas de `WidgetOverlay` como computed planos, no `@if` en la plantilla — mismo criterio que `task-detail`.
+  protected readonly editing = computed(() => this.overlay().kind === 'edit');
 
   protected readonly editEvent = computed<EventResponse | null>(() => {
-    const mode = this.mode();
-    return mode.kind === 'edit' ? mode.event : null;
+    const overlay = this.overlay();
+    return overlay.kind === 'edit' ? overlay.event : null;
   });
 
   protected readonly detailEventId = computed<string | null>(() => {
-    const mode = this.mode();
-    return mode.kind === 'detail' ? mode.eventId : null;
+    const overlay = this.overlay();
+    return overlay.kind === 'detail' ? overlay.eventId : null;
   });
 
-  protected readonly dayIso = computed<string | null>(() => {
-    const mode = this.mode();
-    return mode.kind === 'day' ? mode.iso : null;
+  protected readonly detailTaskId = computed<string | null>(() => {
+    const overlay = this.overlay();
+    return overlay.kind === 'task-detail' ? overlay.taskId : null;
   });
 
-  /** Fuente según el ancho: "+N más" en escritorio, la tarjeta del carrusel en móvil — mismo `mode: {kind:'day'}`. */
+  protected readonly editTask = computed<TaskResponse | null>(() => {
+    const overlay = this.overlay();
+    return overlay.kind === 'task-edit' ? overlay.task : null;
+  });
+
+  protected readonly detailTransactionId = computed<string | null>(() => {
+    const overlay = this.overlay();
+    return overlay.kind === 'transaction-detail' ? overlay.transactionId : null;
+  });
+
+  protected readonly editTransaction = computed<TransactionResponse | null>(() => {
+    const overlay = this.overlay();
+    return overlay.kind === 'transaction-edit' ? overlay.transaction : null;
+  });
+
+  /**
+   * Solo lectura sobre `expandedDay`, con el nombre que ya consumían la
+   * plantilla y los derivados de abajo. Patrón readonly del repo: el signal
+   * privado se escribe, esto se lee.
+   */
+  protected readonly dayIso = this.expandedDay.asReadonly();
+
+  /** Fuente según el ancho: "+N más" en escritorio, la tarjeta del carrusel en móvil — mismo `expandedDay`. */
   protected readonly dayAgendaItems = computed<AgendaItem[]>(() => {
     const iso = this.dayIso();
     if (!iso) {
@@ -368,23 +437,35 @@ export class CalendarWidget implements OnInit {
     this.load();
   }
 
-  /** Evento → abre `EventDetail`; tarea/transacción → navegan. Un solo disparador para chips y filas de agenda. */
+  /**
+   * Los tres dominios abren su detalle como cuadro flotante, sin salir de
+   * Inicio. Un solo disparador para los chips de la cuadrícula, las filas del
+   * panel "+N más" y las tarjetas del carrusel móvil — los tres puntos de
+   * entrada pasan por aquí.
+   *
+   * Tarea y transacción navegaban a `/tasks/:id` y `/finance/:id` hasta el
+   * 2026-09-10: tocar un chip te sacaba del panel que estabas mirando y volver
+   * costaba un "atrás" que además perdía el día activo del carrusel. Se
+   * quedaron en burbuja para igualarlos a Evento, que ya lo hacía. Sus rutas
+   * siguen existiendo intactas — llegar por la lista de Tareas o por un enlace
+   * pegado sigue abriendo la pantalla completa.
+   */
   protected onItemClick(item: AgendaItem): void {
     switch (item.kind) {
       case 'event':
-        this.mode.set({ kind: 'detail', eventId: item.id });
+        this.overlay.set({ kind: 'detail', eventId: item.id });
         return;
       case 'task':
-        this.router.navigate(['/tasks', item.id]);
+        this.overlay.set({ kind: 'task-detail', taskId: item.id });
         return;
       case 'transaction':
-        this.router.navigate(['/finance', item.id]);
+        this.overlay.set({ kind: 'transaction-detail', transactionId: item.id });
         return;
     }
   }
 
   protected onMoreClick(iso: string): void {
-    this.mode.set({ kind: 'day', iso });
+    this.expandedDay.set(iso);
     this.shouldScrollToPanel = true;
   }
 
@@ -409,18 +490,18 @@ export class CalendarWidget implements OnInit {
     }
 
     // Si el panel de agenda estaba abierto, sigue al nuevo día activo.
-    if (this.mode().kind === 'day') {
-      this.mode.set({ kind: 'day', iso });
+    if (this.expandedDay() !== null) {
+      this.expandedDay.set(iso);
     }
   }
 
   /** Toggle de la tarjeta activa para desplegar/contraer la agenda del día. */
   protected toggleDayPanel(): void {
     if (this.dayPanelExpanded()) {
-      this.mode.set({ kind: 'closed' });
+      this.expandedDay.set(null);
       return;
     }
-    this.mode.set({ kind: 'day', iso: this.activeDay() });
+    this.expandedDay.set(this.activeDay());
   }
 
   protected onCarouselPointerDown(event: PointerEvent): void {
@@ -456,24 +537,55 @@ export class CalendarWidget implements OnInit {
   // --- Diálogos de evento (los dos anchos) ---------------------------------------
 
   protected onEventEdit(event: EventResponse): void {
-    this.mode.set({ kind: 'edit', event });
+    this.overlay.set({ kind: 'edit', event });
   }
 
   /** Alta, edición y borrado cierran siempre al panel base y refrescan las tres fuentes — no vuelven a la lista intermedia. */
   protected onEventDeleted(): void {
-    this.mode.set({ kind: 'closed' });
+    this.overlay.set({ kind: 'closed' });
     this.load();
     this.loadWeek();
   }
 
   protected onEventSaved(): void {
-    this.mode.set({ kind: 'closed' });
+    this.overlay.set({ kind: 'closed' });
     this.load();
     this.loadWeek();
   }
 
+  protected onTaskEdit(task: TaskResponse): void {
+    this.overlay.set({ kind: 'task-edit', task });
+  }
+
+  protected onTransactionEdit(transaction: TransactionResponse): void {
+    this.overlay.set({ kind: 'transaction-edit', transaction });
+  }
+
+  /**
+   * Se creó, editó o borró una tarea o un movimiento desde una de las burbujas.
+   *
+   * Invalida en vez de llamar a `load()`/`loadWeek()` como hace el camino de
+   * evento: este widget ya escucha `DataRefreshService.changes` en su
+   * `ngOnInit`, así que invalidar lo refresca a él Y ADEMÁS a `tasks-summary` y
+   * `finance-summary`, que están en esta misma pantalla y con una recarga local
+   * se quedarían mostrando la tarea que el usuario acaba de borrar.
+   */
+  protected onItemChanged(): void {
+    this.overlay.set({ kind: 'closed' });
+    this.dataRefresh.invalidate();
+  }
+
+  /**
+   * Cierra el cuadro flotante y **no toca la agenda**: si estaba desplegada
+   * sigue desplegada, y el usuario vuelve exactamente a donde estaba.
+   *
+   * Eso no es un caso especial escrito aquí, es la consecuencia de que
+   * `expandedDay` y `overlay` sean dos signals. Con la unión de antes esta
+   * línea era `mode.set({kind:'closed'})`, y `'closed'` significaba a la vez
+   * "sin diálogo" y "agenda plegada".
+   */
   protected onPanelClose(): void {
-    this.mode.set({ kind: 'closed' });
+    this.overlay.set({ kind: 'closed' });
   }
 
   /** Solo la cuadrícula de escritorio: `cell.items` no viene recortado, cada consumidor recorta a su propio tope. */

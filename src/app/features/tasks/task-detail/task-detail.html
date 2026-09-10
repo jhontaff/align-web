@@ -83,47 +83,15 @@
   @if (loading()) {
     <p class="empty-state">Cargando...</p>
   } @else if (task(); as task) {
-    <article class="card task-detail">
-      <header class="task-detail__header">
-        <h1 class="task-detail__title">{{ task.title }}</h1>
-        <div class="task-detail__badges">
-          <span class="badge" [class]="'badge--status-' + task.status.toLowerCase()">{{ statusLabel(task.status) }}</span>
-          <span class="badge" [class]="'badge--priority-' + task.priority.toLowerCase()">{{ priorityLabel(task.priority) }}</span>
-        </div>
-      </header>
-
-      <!--
-        `<dl>` y no una tabla ni divs sueltos: son pares etiqueta/valor, que es
-        exactamente lo que una lista de definición anuncia a un lector de
-        pantalla. Los campos vacíos no se pintan como "—": una fila sin valor es
-        ruido, y el backend deja `description`, `dueDate` y `dueTime` en null
-        con total normalidad.
-      -->
-      <dl class="task-detail__fields">
-        @if (task.description) {
-          <div class="task-detail__field task-detail__field--wide">
-            <dt>Descripción</dt>
-            <dd>{{ task.description }}</dd>
-          </div>
-        }
-
-        @if (dueLabel(task); as due) {
-          <div class="task-detail__field">
-            <dt>Vencimiento</dt>
-            <dd>{{ due }}</dd>
-          </div>
-        }
-
-        <div class="task-detail__field">
-          <dt>Creada</dt>
-          <dd>{{ timestampLabel(task.createdAt) }}</dd>
-        </div>
-
-        <div class="task-detail__field">
-          <dt>Última actualización</dt>
-          <dd>{{ timestampLabel(task.updatedAt) }}</dd>
-        </div>
-      </dl>
+    <!--
+      El cuerpo vive en `TaskDetailView` porque lo comparte con el cuadro
+      flotante que abre el widget de Calendario en Inicio. Aquí solo queda la
+      chrome de página: la tarjeta, el enlace de vuelta y las dos acciones.
+      `headingLevel` se queda en su valor por defecto (1): en esta pantalla el
+      título de la tarea es el encabezado del documento.
+    -->
+    <article class="card">
+      <app-task-detail-view [task]="task" />
     </article>
   }
 
