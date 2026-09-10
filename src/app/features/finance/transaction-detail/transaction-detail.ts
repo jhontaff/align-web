@@ -1,15 +1,13 @@
 import { ChangeDetectionStrategy, Component, LOCALE_ID, computed, inject, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
-import { parseIsoDate } from '../../../core/date/date-range';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '../../../shared/ui/icon/icon';
-import { MONEY_DIGITS } from '../money';
+import { TransactionDetailView } from '../components/transaction-detail-view/transaction-detail-view';
 import { TransactionResponse } from '../models/transaction.model';
-import { CATEGORY_LABELS, TYPE_LABELS } from '../transaction-labels';
+import { CATEGORY_LABELS } from '../transaction-labels';
 import { TransactionService } from '../transaction.service';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,7 +19,7 @@ type DetailState =
 
 @Component({
   selector: 'app-transaction-detail',
-  imports: [CurrencyPipe, RouterLink, ConfirmDialog, Icon],
+  imports: [RouterLink, ConfirmDialog, Icon, TransactionDetailView],
   templateUrl: './transaction-detail.html',
   styleUrl: './transaction-detail.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -31,8 +29,6 @@ export class TransactionDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly locale = inject(LOCALE_ID);
-
-  protected readonly moneyDigits = MONEY_DIGITS;
 
   private readonly transactionId$ = this.route.paramMap.pipe(
     map(params => params.get('id')),
@@ -72,34 +68,6 @@ export class TransactionDetail {
     return state.status === 'ready' ? state.transaction : null;
   });
 
-  protected readonly isIncome = computed(() => this.transaction()?.type === 'INCOME');
-
-  protected readonly amount = computed(() => Math.abs(this.transaction()?.amount ?? 0));
-
-  protected readonly typeLabel = computed(() => {
-    const transaction = this.transaction();
-    return transaction ? TYPE_LABELS[transaction.type] : '';
-  });
-
-  protected readonly categoryLabel = computed(() => {
-    const transaction = this.transaction();
-    return transaction ? CATEGORY_LABELS[transaction.category] : '';
-  });
-
-  protected readonly dateLabel = computed(() => {
-    const transaction = this.transaction();
-    if (!transaction) {
-      return '';
-    }
-
-    return parseIsoDate(transaction.date).toLocaleDateString(this.locale, {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-  });
-
   protected readonly deleting = signal(false);
   protected readonly deleteError = signal<string | null>(null);
   protected readonly confirmOpen = signal(false);
@@ -133,16 +101,6 @@ export class TransactionDetail {
         this.deleting.set(false);
         this.deleteError.set(extractErrorMessage(err));
       }
-    });
-  }
-
-  protected timestampLabel(iso: string): string {
-    return new Date(iso).toLocaleString(this.locale, {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     });
   }
 }

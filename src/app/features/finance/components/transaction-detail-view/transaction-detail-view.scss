@@ -1,0 +1,133 @@
+@use '../../../../../styles/layout';
+
+// El envoltorio con pintura lo pone quien monta: dentro del diálogo, otra tarjeta sería caja en caja.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+// Importe, tipo y —si se proyectan— las acciones, en una fila. Mismo reparto que en tareas.
+.transaction-detail-view__header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+
+// Con rótulo la cabecera es rejilla: arriba rótulo + acciones, abajo importe + tipo.
+// El porqué de la rejilla, del `order` y de no usar áreas está en `task-detail-view.scss`.
+.transaction-detail-view__header--with-domain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+
+  .transaction-detail-view__title-row {
+    order: 1;
+
+    // LA regla de todo esto: la fila del importe se lleva las DOS columnas.
+    //
+    // Sin ella hereda la columna derecha, y esa columna la dimensiona el
+    // elemento más ancho de toda la columna — los tres botones de acción de la
+    // fila de arriba. El badge "Gasto" acababa ocupando el ancho de esos
+    // botones y le robaba al importe 80px que en la ruta sí tiene (medido:
+    // 184px en la burbuja contra 264,75px en la ruta, en un panel de 328px).
+    // Al abarcar las dos columnas, dentro manda su propio flex y el reparto
+    // vuelve a ser exactamente el de la ruta.
+    grid-column: 1 / -1;
+
+    // Se alinea arriba, igual que en tareas: el `center` de la rejilla hace
+    // falta en la PRIMERA fila —una línea de texto contra botones de 40px— pero
+    // heredado aquí descolgaría la fila del importe en cuanto crezca.
+    align-self: start;
+  }
+}
+
+// El mismo verde con el que `QuickCreate` marca este dominio; el par `soft-text` porque el sólido da 2,54:1.
+// Color fijo por dominio y no el del signo: si un gasto lo pintara de rojo diría lo que ya dice el badge.
+.transaction-detail-view__domain-icon {
+  color: var(--color-domain-money-soft-text);
+  font-size: var(--text-base);
+  flex-shrink: 0;
+}
+
+// Importe y tipo siempre en una fila propia, con el mismo flex en la ruta y en la burbuja.
+// Es lo que impide que el reparto entre los dos cambie cuando la cabecera pasa a rejilla.
+.transaction-detail-view__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+
+  // Se lleva el hueco sobrante cuando la cabecera es flex; `min-width: 0` deja encoger al importe.
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.transaction-detail-view__amount {
+  // Se lleva el hueco sobrante y empuja el badge al borde derecho.
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--text-h1);
+  font-weight: var(--weight-semibold);
+
+  // Cifras de ancho fijo: sin esto el importe baila al cambiar, porque el 1 es más estrecho.
+  font-variant-numeric: tabular-nums;
+  color: var(--color-danger);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+// Dentro del diálogo esto no encabeza una página, así que baja de tamaño.
+.transaction-detail-view__amount--compact {
+  font-size: var(--text-h2);
+}
+
+.transaction-detail-view__amount--income {
+  color: var(--color-success);
+}
+
+// No se encoge: quien cede el ancho es el importe. Sin esto un importe largo partiría "Ingreso" en dos líneas.
+.transaction-detail-view__badge {
+  flex-shrink: 0;
+}
+
+.transaction-detail-view__fields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.transaction-detail-view__field--wide {
+  grid-column: 1 / -1;
+}
+
+.transaction-detail-view__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+
+  dt {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+}
+
+// Los bloques de media query van al FINAL de la hoja.
+// La cabecera NO aparece aquí a propósito: se ve igual en móvil que en escritorio.
+// Aquí el vecino del título es un solo badge ("Gasto") y no dos como en tareas, así que el importe no se parte.
+// Si algún día hay un segundo badge en esta cabecera, este bloque es el que habrá que reconsiderar.
+@include layout.below-tablet {
+  .transaction-detail-view__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

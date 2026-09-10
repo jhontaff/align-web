@@ -1,0 +1,318 @@
+// Mismo idioma de cuadro flotante que `event-edit`/`event-detail`/`confirm-dialog`:
+// host sin pintura propia, `<dialog>` sin padding (el relleno lo pone `__panel`,
+// y con padding en el propio `<dialog>` el clic en el borde del panel cerraría —
+// ver `onBackdropClick`), animación con `@starting-style` + `allow-discrete`.
+//
+// Es la CUARTA copia de este bloque en el repo. Se repite a propósito en vez de
+// tocar los otros tres para adoptar una clase común: el encargo era añadir
+// pestañas sin cambiar el diseño de la burbuja, y reescribir tres diálogos que
+// funcionan es exactamente cómo se cuela una regresión visual en un cambio que
+// no iba de eso. Extraerlo es deuda anotada, no olvidada.
+@use '../../../../../styles/layout';
+
+:host {
+  display: contents;
+}
+
+.quick-create__dialog {
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  // 560 y no los 480 de `event-edit`: cuatro pestañas con icono y etiqueta no
+  // caben en 480 sin partirse en dos líneas.
+  width: min(560px, calc(100vw - var(--space-8)));
+  // `dvh`, igual que `__panel`: los dos topes tienen que hablar de la misma
+  // altura o el diálogo se pasa del viewport visible en móvil.
+  max-height: calc(100dvh - var(--space-8));
+  // El panel declara ESE MISMO tope, así que con el borde de 1px arriba y abajo
+  // se pasa por 2px y, sin esto, esos 2px se pintan cruzando la esquina
+  // redondeada. Solo se nota con el contenido al máximo — o sea, exactamente en
+  // el móvil que motivó el arreglo.
+  overflow: hidden;
+
+  opacity: 0;
+  scale: 0.96;
+  transition:
+    opacity 160ms ease,
+    scale 160ms ease,
+    display 160ms allow-discrete,
+    overlay 160ms allow-discrete;
+}
+
+.quick-create__dialog[open] {
+  opacity: 1;
+  scale: 1;
+}
+
+@starting-style {
+  .quick-create__dialog[open] {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+.quick-create__dialog::backdrop {
+  background: transparent;
+  transition:
+    background 160ms ease,
+    display 160ms allow-discrete,
+    overlay 160ms allow-discrete;
+}
+
+.quick-create__dialog[open]::backdrop {
+  background: var(--color-scrim);
+}
+
+@starting-style {
+  .quick-create__dialog[open]::backdrop {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quick-create__dialog,
+  .quick-create__dialog::backdrop {
+    transition: none;
+  }
+}
+
+// El panel reparte el alto; ya NO es él quien hace scroll.
+//
+// Cuando lo era, el contenedor de scroll incluía la cabecera y las pestañas, así
+// que un formulario alto —el de evento, que son cuatro campos más dos grupos de
+// fecha— se las llevaba hacia arriba fuera de la vista: en un móvil se perdía de
+// golpe la única forma de cambiar de pestaña y de cerrar. Ahora las dos zonas
+// fijas se quedan quietas (`flex-shrink: 0`) y el scroll vive en
+// `.quick-create__body`.
+//
+// `dvh` y no `vh`: en un móvil `100vh` es el viewport CON la barra de
+// direcciones retraída, así que el diálogo se pasaba de largo justo en las
+// pantallas donde más apretaba.
+.quick-create__panel {
+  padding: var(--space-5);
+  max-height: calc(100dvh - var(--space-8));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  // Sin esto un hijo flex no puede encoger por debajo de su contenido, y el
+  // `overflow-y` del cuerpo no llega a activarse nunca: el panel crece y se sale
+  // en vez de hacer scroll dentro. Es el fallo clásico de flex + overflow.
+  min-height: 0;
+}
+
+.quick-create__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.quick-create__title {
+  margin: 0;
+  font-size: var(--text-h2);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+
+// -----------------------------------------------------------------------------
+// La barra de pestañas
+// -----------------------------------------------------------------------------
+// Barra de chips, no de pestañas subrayadas: cuatro destinos que se eligen de
+// uno en uno se leen antes como filtros que como carpetas, y es lo que permite
+// que cada uno lleve el color de su dominio sin que la barra parezca un arcoíris
+// de subrayados.
+.quick-create__tabs {
+  display: flex;
+  gap: var(--space-2);
+  // Suelo de seguridad para pantallas muy estrechas: antes que apretar cuatro
+  // etiquetas hasta partirlas, la barra se desliza. `-webkit-overflow-scrolling`
+  // no hace falta, es el comportamiento por defecto desde hace años.
+  overflow-x: auto;
+  scrollbar-width: thin;
+  // El anillo del chip activo es `inset`, pero el `:focus-visible` no: sin este
+  // respiro, el anillo de foco del primer chip se recorta contra el borde del
+  // contenedor con scroll.
+  padding: var(--space-1);
+  // La barra es una de las dos zonas fijas del diálogo. Sin esto, un formulario
+  // alto la aplasta antes de que el cuerpo empiece a hacer scroll.
+  flex-shrink: 0;
+}
+
+// La ÚNICA zona con scroll del diálogo.
+//
+// `min-height: 0` por el mismo motivo que en `__panel`: es un hijo flex, y sin
+// eso su altura mínima es la de su contenido, así que nunca desbordaría.
+//
+// El respiro lateral es para el anillo de foco: `overflow-y: auto` convierte
+// esto en un contenedor de scroll, y un contenedor de scroll recorta también en
+// horizontal (poner `overflow-x: visible` no sirve — junto a un `auto` el
+// navegador lo computa a `auto`). Sin los 4px, el `box-shadow` de 3px de un
+// input a ancho completo se cortaba contra los bordes. El margen negativo los
+// devuelve para que el contenido siga alineado con la cabecera.
+.quick-create__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-inline: var(--space-1);
+  margin-inline: calc(var(--space-1) * -1);
+  // La barra nativa de Windows se lleva ~17px y no sigue al tema oscuro; mismo
+  // trato que el `<textarea>` del compositor del chat.
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+// Cada chip declara SU color una sola vez, en variables locales, y todo lo demás
+// se pinta con ellas. La alternativa —repetir las tres declaraciones (reposo,
+// hover, activo) por cada uno de los cuatro dominios— son doce bloques en los
+// que un color puesto en el sitio equivocado no se nota hasta verlo.
+//
+// Se usa `-soft-text` también para el ICONO y el anillo, no el color pleno del
+// dominio: medido sobre blanco, el ámbar de Tareas da 2,15:1 y el verde de
+// Movimiento 2,54:1 — los dos se lavan en el tema claro. `-soft-text` conserva
+// el tono (el ámbar sigue leyéndose ámbar) y no baja de 4,8:1 en ningún tema.
+.quick-create__tab--event {
+  --tab-soft: var(--color-domain-event-soft);
+  --tab-soft-text: var(--color-domain-event-soft-text);
+}
+
+.quick-create__tab--task {
+  --tab-soft: var(--color-domain-task-soft);
+  --tab-soft-text: var(--color-domain-task-soft-text);
+}
+
+.quick-create__tab--transaction {
+  --tab-soft: var(--color-domain-money-soft);
+  --tab-soft-text: var(--color-domain-money-soft-text);
+}
+
+.quick-create__tab--habit {
+  --tab-soft: var(--color-domain-habit-soft);
+  --tab-soft-text: var(--color-domain-habit-soft-text);
+}
+
+.quick-create__tab {
+  // No reutiliza `.btn`: un botón de la paleta trae su propio fondo y su propio
+  // color de texto, que es justo lo que aquí tiene que decidir el dominio.
+  flex: 1 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+// En reposo el chip es transparente y solo el icono lleva el color del dominio:
+// cuatro superficies de colores encendidas a la vez compiten con el formulario,
+// que es lo que el usuario ha venido a rellenar. El icono basta para diferenciar
+// de un vistazo, que es lo que se pedía.
+.quick-create__tab-icon {
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+  color: var(--tab-soft-text);
+}
+
+.quick-create__tab:hover {
+  background: var(--tab-soft);
+  color: var(--tab-soft-text);
+}
+
+// El estado se lee del atributo ARIA, no de una clase paralela: así no puede
+// haber un chip pintado como activo que no lo esté para un lector de pantalla.
+//
+// Y el activo NO se distingue solo por color: cambian también la superficie, el
+// anillo y el grosor de la letra. Quien no distinga el violeta del azul sigue
+// viendo cuál está seleccionado.
+.quick-create__tab[aria-selected='true'] {
+  background: var(--tab-soft);
+  color: var(--tab-soft-text);
+  font-weight: var(--weight-semibold);
+  // `inset` y no `border`: un borde de verdad cambiaría el tamaño del chip al
+  // activarse y movería a los otros tres de sitio.
+  box-shadow: inset 0 0 0 1px var(--tab-soft-text);
+}
+
+// `[hidden]` por sí solo es `display: none`, pero cualquier `display` declarado
+// después le gana. Explicitarlo es lo que impide que un cambio futuro en la
+// hoja deje los cuatro paneles apilados a la vez.
+.quick-create__tabpanel[hidden] {
+  display: none;
+}
+
+// -----------------------------------------------------------------------------
+// Móvil: el activo se nombra, los demás se dibujan
+// -----------------------------------------------------------------------------
+//
+// Con icono Y etiqueta en los cuatro, la barra pide ~346px y en un viewport de
+// 320px solo hay ~246 disponibles (288 de diálogo − 2 de borde − 32 de relleno
+// del panel − 8 del contenedor): el cuarto chip se salía y había que deslizar
+// para verlo, o sea que dejaba de estar visible.
+//
+// La regla: **el chip activo lleva icono Y palabra; los otros tres, solo el
+// icono.** Cuenta a 320px: 3×34 (los de icono) + 3×8 de hueco + ~104 del activo
+// = 230 de 246, con 16px de sobra. A 360px sobran ~56, y por eso los chips
+// crecen para repartírselos en vez de dejar un hueco muerto a la derecha.
+//
+// `overflow-x: auto` sigue puesto arriba como red: si la fuente del sistema es
+// más ancha de lo que sale en esta cuenta, la barra desliza en vez de recortar.
+@include layout.below-tablet {
+  // Se recupera relleno del panel para dárselo a la barra — y de paso al par
+  // fecha+hora, que peleaba por los mismos píxeles.
+  .quick-create__panel {
+    padding: var(--space-4);
+  }
+
+  // 8px es el mínimo de separación entre dos objetivos táctiles. Antes había 4.
+  .quick-create__tabs {
+    gap: var(--space-2);
+  }
+
+  .quick-create__tab {
+    // 44px de ALTO, que es el mínimo táctil de la guía (medían ~36).
+    //
+    // De ancho NO se fuerza ese mismo mínimo: un chip de solo icono mide 34 por
+    // su contenido, y obligarlo a 44 costaba 30px en la barra — justo los que
+    // hacen falta para que el activo pueda llevar su icono. 34×44 con 8px de
+    // separación pasa de sobra el requisito de WCAG 2.2 AA (24×24 CSS px); los
+    // 44×44 que cita la base son la recomendación de la HIG de iOS, no el
+    // umbral de fallo. Y en la práctica casi nunca se quedan en 34: con espacio
+    // sobrante crecen.
+    min-height: 44px;
+    padding: var(--space-2);
+    font-size: var(--text-xs);
+  }
+
+  // Recortada, NO `display: none`: el nombre accesible del botón sale de este
+  // texto. Con `display: none` los tres chips inactivos se anunciarían sin
+  // nombre, que es el antipatrón de "botón de solo icono sin etiqueta".
+  // Réplica de la `.visually-hidden` global; no se puede reutilizar la clase
+  // porque aquí depende del estado y del ancho, no de un atributo en la
+  // plantilla.
+  .quick-create__tab:not([aria-selected='true']) .quick-create__tab-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}

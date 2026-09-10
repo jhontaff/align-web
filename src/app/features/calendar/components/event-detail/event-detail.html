@@ -7,6 +7,14 @@
 >
   <div class="event-detail__panel">
     <header class="event-detail__header">
+      <!-- Rótulo del dominio, incondicional: `EventDetail` solo existe como cuadro flotante. -->
+      <!-- Primero en el DOM aunque el CSS lo suba de fila, para que se lea antes que los botones. -->
+      <!-- Se pinta también mientras carga, cuando el título aún es el genérico "Evento". -->
+      <p class="kicker event-detail__domain">
+        <app-icon class="event-detail__domain-icon" name="bi:calendar3" />
+        Calendario
+      </p>
+
       <h2 class="event-detail__title" [id]="titleId">{{ event()?.title ?? 'Evento' }}</h2>
 
       <div class="event-detail__actions">

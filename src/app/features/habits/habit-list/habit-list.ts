@@ -13,16 +13,14 @@ import {
   signal,
   viewChild
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
-import { optional } from '../../../core/http/optional';
 import { PushService } from '../../../core/notifications/push.service';
 import { Icon } from '../../../shared/ui/icon/icon';
-import { HabitRequest, HabitResponse } from '../models/habit.model';
-import { HABIT_NAME_MAX_LENGTH } from '../habit-rules';
+import { HabitResponse } from '../models/habit.model';
+import { HabitFields } from '../components/habit-fields/habit-fields';
 import { HabitService } from '../habit.service';
 
 /**
@@ -85,13 +83,12 @@ const REORDER_MS = 320;
 
 @Component({
   selector: 'app-habit-list',
-  imports: [ReactiveFormsModule, RouterLink, Icon],
+  imports: [RouterLink, Icon, HabitFields],
   templateUrl: './habit-list.html',
   styleUrl: './habit-list.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HabitList implements OnInit {
-  private readonly fb = inject(FormBuilder);
   private readonly habits = inject(HabitService);
   private readonly dataRefresh = inject(DataRefreshService);
 
@@ -109,18 +106,6 @@ export class HabitList implements OnInit {
 
   private readonly injector = inject(Injector);
   private readonly zone = inject(NgZone);
-
-  private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
-
-  /**
-   * Los dos extremos del despliegue de la hora. Existen para MOVER EL FOCO, que
-   * es lo unico que un `@if` no resuelve solo: al desplegar hay que llevarlo al
-   * campo nuevo, y al plegar devolverlo al disparador — si no, el foco se queda
-   * en un boton que acaba de desmontarse y cae al `<body>`, o sea que quien
-   * navega con teclado vuelve al principio de la pagina.
-   */
-  private readonly timeInput = viewChild<ElementRef<HTMLInputElement>>('timeInput');
-  private readonly addTimeButton = viewChild<ElementRef<HTMLButtonElement>>('addTimeButton');
 
   /**
    * La rejilla, para medir las tarjetas antes y despues de reordenarlas.
@@ -145,17 +130,11 @@ export class HabitList implements OnInit {
   protected readonly loading = signal(true);
 
   /**
-   * Dos signals de error, no uno.
-   *
-   * `createError` se pinta dentro del formulario y `errorMessage` sobre la
-   * lista: un fallo al dar de alta y un fallo al cargar o al marcar no ocurren
-   * en el mismo sitio de la pantalla, y fundirlos dejaria el mensaje del alta
-   * flotando lejos del campo que lo provoco.
+   * El fallo al CARGAR o al marcar. El del alta no vive aqui: se pinta dentro de
+   * `HabitFields`, pegado al campo que lo provoco, que es exactamente por lo que
+   * nunca fueron el mismo signal.
    */
-  protected readonly createError = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
-
-  protected readonly submitting = signal(false);
 
   /**
    * Id del habito con una peticion de marcado en vuelo, **en cualquiera de los
@@ -184,87 +163,6 @@ export class HabitList implements OnInit {
   /** Lo ultimo confirmado, para la region `role="status"`. */
   protected readonly statusMessage = signal('');
 
-  /**
-   * `maxLength(100)` porque la spec viva declara ese tope en
-   * `HabitRequest.name`: sin el, un nombre largo se manda igual y vuelve como
-   * 400 — un error de servidor por algo que el navegador ya sabia.
-   *
-   * El input lleva ademas el atributo `maxlength` nativo, que **impide** pasarse
-   * en vez de avisar despues. El validador se queda como red: el atributo no
-   * cubre un pegado por programa ni un valor puesto desde el codigo, y sin el
-   * `form.invalid` no seria cierto.
-   */
-  protected readonly form = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(HABIT_NAME_MAX_LENGTH)]],
-
-    /**
-     * **Siempre en el grupo, aunque el input no este montado.** Declararlo
-     * condicionalmente obligaria a `addControl`/`removeControl` en tiempo de
-     * ejecucion y a que la plantilla se defendiera de que el control todavia no
-     * exista; con el valor por defecto correcto, tenerlo plegado simplemente lo
-     * ignora. Mismo criterio que el `status` de `task-form` en modo creacion.
-     *
-     * Sin validadores: un `<input type="time">` solo puede devolver una hora
-     * valida o cadena vacia, asi que no hay nada que validar. Igual que
-     * `dueTime` en `task-form`.
-     */
-    scheduledTime: ['']
-  });
-
-  /**
-   * Si el campo de hora esta desplegado.
-   *
-   * **La hora se pide bajo demanda y no de entrada**: el caso mayoritario es un
-   * habito sin hora, y el flujo real al empezar es dar de alta varios seguidos
-   * —nombre, Enter, nombre, Enter—. Un segundo campo siempre visible ensancharia
-   * esa fila para todo el mundo a cambio de servir a la minoria; el disparador
-   * cuesta un clic solo a quien si la quiere.
-   *
-   * Es estado de PRESENTACION, no del formulario: el control existe igual
-   * plegado. Lo unico que decide es si se pinta.
-   */
-  protected readonly showTime = signal(false);
-
-  /**
-   * El nombre tecleado, como signal.
-   *
-   * `toSignal` y no un `subscribe` a `valueChanges`: lo unico que se quiere es
-   * que la plantilla lea el valor, y con `OnPush` eso tiene que ser un signal o
-   * deja de repintarse. Es la misma regla por la que `draft` dejo de ser una
-   * propiedad plana en el compositor del chat.
-   *
-   * No hace falta `takeUntilDestroyed`: `toSignal` se da de baja solo al
-   * destruirse el contexto de inyeccion en el que se crea, que es este
-   * componente. El `changes` de `DataRefreshService` si lo lleva porque aquello
-   * es un `subscribe` manual sobre un Subject que no completa nunca.
-   */
-  private readonly nameValue = toSignal(this.form.controls.name.valueChanges, {
-    initialValue: ''
-  });
-
-  /**
-   * Si hay algo escrito en el campo de nombre. **Es lo que decide si la hora se
-   * ofrece siquiera.**
-   *
-   * La hora es un detalle DE un habito, asi que no tiene sentido pedirla antes
-   * de que exista el habito al que califica: con el campo vacio, "Añadir hora"
-   * es un control que no puede llevar a ningun sitio —el submit lo bloquea
-   * `Validators.required`— y ademas es ruido en la unica fila que hay en
-   * pantalla cuando la lista esta vacia. Progressive disclosure de segundo
-   * nivel: el nombre revela el disparador, y el disparador revela el campo.
-   *
-   * **`trim()` para que unos espacios no cuenten como nombre.** Es a proposito
-   * mas estricto que `Validators.required`, que da por bueno `'   '`: aqui lo
-   * que se decide es si merece la pena ensenar un control, y para eso el
-   * criterio honesto es si hay texto de verdad.
-   *
-   * Ocultar NO borra: `showTime` y el valor de `scheduledTime` sobreviven a
-   * vaciar el nombre, asi que reponerlo devuelve el campo tal y como estaba. Lo
-   * contrario tiraria lo que el usuario ya habia tecleado por corregir una
-   * errata en el nombre. Y no puede colarse una hora huerfana al backend porque
-   * `onSubmit()` sale antes por `form.invalid`.
-   */
-  protected readonly hasName = computed(() => this.nameValue().trim().length > 0);
 
   /**
    * **Lo que queda por hacer primero, lo hecho al final**; dentro de cada grupo,
@@ -352,43 +250,6 @@ export class HabitList implements OnInit {
     });
   }
 
-  /**
-   * Se expone para que la plantilla ponga el `maxlength` nativo en el input.
-   * Que el tope viva en una sola constante evita que el atributo y el validador
-   * digan cosas distintas.
-   */
-  protected readonly nameMaxLength = HABIT_NAME_MAX_LENGTH;
-
-  /**
-   * Despliega el campo de hora y lleva el foco dentro.
-   *
-   * **`afterNextRender` y no un `focus()` a secas**: el `@if` de la plantilla
-   * todavia no ha pintado el input cuando corre este handler, asi que
-   * `timeInput()` seria `undefined`. Es el mismo motivo por el que
-   * `reorderAnimated()` mide ahi y no en un `effect`.
-   */
-  protected revealTime(): void {
-    this.showTime.set(true);
-    this.focusAfterRender(() => this.timeInput()?.nativeElement.focus());
-  }
-
-  /**
-   * Pliega el campo y **borra la hora**, que son la misma accion: el boton dice
-   * "Quitar hora", asi que dejar el valor guardado y solo ocultarlo mandaria al
-   * backend una hora que el usuario cree haber quitado.
-   *
-   * El foco vuelve al disparador, que es el elemento que sustituye al campo.
-   */
-  protected clearTime(): void {
-    this.form.controls.scheduledTime.setValue('');
-    this.showTime.set(false);
-    this.focusAfterRender(() => this.addTimeButton()?.nativeElement.focus());
-  }
-
-  private focusAfterRender(focus: () => void): void {
-    afterNextRender(focus, { injector: this.injector });
-  }
-
   protected isDone(habit: HabitResponse): boolean {
     return habit.isCompletedToday;
   }
@@ -412,46 +273,14 @@ export class HabitList implements OnInit {
    * recargar: el POST ya devuelve el `HabitResponse` completo —con su `id` y su
    * `currentStreak` en 0— asi que un GET extra solo anadiria un parpadeo. Es lo
    * mismo que hace `TaskList` al borrar.
+   *
+   * La peticion, el formulario y el foco son de `HabitFields`; lo que queda aqui
+   * es lo que solo esta pantalla sabe hacer con el resultado — meterlo en la
+   * lista y anunciarlo.
    */
-  protected onSubmit(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-
-    this.submitting.set(true);
-    this.createError.set(null);
-
-    // **No se manda `getRawValue()` tal cual.** Con el campo plegado (o
-    // desplegado y vacio) `scheduledTime` vale `''`, y el backend responde 400
-    // al no poder parsear una cadena vacia como `LocalTime`. `optional()` la
-    // convierte en `undefined`, que desaparece del JSON.
-    const { name, scheduledTime } = this.form.getRawValue();
-    const request: HabitRequest = { name, scheduledTime: optional(scheduledTime) };
-
-    this.habits.create(request).subscribe({
-      next: habit => {
-        this.all.update(habits => [...habits, habit]);
-        this.form.reset();
-
-        // Se pliega tras cada alta: el caso comun es encadenar habitos sin
-        // hora, y dejarlo abierto arrastraria un campo vacio a todos los
-        // siguientes. Quien quiera hora otra vez la despliega con un clic.
-        this.showTime.set(false);
-
-        this.submitting.set(false);
-        this.statusMessage.set(`Habito "${habit.name}" creado.`);
-
-        // El foco vuelve al campo para poder encadenar altas. Sin esto, quien
-        // pulso el boton con el raton se queda con el foco en el boton y tiene
-        // que volver al campo a mano en cada habito que anada.
-        this.nameInput()?.nativeElement.focus();
-      },
-      error: err => {
-        this.submitting.set(false);
-        this.createError.set(extractErrorMessage(err));
-      }
-    });
+  protected onHabitCreated(habit: HabitResponse): void {
+    this.all.update(habits => [...habits, habit]);
+    this.statusMessage.set(`Habito "${habit.name}" creado.`);
   }
 
   /**

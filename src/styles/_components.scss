@@ -7,6 +7,10 @@
 // `shared/ui/` como componente. Estas clases no deben crecer hacia allá.
 // =============================================================================
 
+// Solo variables y mixins: `_layout.scss` no emite CSS, así que esto no duplica
+// nada. Lo usa el bloque `below-tablet` del final de la hoja.
+@use 'layout';
+
 // -----------------------------------------------------------------------------
 // Layout
 // -----------------------------------------------------------------------------
@@ -186,7 +190,8 @@
 
 .field input,
 .field textarea,
-.field select {
+.field select,
+.date-time-group input {
   padding: var(--space-2) var(--space-3);
   min-height: 40px;
   border: 1px solid var(--color-border);
@@ -205,7 +210,8 @@
 
 .field input:focus,
 .field textarea:focus,
-.field select:focus {
+.field select:focus,
+.date-time-group input:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: var(--focus-ring);
@@ -228,30 +234,51 @@
   color: var(--color-danger);
 }
 
-// `wrap`, no una sola línea forzada: los dos consumidores de hoy
-// (`dueDate`/`dueTime` en Tareas, el rango de un evento en Calendario) son
-// siempre pares fecha/hora, y un `<input type="time">` con AM/PM nativo no
-// entra en la mitad de una pantalla de móvil sin recortarse — el reloj y la
-// "a. m." se montaban uno sobre otro. Con `wrap` el segundo campo baja de
-// línea solo cuando de verdad no cabe, en vez de encogerse hasta cortar su
-// propio contenido.
-.field-row {
+// -----------------------------------------------------------------------------
+// Par fecha + hora
+// -----------------------------------------------------------------------------
+//
+// Sustituye a `.field-row`, que en la práctica solo se usó para pares fecha/hora.
+// Un par fecha+hora es UN dato —"cuándo"—, no dos: una sola etiqueta y una sola separación.
+// Con `.field-row` cada mitad era un `.field` completo y en móvil se comía media pantalla.
+// `role="group"` y no `<fieldset>`/`<legend>`: misma semántica y la etiqueta va dentro de la caja.
+// Cada input conserva su `aria-label`: el nombre del grupo no sustituye al del control.
+.date-time-group {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  // Un punto por debajo de la superficie del formulario: es lo que hace que se
+  // lea como una caja que agrupa, sin necesidad de subir el peso del borde.
+  background: var(--color-surface-muted);
 }
 
-// 150px es el ancho de un `<input type="time">` en 12 horas con AM/PM, el
-// más ancho de los dos tipos que hoy comparten esta fila. `flex: 0 0 150px`
-// y no `flex: 1`: con `1` cada campo se estiraba a la mitad de la fila
-// (~210px en un diálogo de 480px) y el navegador dejaba el valor pegado a
-// la izquierda con un hueco vacío antes del icono — un campo de fecha no
-// necesita ni se ve bien ocupando ese ancho. Sin crecimiento ni encogimiento,
-// cada campo mide siempre lo mismo, compacto; el `flex-wrap` de arriba es
-// lo único que reacciona al ancho disponible, bajando el segundo campo de
-// línea cuando los dos no caben.
-.field-row .field {
-  flex: 0 0 150px;
+// Pequeña y en mayúsculas de CSS, no escritas en la plantilla: `text-transform`
+// no toca el nombre accesible, así que el lector de pantalla sigue oyendo
+// "Inicio" y no deletreando "I-N-I-C-I-O".
+.date-time-group__label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+// Los inputs se miden SOLOS y solo bajan de línea si de verdad no caben. Es la
+// misma razón que ya documentaba `.field-row`, y sigue vigente: un
+// `<input type="time">` en formato de 12 horas lleva "a. m." dentro y no entra
+// en media pantalla estrecha — el reloj y el texto se montaban uno sobre otro.
+// Lo que cambia es que ahora, sin las dos etiquetas y con el relleno más
+// apretado, el caso de 24 horas sí cabe en una línea, que es el que se lleva la
+// compactación. Nada de `flex-basis` fijo: forzarlo es lo que reintroduce el
+// recorte en los navegadores de 12 horas.
+.date-time-group__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .form-error {
@@ -545,4 +572,149 @@
   margin: var(--space-2) 0;
   border: 0;
   background: var(--color-border);
+}
+
+
+// -----------------------------------------------------------------------------
+// Cuadro flotante (`.dialog`)
+// -----------------------------------------------------------------------------
+// Caja, velo y animación de un `<dialog>` abierto con `showModal()`.
+// Clase global y no componente: es pintura sobre elementos que el consumidor ya escribe.
+// El ancho lo pide cada componente con `--dialog-width`; los valores en uso no son una escala.
+// `dvh` y no `vh`: `vh` mide con la barra del navegador retraída y corta el diálogo por abajo.
+.dialog {
+  // Sin `padding`: con relleno, un clic en el borde reportaría el `<dialog>` como `target` y cerraría.
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  width: min(var(--dialog-width, 480px), calc(100vw - var(--space-8)));
+  max-height: calc(100dvh - var(--space-8));
+
+  opacity: 0;
+  scale: 0.96;
+
+  // `allow-discrete` deja ver la salida: sin él el navegador saca el elemento del top layer de golpe.
+  transition:
+    opacity 160ms ease,
+    scale 160ms ease,
+    display 160ms allow-discrete,
+    overlay 160ms allow-discrete;
+}
+
+.dialog[open] {
+  opacity: 1;
+  scale: 1;
+}
+
+// `@starting-style` deja ver la entrada: sin él no hay estado desde el que animar.
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+.dialog::backdrop {
+  background: transparent;
+  transition:
+    background 160ms ease,
+    display 160ms allow-discrete,
+    overlay 160ms allow-discrete;
+}
+
+.dialog[open]::backdrop {
+  background: var(--color-scrim);
+}
+
+@starting-style {
+  .dialog[open]::backdrop {
+    background: transparent;
+  }
+}
+
+// Se quita el recorrido, no la modalidad: molesta el movimiento, no que el fondo quede inerte.
+@media (prefers-reduced-motion: reduce) {
+  .dialog,
+  .dialog::backdrop {
+    transition: none;
+  }
+}
+
+// El relleno va aquí y no en el `<dialog>`, por el clic en el velo.
+// `min-height: 0` es lo que hace que el `overflow-y` enganche: sin él el hijo no encoge.
+.dialog__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+  max-height: calc(100dvh - var(--space-8));
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+.dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.dialog__title {
+  margin: 0;
+  font-size: var(--text-h2);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+
+  // Un título de una palabra muy larga desbordaría la caja.
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+// Editar, eliminar y cerrar en una fila que no se encoge cuando el título es largo.
+.dialog__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+// -----------------------------------------------------------------------------
+// Rótulo de contexto (`.kicker`)
+// -----------------------------------------------------------------------------
+// Rótulo pequeño encima del título que dice de qué es lo que se mira ("Tareas", "Finanzas").
+// Sin fondo a propósito: en esa cabecera ya hay badges, y dos fondos de color compiten entre sí.
+// El color lo pone solo el icono, y lo elige la hoja de cada feature.
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-muted);
+}
+
+// -----------------------------------------------------------------------------
+// Los bloques de media query van al FINAL de la hoja, nunca junto a la regla que
+// modifican: una media query no añade especificidad, solo decide el orden, así
+// que puesta arriba la pisa la declaración de más abajo. Ya pasó en
+// `app-header.scss`.
+// -----------------------------------------------------------------------------
+@include layout.below-tablet {
+  // El par cabe en una línea o no cabe, y la diferencia son ~20px: apretando el grupo se ganan.
+  // A 360px el diálogo deja 288px, y date (~136px) + time en 12 horas (~131px) no entran con el relleno normal.
+  // Los anchos de un input nativo los decide el motor y cambian con la fuente y el idioma del navegador:
+  // son una estimación SIN medir en un teléfono real. Si aun así se parten, apretar `.quick-create__panel`.
+  // Apilados el grupo costaría casi lo mismo que los dos `.field` que sustituye; para eso está el `flex-wrap`.
+  .date-time-group {
+    padding: var(--space-2);
+  }
+
+  .date-time-group input {
+    padding-inline: var(--space-2);
+  }
 }

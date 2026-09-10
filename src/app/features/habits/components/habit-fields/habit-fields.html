@@ -1,0 +1,103 @@
+<!--
+  Una sola plantilla para las dos variantes: lo que cambia es dónde está el
+  botón de envío y si hay Cancelar, no los campos. Los `id` llevan prefijo por
+  instancia; ver la cabecera de `event-fields.html`.
+-->
+<form
+  class="habit-fields"
+  [class.habit-fields--inline]="variant() === 'inline'"
+  [formGroup]="form"
+  (ngSubmit)="onSubmit()"
+>
+  <div class="habit-fields__row">
+    <div class="field habit-fields__field">
+      <!--
+        Etiqueta visible, no un `aria-label` sobre el input: un placeholder
+        desaparece al escribir y deja el campo sin nombre a la vista.
+
+        En `stacked` dice "Nombre" y no "Nuevo hábito" porque ahí el título del
+        diálogo ya lo dice: repetirlo haría que un lector de pantalla anunciara
+        "Nuevo hábito" dos veces seguidas.
+      -->
+      <label [attr.for]="fieldId('name')">
+        {{ variant() === 'inline' ? 'Nuevo hábito' : 'Nombre' }}
+      </label>
+      <input
+        #nameInput
+        [id]="fieldId('name')"
+        type="text"
+        formControlName="name"
+        autocomplete="off"
+        [maxlength]="nameMaxLength"
+        placeholder="Leer 20 minutos"
+      />
+    </div>
+
+    @if (variant() === 'inline') {
+      <button class="btn btn-primary habit-fields__submit" type="submit" [disabled]="submitting()">
+        <app-icon name="bi:plus-lg" />
+        Añadir
+      </button>
+    }
+  </div>
+
+  <!--
+    La hora, bajo demanda y solo con el nombre puesto. El control
+    `scheduledTime` existe en el `FormGroup` esté o no montado el input: lo que
+    el `@if` decide es la pintura, no el formulario.
+  -->
+  @if (hasName()) {
+    @if (!showTime()) {
+      <button
+        #addTimeButton
+        type="button"
+        class="btn btn-ghost btn-sm habit-fields__add-time"
+        aria-expanded="false"
+        [attr.aria-controls]="fieldId('time-field')"
+        (click)="revealTime()"
+      >
+        <app-icon name="bi:clock" />
+        Añadir hora
+      </button>
+    } @else {
+      <div class="field habit-fields__time" [id]="fieldId('time-field')">
+        <label [attr.for]="fieldId('time')">Hora</label>
+
+        <div class="habit-fields__time-control">
+          <input #timeInput [id]="fieldId('time')" type="time" formControlName="scheduledTime" />
+
+          <!--
+            Quitar la hora PLIEGA y BORRA a la vez: dejar el valor puesto y solo
+            ocultarlo mandaría al backend una hora que el usuario cree haber
+            quitado. El nombre accesible va en `aria-label` porque el botón solo
+            tiene icono, y `<app-icon>` lleva `aria-hidden` fijo.
+          -->
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon habit-fields__time-clear"
+            aria-label="Quitar hora"
+            title="Quitar hora"
+            (click)="clearTime()"
+          >
+            <app-icon name="bi:x-lg" />
+          </button>
+        </div>
+
+        <p class="habit-fields__time-hint">Recibirás un aviso a esa hora.</p>
+      </div>
+    }
+  }
+
+  @if (createError(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+
+  @if (variant() === 'stacked') {
+    <div class="form-actions">
+      <button class="btn btn-ghost" type="button" (click)="cancel.emit()">Cancelar</button>
+      <button class="btn btn-primary" type="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Creando...' : 'Crear hábito' }}
+      </button>
+    </div>
+  }
+</form>

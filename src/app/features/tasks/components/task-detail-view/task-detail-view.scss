@@ -1,0 +1,158 @@
+@use '../../../../../styles/layout';
+
+// El envoltorio con pintura lo pone quien monta: dentro del diálogo, otra tarjeta sería caja en caja.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+// Título, badges y —si se proyectan— las acciones, en una fila. Del `wrap` tira el bloque móvil.
+.task-detail-view__header {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+
+// Con rótulo la cabecera es rejilla: arriba rótulo + acciones, abajo título + badges.
+// Rejilla y no flex con `wrap`: el salto de flex mide el tamaño hipotético, y forzarlo con
+// `flex-basis: 100%` se comía la fila entera y echaba las badges a una tercera.
+// El `order` sube a la primera fila el par rótulo + acciones, que llegan las últimas del DOM.
+// Sin `grid-template-areas`: nombrar un área exige `grid-area` en cada hijo, y al proyectado no se llega.
+// Modificador y no `:has(.kicker)`: la ruta no pinta rótulo y no debe depender de esa consulta.
+.task-detail-view__header--with-domain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+
+  // Centra el rótulo contra los botones: una línea de texto contra 40px de alto.
+  align-items: center;
+
+  // Más apretado que la regla base: es un antetítulo y con más aire deja de leerse pegado al título.
+  gap: var(--space-2) var(--space-4);
+
+  .task-detail-view__title,
+  .task-detail-view__badges {
+    order: 1;
+
+    // La segunda fila se alinea arriba: con un título de dos líneas, centrar dejaría las badges a media altura.
+    align-self: start;
+  }
+}
+
+// El mismo color con el que `QuickCreate` marca este dominio; el par `soft-text` porque el sólido da 2,15:1.
+.task-detail-view__domain-icon {
+  color: var(--color-domain-task-soft-text);
+  font-size: var(--text-base);
+  flex-shrink: 0;
+}
+
+.task-detail-view__title {
+  // Empuja badges y botones al borde derecho sin un `justify-content` que también los separaría entre sí.
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--text-h1);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+
+  // Sin esto un título de una palabra muy larga saca scroll horizontal a la página entera.
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+// Dentro del diálogo el título no encabeza una página: al tamaño de `<h1>` se comería el panel.
+.task-detail-view__title--compact {
+  font-size: var(--text-h2);
+}
+
+.task-detail-view__badges {
+  display: flex;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.task-detail-view__fields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+
+  @include layout.below-tablet {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// La descripción es texto libre y largo: ocupa la fila entera en vez de media columna al doble de alto.
+.task-detail-view__field--wide {
+  grid-column: 1 / -1;
+}
+
+.task-detail-view__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+
+  dt {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+
+    // Conserva los saltos de línea del usuario; sin esto varios párrafos se aplanan en un bloque.
+    white-space: pre-wrap;
+  }
+}
+
+// Mapeo dominio → semántica, duplicado de `task-list.scss` porque la encapsulación es por componente.
+// Subirlo a `_components.scss` convertiría un mapeo de dominio en primitiva global.
+.badge--status-pending,
+.badge--priority-medium {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-soft-text);
+}
+
+.badge--status-in_progress {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-soft-text);
+}
+
+.badge--status-completed {
+  background: var(--color-success-soft);
+  color: var(--color-success-soft-text);
+}
+
+.badge--priority-high {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-soft-text);
+}
+
+// -----------------------------------------------------------------------------
+// Los bloques de media query van al FINAL de la hoja — ver la nota de
+// `_components.scss`.
+// -----------------------------------------------------------------------------
+@include layout.below-tablet {
+  // En móvil no caben título, dos badges y tres botones de 44px en una fila: las badges bajan.
+  // Bajan las badges y no los botones porque cerrar se busca siempre arriba a la derecha.
+  // `order` y no reordenar el marcado: el DOM es el que leen teclado y lector, y ahí ya es correcto.
+  // Con rótulo la cabecera es rejilla y esto no la toca; su equivalente va en el bloque de abajo.
+  .task-detail-view__badges {
+    order: 1;
+
+    // Fuerza el salto de fila: ocupar el ancho entero no deja sitio a su izquierda.
+    flex-basis: 100%;
+  }
+
+  // El equivalente en rejilla: cada uno se lleva las dos columnas y cae en su propia fila.
+  .task-detail-view__header--with-domain {
+    .task-detail-view__title,
+    .task-detail-view__badges {
+      grid-column: 1 / -1;
+    }
+  }
+}
