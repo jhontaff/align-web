@@ -307,6 +307,17 @@
     </div>
   }
 
+  <!--
+    Los seis cuadros flotantes del widget, uno por rama de `WidgetMode`. Los
+    tres dominios siguen el MISMO camino —detalle en burbuja, y de ahí a editar
+    en otra burbuja— para que tocar un chip signifique lo mismo en los tres.
+    Ninguno navega: cerrar devuelve a Inicio tal y como estaba, que es la razón
+    de que tarea y movimiento dejaran de abrirse con `router.navigate`.
+
+    `@else if` encadenados y no seis `@if` sueltos: `WidgetMode` es una unión
+    cerrada y solo una rama puede estar viva, así que encadenarlos lo hace
+    cumplir por construcción en vez de por disciplina.
+  -->
   @if (detailEventId(); as id) {
     <app-event-detail
       [eventId]="id"
@@ -318,6 +329,32 @@
     <app-event-edit
       [event]="editEvent()"
       (saved)="onEventSaved()"
+      (cancel)="onPanelClose()"
+    />
+  } @else if (detailTaskId(); as id) {
+    <app-task-detail-dialog
+      [taskId]="id"
+      (edit)="onTaskEdit($event)"
+      (deleted)="onItemChanged()"
+      (close)="onPanelClose()"
+    />
+  } @else if (editTask(); as task) {
+    <app-task-edit-dialog
+      [task]="task"
+      (saved)="onItemChanged()"
+      (cancel)="onPanelClose()"
+    />
+  } @else if (detailTransactionId(); as id) {
+    <app-transaction-detail-dialog
+      [transactionId]="id"
+      (edit)="onTransactionEdit($event)"
+      (deleted)="onItemChanged()"
+      (close)="onPanelClose()"
+    />
+  } @else if (editTransaction(); as transaction) {
+    <app-transaction-edit-dialog
+      [transaction]="transaction"
+      (saved)="onItemChanged()"
       (cancel)="onPanelClose()"
     />
   }

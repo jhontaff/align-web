@@ -1,0 +1,30 @@
+<dialog
+  #dialog
+  class="dialog"
+  [attr.aria-labelledby]="titleId"
+  (click)="onBackdropClick($event)"
+  (close)="onNativeClose()"
+>
+  <div class="dialog__panel">
+    <header class="dialog__header">
+      <h2 class="dialog__title" [id]="titleId">{{ heading() }}</h2>
+
+      <button
+        type="button"
+        class="btn btn-ghost btn-icon"
+        aria-label="Cerrar"
+        title="Cerrar"
+        (click)="onCloseClick()"
+      >
+        <app-icon name="bi:x-lg" />
+      </button>
+    </header>
+
+    <!--
+      Cancelar cierra el `<dialog>` en vez de emitir `cancel` directamente: así
+      las tres salidas (Escape, clic fuera, este botón) pasan todas por el
+      evento `close` nativo y hay un solo camino que avisar al padre.
+    -->
+    <app-task-fields [task]="task()" (saved)="saved.emit($event)" (cancel)="onCloseClick()" />
+  </div>
+</dialog>

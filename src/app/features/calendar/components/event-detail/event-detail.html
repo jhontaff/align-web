@@ -7,6 +7,22 @@
 >
   <div class="event-detail__panel">
     <header class="event-detail__header">
+      <!--
+        El rótulo del dominio, igual que en las burbujas de tarea y de
+        movimiento. Aquí es incondicional y no un `input` como allí: `EventDetail`
+        solo existe como cuadro flotante —Calendario no tiene pantalla ruteada—,
+        así que no hay un segundo montaje que quiera prescindir de él.
+
+        Va PRIMERO en el DOM aunque el CSS lo deje compartiendo fila con las
+        acciones: así se lee "Calendario, Reunión..." y solo después los botones.
+        Se pinta también mientras carga, cuando el título aún es el genérico
+        "Evento" — ahí es lo único que dice qué se está abriendo.
+      -->
+      <p class="kicker event-detail__domain">
+        <app-icon class="event-detail__domain-icon" name="bi:calendar3" />
+        Calendario
+      </p>
+
       <h2 class="event-detail__title" [id]="titleId">{{ event()?.title ?? 'Evento' }}</h2>
 
       <div class="event-detail__actions">

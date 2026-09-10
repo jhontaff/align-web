@@ -1,0 +1,84 @@
+@if (task(); as task) {
+  <header
+    class="task-detail-view__header"
+    [class.task-detail-view__header--with-domain]="showDomain()"
+  >
+    <!--
+      El rótulo del dominio. Va PRIMERO en el DOM aunque el CSS lo deje
+      compartiendo fila con las acciones (que llegan proyectadas al final): así
+      un lector de pantalla lee "Tareas, Comprar pan, Pendiente..." y solo
+      después los botones, que es el orden con sentido. Reordenar con `order`
+      es seguro aquí porque nada de lo que se adelanta es enfocable.
+    -->
+    @if (showDomain()) {
+      <p class="kicker task-detail-view__domain">
+        <app-icon class="task-detail-view__domain-icon" name="bi:check2-circle" />
+        Tareas
+      </p>
+    }
+
+    <!--
+      Dos ramas y no un solo `<h1>`: ver `headingLevel`. Lo único que cambia es
+      la etiqueta — clase, id y contenido son los mismos en las dos.
+    -->
+    @if (headingLevel() === 1) {
+      <h1 class="task-detail-view__title" [attr.id]="titleId()">{{ task.title }}</h1>
+    } @else {
+      <h2 class="task-detail-view__title task-detail-view__title--compact" [attr.id]="titleId()">{{ task.title }}</h2>
+    }
+
+    <div class="task-detail-view__badges">
+      <span class="badge" [class]="'badge--status-' + task.status.toLowerCase()">{{ statusLabel(task.status) }}</span>
+      <span class="badge" [class]="'badge--priority-' + task.priority.toLowerCase()">{{ priorityLabel(task.priority) }}</span>
+    </div>
+
+    <!--
+      Hueco para las acciones de quien monta. Existe para que el cuadro flotante
+      pueda meter sus tres botones EN ESTA MISMA FILA en vez de en una cabecera
+      propia encima, que dejaba una banda vacía a la izquierda de los iconos.
+
+      Va sin envoltorio a propósito: el elemento proyectado es directamente el
+      hijo flexible. Con un `<div>` alrededor, la ruta —que no proyecta nada—
+      se quedaría con una caja vacía y su `gap` colgando a la derecha, y
+      esconderla dependería de que `:empty` no se rompa por un nodo de texto.
+
+      Corolario: la vista NO puede pintar lo que se proyecta —la encapsulación
+      de Angular no alcanza al contenido proyectado, que conserva el atributo
+      de quien lo escribió—. No hace falta: los botones ya se pintan solos con
+      `.dialog__actions`, que es global.
+    -->
+    <ng-content select="[headerActions]" />
+  </header>
+
+  <!--
+    `<dl>` y no una tabla ni divs sueltos: son pares etiqueta/valor, que es
+    exactamente lo que una lista de definición anuncia a un lector de pantalla.
+    Los campos vacíos no se pintan como "—": una fila sin valor es ruido, y el
+    backend deja `description`, `dueDate` y `dueTime` en null con normalidad.
+  -->
+  <dl class="task-detail-view__fields">
+    @if (task.description) {
+      <div class="task-detail-view__field task-detail-view__field--wide">
+        <dt>Descripción</dt>
+        <dd>{{ task.description }}</dd>
+      </div>
+    }
+
+    @if (dueLabel(task); as due) {
+      <div class="task-detail-view__field">
+        <dt>Vencimiento</dt>
+        <dd>{{ due }}</dd>
+      </div>
+    }
+
+    <div class="task-detail-view__field">
+      <dt>Creada</dt>
+      <dd>{{ timestampLabel(task.createdAt) }}</dd>
+    </div>
+
+    <div class="task-detail-view__field">
+      <dt>Última actualización</dt>
+      <dd>{{ timestampLabel(task.updatedAt) }}</dd>
+    </div>
+  </dl>
+}
