@@ -368,11 +368,6 @@ export class CalendarWidget implements OnInit {
     this.load();
   }
 
-  /** Pública: el botón "Nuevo evento" vive en el `.page-header` de Home, que la dispara vía referencia de plantilla. */
-  openCreate(): void {
-    this.mode.set({ kind: 'edit', event: null });
-  }
-
   /** Evento → abre `EventDetail`; tarea/transacción → navegan. Un solo disparador para chips y filas de agenda. */
   protected onItemClick(item: AgendaItem): void {
     switch (item.kind) {

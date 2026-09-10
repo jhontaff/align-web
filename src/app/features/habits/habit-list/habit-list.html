@@ -109,100 +109,13 @@
     El alta va arriba y no al final: con la lista vacía es lo único que hay en
     pantalla, y con la lista llena sigue estando donde el usuario ya mira en
     vez de al fondo de un scroll.
+
+    El formulario en sí vive en `HabitFields`, compartido con la pestaña
+    "Hábito" del panel de creación rápida de Inicio. `variant="inline"` es esta
+    presentación: campo y "Añadir" en una fila, sin cancelar, con el foco
+    volviendo al campo para encadenar altas.
   -->
-  <form class="habit-create" [formGroup]="form" (ngSubmit)="onSubmit()">
-    <div class="habit-create__row">
-      <div class="field habit-create__field">
-        <!--
-          Etiqueta visible, no un `aria-label` sobre el input: un placeholder
-          desaparece al escribir y deja el campo sin nombre a la vista.
-        -->
-        <label for="habit-name">Nuevo hábito</label>
-        <input
-          #nameInput
-          id="habit-name"
-          type="text"
-          formControlName="name"
-          autocomplete="off"
-          [maxlength]="nameMaxLength"
-          placeholder="Leer 20 minutos"
-        />
-      </div>
-
-      <button class="btn btn-primary habit-create__submit" type="submit" [disabled]="submitting()">
-        <app-icon name="bi:plus-lg" />
-        Añadir
-      </button>
-    </div>
-
-    <!--
-      La hora, bajo demanda y en DOS niveles.
-
-      El de fuera: sin nombre escrito no se ofrece nada. La hora califica a un
-      hábito, así que pedirla antes de que el hábito exista es ofrecer un control
-      que no puede llevar a ningún sitio —el submit lo bloquea `required`— y que
-      además es ruido en la única fila que hay en pantalla con la lista vacía.
-
-      El de dentro: con nombre ya escrito, el caso mayoritario sigue siendo un
-      hábito SIN hora, y el flujo al empezar es dar de alta varios seguidos. Un
-      campo de hora siempre visible ensancharía la fila para todo el mundo a
-      cambio de servir a la minoría; así el coste lo paga —un clic— sólo quien
-      la quiere.
-
-      Vaciar el nombre OCULTA pero no borra: `showTime` y el valor de
-      `scheduledTime` sobreviven, así que reponer el nombre devuelve el campo
-      tal y como estaba. El control existe en el `FormGroup` esté o no montado
-      el input — lo que los `@if` deciden es la pintura, no el formulario.
-    -->
-    @if (hasName()) {
-      @if (!showTime()) {
-        <button
-          #addTimeButton
-          type="button"
-          class="btn btn-ghost btn-sm habit-create__add-time"
-          aria-expanded="false"
-          aria-controls="habit-time-field"
-          (click)="revealTime()"
-        >
-          <app-icon name="bi:clock" />
-          Añadir hora
-        </button>
-      } @else {
-        <div class="field habit-create__time" id="habit-time-field">
-          <label for="habit-time">Hora</label>
-
-          <div class="habit-create__time-control">
-            <input #timeInput id="habit-time" type="time" formControlName="scheduledTime" />
-
-            <!--
-              Quitar la hora PLIEGA y BORRA a la vez: dejar el valor puesto y
-              sólo ocultarlo mandaría al backend una hora que el usuario cree
-              haber quitado. Es la diferencia con vaciar el NOMBRE, que sólo
-              oculta: aquí el usuario ha pedido explícitamente quitarla.
-
-              El nombre accesible va en `aria-label` porque el botón sólo tiene
-              icono, y `<app-icon>` lleva `aria-hidden` fijo.
-            -->
-            <button
-              type="button"
-              class="btn btn-ghost btn-icon habit-create__time-clear"
-              aria-label="Quitar hora"
-              title="Quitar hora"
-              (click)="clearTime()"
-            >
-              <app-icon name="bi:x-lg" />
-            </button>
-          </div>
-
-          <p class="habit-create__time-hint">Recibirás un aviso a esa hora.</p>
-        </div>
-      }
-    }
-  </form>
-
-  @if (createError(); as message) {
-    <p class="form-error" role="alert">{{ message }}</p>
-  }
+  <app-habit-fields variant="inline" (created)="onHabitCreated($event)" />
 
   @if (errorMessage(); as message) {
     <p class="form-error" role="alert">{{ message }}</p>

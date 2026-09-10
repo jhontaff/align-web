@@ -7,6 +7,10 @@
 // `shared/ui/` como componente. Estas clases no deben crecer hacia allá.
 // =============================================================================
 
+// Solo variables y mixins: `_layout.scss` no emite CSS, así que esto no duplica
+// nada. Lo usa el bloque `below-tablet` del final de la hoja.
+@use 'layout';
+
 // -----------------------------------------------------------------------------
 // Layout
 // -----------------------------------------------------------------------------
@@ -186,7 +190,8 @@
 
 .field input,
 .field textarea,
-.field select {
+.field select,
+.date-time-group input {
   padding: var(--space-2) var(--space-3);
   min-height: 40px;
   border: 1px solid var(--color-border);
@@ -205,7 +210,8 @@
 
 .field input:focus,
 .field textarea:focus,
-.field select:focus {
+.field select:focus,
+.date-time-group input:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: var(--focus-ring);
@@ -228,30 +234,62 @@
   color: var(--color-danger);
 }
 
-// `wrap`, no una sola línea forzada: los dos consumidores de hoy
-// (`dueDate`/`dueTime` en Tareas, el rango de un evento en Calendario) son
-// siempre pares fecha/hora, y un `<input type="time">` con AM/PM nativo no
-// entra en la mitad de una pantalla de móvil sin recortarse — el reloj y la
-// "a. m." se montaban uno sobre otro. Con `wrap` el segundo campo baja de
-// línea solo cuando de verdad no cabe, en vez de encogerse hasta cortar su
-// propio contenido.
-.field-row {
+// -----------------------------------------------------------------------------
+// Par fecha + hora
+// -----------------------------------------------------------------------------
+//
+// Sustituye a `.field-row`, que era la fila genérica de dos campos y en la
+// práctica solo se usó para pares fecha/hora (los tres que había: inicio y fin
+// de un evento, vencimiento de una tarea).
+//
+// **Un par fecha+hora es UN dato —"cuándo"—, no dos.** Con `.field-row` cada
+// mitad era un `.field` completo, con su etiqueta encima y su `margin-bottom`:
+// dos líneas de etiqueta y dos separaciones por par, y en un evento son dos
+// pares. En móvil eso se comía media pantalla antes de llegar al primer botón.
+// Aquí la etiqueta es una sola, del grupo, y la separación también.
+//
+// `role="group"` + `aria-labelledby` y NO `<fieldset>`/`<legend>`: la semántica
+// es la misma y la etiqueta va DENTRO de la caja, mientras que un `<legend>` se
+// pinta encajado en el borde y llevarlo a esta posición pelea con el navegador
+// en cada motor. Cada input conserva su propio `aria-label` porque el nombre del
+// grupo no sustituye al del control: sin él, un lector de pantalla anuncia dos
+// campos de texto seguidos sin decir cuál es cuál.
+.date-time-group {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  // Un punto por debajo de la superficie del formulario: es lo que hace que se
+  // lea como una caja que agrupa, sin necesidad de subir el peso del borde.
+  background: var(--color-surface-muted);
 }
 
-// 150px es el ancho de un `<input type="time">` en 12 horas con AM/PM, el
-// más ancho de los dos tipos que hoy comparten esta fila. `flex: 0 0 150px`
-// y no `flex: 1`: con `1` cada campo se estiraba a la mitad de la fila
-// (~210px en un diálogo de 480px) y el navegador dejaba el valor pegado a
-// la izquierda con un hueco vacío antes del icono — un campo de fecha no
-// necesita ni se ve bien ocupando ese ancho. Sin crecimiento ni encogimiento,
-// cada campo mide siempre lo mismo, compacto; el `flex-wrap` de arriba es
-// lo único que reacciona al ancho disponible, bajando el segundo campo de
-// línea cuando los dos no caben.
-.field-row .field {
-  flex: 0 0 150px;
+// Pequeña y en mayúsculas de CSS, no escritas en la plantilla: `text-transform`
+// no toca el nombre accesible, así que el lector de pantalla sigue oyendo
+// "Inicio" y no deletreando "I-N-I-C-I-O".
+.date-time-group__label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+// Los inputs se miden SOLOS y solo bajan de línea si de verdad no caben. Es la
+// misma razón que ya documentaba `.field-row`, y sigue vigente: un
+// `<input type="time">` en formato de 12 horas lleva "a. m." dentro y no entra
+// en media pantalla estrecha — el reloj y el texto se montaban uno sobre otro.
+// Lo que cambia es que ahora, sin las dos etiquetas y con el relleno más
+// apretado, el caso de 24 horas sí cabe en una línea, que es el que se lleva la
+// compactación. Nada de `flex-basis` fijo: forzarlo es lo que reintroduce el
+// recorte en los navegadores de 12 horas.
+.date-time-group__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .form-error {
@@ -545,4 +583,38 @@
   margin: var(--space-2) 0;
   border: 0;
   background: var(--color-border);
+}
+
+// -----------------------------------------------------------------------------
+// Los bloques de media query van al FINAL de la hoja, nunca junto a la regla que
+// modifican: una media query no añade especificidad, solo decide el orden, así
+// que puesta arriba la pisa la declaración de más abajo. Ya pasó en
+// `app-header.scss`.
+// -----------------------------------------------------------------------------
+@include layout.below-tablet {
+  // El par fecha+hora cabe en una línea o no cabe, y la diferencia entre las dos
+  // cosas son ~20px. Echando la cuenta a 360px de ancho —NO medido en un
+  // navegador, ver abajo—: el diálogo deja 288px de contenido, y un
+  // `<input type="date">` (~136px) más un `<input type="time">` en formato de 12
+  // horas —que lleva "a. m." dentro, ~131px— más el hueco no entran con el
+  // relleno de siempre. Apretando el grupo y el relleno lateral de sus inputs se
+  // ganan los 16px que faltaban.
+  //
+  // Los anchos intrínsecos de un input nativo los decide el motor y cambian con
+  // la fuente y el idioma del NAVEGADOR (no el `LOCALE_ID` de la app), así que
+  // estos números son una estimación: hay que comprobarlos en un teléfono real.
+  // Si aun así se parten en dos líneas, el siguiente sitio de donde sacar
+  // espacio es el relleno lateral del `.quick-create__panel`.
+  //
+  // Es la diferencia entre ahorrar ~54px por par y ahorrar ~6px: apilados, el
+  // grupo cuesta casi lo mismo que los dos `.field` que sustituye. Por debajo de
+  // ~320px con un navegador de 12 horas siguen bajando de línea, y para eso está
+  // el `flex-wrap`.
+  .date-time-group {
+    padding: var(--space-2);
+  }
+
+  .date-time-group input {
+    padding-inline: var(--space-2);
+  }
 }
