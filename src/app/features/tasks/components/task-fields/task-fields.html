@@ -1,0 +1,69 @@
+<!-- Los `id` llevan prefijo por instancia; ver la cabecera de `event-fields.html`. -->
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  @if (errorMessage()) {
+    <p class="form-error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  <div class="field">
+    <label [attr.for]="fieldId('title')">Título</label>
+    <input [id]="fieldId('title')" type="text" formControlName="title" />
+  </div>
+
+  <div class="field">
+    <label [attr.for]="fieldId('description')">Descripción</label>
+    <textarea [id]="fieldId('description')" formControlName="description" rows="3"></textarea>
+  </div>
+
+  <!--
+    Solo al editar. Al crear, el estado lo fija el backend en PENDING, y un
+    selector que no se manda a ninguna parte prometería un control que no existe.
+  -->
+  @if (editing()) {
+    <div class="field">
+      <label [attr.for]="fieldId('status')">Estado</label>
+      <select [id]="fieldId('status')" formControlName="status">
+        <option value="PENDING">Pendiente</option>
+        <option value="IN_PROGRESS">En progreso</option>
+        <option value="COMPLETED">Completada</option>
+        <option value="CANCELLED">Cancelada</option>
+        <option value="EXPIRED">Expirada</option>
+      </select>
+    </div>
+  }
+
+  <div class="field">
+    <label [attr.for]="fieldId('priority')">Prioridad</label>
+    <select [id]="fieldId('priority')" formControlName="priority">
+      <option value="LOW">Baja</option>
+      <option value="MEDIUM">Media</option>
+      <option value="HIGH">Alta</option>
+    </select>
+  </div>
+
+  <!-- Ver `.date-time-group` en `_components.scss` y el comentario homónimo de `event-fields.html`. -->
+  <div class="date-time-group" role="group" [attr.aria-labelledby]="fieldId('due-label')">
+    <span class="date-time-group__label" [id]="fieldId('due-label')">Vencimiento</span>
+
+    <div class="date-time-group__controls">
+      <input type="date" formControlName="dueDate" aria-label="Fecha límite" />
+      <input type="time" formControlName="dueTime" aria-label="Hora límite" />
+    </div>
+  </div>
+
+  <!--
+    Cancelar dejó de ser un `<a routerLink>` y pasó a ser un `<button>` que
+    emite: el mismo formulario se monta ahora dentro de un diálogo, donde
+    cancelar no navega a ninguna parte, lo cierra. Quien lo monta decide qué
+    significa; aquí solo se avisa.
+  -->
+  <div class="form-actions">
+    <button class="btn btn-ghost" type="button" (click)="cancel.emit()">Cancelar</button>
+    <button class="btn btn-primary" type="submit" [disabled]="submitting()">
+      @if (editing()) {
+        {{ submitting() ? 'Guardando...' : 'Guardar cambios' }}
+      } @else {
+        {{ submitting() ? 'Creando...' : 'Crear tarea' }}
+      }
+    </button>
+  </div>
+</form>

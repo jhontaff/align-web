@@ -7,6 +7,7 @@ import { TaskService } from '../task.service';
 import { TaskResponse } from '../models/task.model';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '../../../shared/ui/icon/icon';
+import { TaskDetailView } from '../components/task-detail-view/task-detail-view';
 
 /**
  * Las tres situaciones posibles de la pantalla, como unión cerrada en vez de
@@ -28,7 +29,7 @@ type DetailState =
 
 @Component({
   selector: 'app-task-detail',
-  imports: [RouterLink, ConfirmDialog, Icon],
+  imports: [RouterLink, ConfirmDialog, Icon, TaskDetailView],
   templateUrl: './task-detail.html',
   styleUrl: './task-detail.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -151,20 +152,6 @@ export class TaskDetail {
     return task ? `Se eliminará "${task.title}" de forma permanente.` : '';
   });
 
-  private readonly statusLabels: Record<TaskResponse['status'], string> = {
-    PENDING: 'Pendiente',
-    IN_PROGRESS: 'En progreso',
-    COMPLETED: 'Completada',
-    CANCELLED: 'Cancelada',
-    EXPIRED: 'Expirada'
-  };
-
-  private readonly priorityLabels: Record<TaskResponse['priority'], string> = {
-    LOW: 'Baja',
-    MEDIUM: 'Media',
-    HIGH: 'Alta'
-  };
-
   protected onDeleteClick(): void {
     this.confirmOpen.set(true);
   }
@@ -191,50 +178,6 @@ export class TaskDetail {
         this.deleting.set(false);
         this.deleteError.set(extractErrorMessage(err));
       }
-    });
-  }
-
-  protected statusLabel(status: TaskResponse['status']): string {
-    return this.statusLabels[status];
-  }
-
-  protected priorityLabel(priority: TaskResponse['priority']): string {
-    return this.priorityLabels[priority];
-  }
-
-  /**
-   * Fecha y hora de vencimiento en una sola línea, mismo formato que la lista
-   * ("25 ago · 14:30"). El `T00:00:00` evita que `new Date('2026-08-25')` se
-   * interprete como UTC y retroceda un día en husos negativos.
-   */
-  protected dueLabel(task: TaskResponse): string | null {
-    if (!task.dueDate) {
-      return null;
-    }
-
-    const date = new Date(`${task.dueDate}T00:00:00`);
-    const formatted = date.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-
-    if (!task.dueTime) {
-      return formatted;
-    }
-
-    return `${formatted} · ${task.dueTime.slice(0, 5)}`;
-  }
-
-  /** Marcas de auditoría: aquí sí interesa la hora exacta, no solo el día. */
-  protected timestampLabel(iso: string): string {
-    return new Date(iso).toLocaleString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     });
   }
 }

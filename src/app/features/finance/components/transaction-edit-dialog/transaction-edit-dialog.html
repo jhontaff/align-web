@@ -1,0 +1,31 @@
+<dialog
+  #dialog
+  class="dialog"
+  [attr.aria-labelledby]="titleId"
+  (click)="onBackdropClick($event)"
+  (close)="onNativeClose()"
+>
+  <div class="dialog__panel">
+    <header class="dialog__header">
+      <!-- Título fijo y no el importe: el formulario ya lo trae en su primer campo. -->
+      <h2 class="dialog__title" [id]="titleId">Editar movimiento</h2>
+
+      <button
+        type="button"
+        class="btn btn-ghost btn-icon"
+        aria-label="Cerrar"
+        title="Cerrar"
+        (click)="onCloseClick()"
+      >
+        <app-icon name="bi:x-lg" />
+      </button>
+    </header>
+
+    <!-- Cancelar cierra el `<dialog>`: así las tres salidas pasan por el `close` nativo. -->
+    <app-transaction-fields
+      [transaction]="transaction()"
+      (saved)="saved.emit($event)"
+      (cancel)="onCloseClick()"
+    />
+  </div>
+</dialog>

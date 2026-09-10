@@ -1,0 +1,83 @@
+<dialog
+  #dialog
+  class="dialog"
+  [attr.aria-labelledby]="titleId"
+  (click)="onBackdropClick($event)"
+  (close)="onNativeClose()"
+>
+  <div class="dialog__panel">
+    <!-- Separado de `errorMessage`: ese sustituye al contenido, este se apila sobre una tarea aún válida. -->
+    @if (deleteError(); as message) {
+      <p class="form-error" role="alert">{{ message }}</p>
+    }
+
+    @if (errorMessage(); as message) {
+      <p class="form-error" role="alert">{{ message }}</p>
+    }
+
+    @if (task(); as task) {
+      <!-- Las acciones se proyectan en la cabecera de la vista: comparten línea con el título y las badges. -->
+      <app-task-detail-view [task]="task" [headingLevel]="2" [titleId]="titleId" [showDomain]="true">
+        <div headerActions class="dialog__actions">
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon task-detail-dialog__edit"
+            aria-label="Editar tarea"
+            title="Editar tarea"
+            (click)="onEditClick()"
+          >
+            <app-icon name="bi:pencil" />
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon task-detail-dialog__delete"
+            [disabled]="deleting()"
+            aria-label="Eliminar tarea"
+            title="Eliminar tarea"
+            (click)="onDeleteClick()"
+          >
+            <app-icon name="bi:trash3" />
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon"
+            aria-label="Cerrar"
+            title="Cerrar"
+            (click)="onCloseClick()"
+          >
+            <app-icon name="bi:x-lg" />
+          </button>
+        </div>
+      </app-task-detail-view>
+    } @else {
+      <!-- Mientras carga no hay cabecera donde proyectar, y un diálogo sin X solo se cierra a ciegas. -->
+      <!-- El botón se repite a propósito: un `ng-template` compartido costaría más de leer que estas líneas. -->
+      <div class="task-detail-dialog__fallback-header">
+        <button
+          type="button"
+          class="btn btn-ghost btn-icon"
+          aria-label="Cerrar"
+          title="Cerrar"
+          (click)="onCloseClick()"
+        >
+          <app-icon name="bi:x-lg" />
+        </button>
+      </div>
+
+      @if (loading()) {
+        <p class="empty-state">Cargando...</p>
+      }
+    }
+
+    <app-confirm-dialog
+      [(open)]="confirmOpen"
+      heading="Eliminar tarea"
+      [message]="confirmMessage()"
+      confirmLabel="Eliminar"
+      tone="danger"
+      (confirm)="onConfirmDelete()"
+    />
+  </div>
+</dialog>

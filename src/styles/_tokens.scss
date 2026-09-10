@@ -57,6 +57,12 @@
   --red-500: #ef4444;
   --red-600: #dc2626;
   --red-50:  #fef2f2;
+
+  // Violet — el único dominio que no tenía color propio (Hábitos). Ver la
+  // sección "Color por dominio" del nivel 2. Solo dos tonos: es lo que usa el
+  // par soft/soft-text, y el tema oscuro lleva sus valores propios.
+  --violet-700: #6d28d9;
+  --violet-50:  #f5f3ff;
 }
 
 // -----------------------------------------------------------------------------
@@ -96,6 +102,50 @@
   --color-danger: var(--red-600);
   --color-danger-soft: var(--red-50);
   --color-danger-soft-text: #991b1b;
+
+  // ---------------------------------------------------------------------------
+  // Color por dominio
+  // ---------------------------------------------------------------------------
+  //
+  // Cierra a medias la pregunta que este archivo tenía abierta ("¿el naranja del
+  // board oscuro era un tercer color de marca para distinguir dominios?"): sí,
+  // hace falta distinguirlos, pero NO hacía falta inventar una paleta — tres de
+  // los cuatro ya tenían color de facto en la app y lo único que faltaba era
+  // nombrarlo:
+  //
+  //   Evento      azul   — `agenda.ts` ya le da `tone: 'primary'` en el calendario.
+  //   Tarea       ámbar  — `agenda.ts` ya le da `tone: 'warning'`.
+  //   Movimiento  verde  — el emerald de este archivo es literalmente "saldo positivo".
+  //   Hábito      violeta — el único sin color propio, y el único hue nuevo.
+  //
+  // Los tres primeros son ALIAS a propósito, no copias del valor: si algún día
+  // cambia el ámbar de `warning`, la pestaña de Tareas y los chips del
+  // calendario siguen coincidiendo sin que nadie se acuerde de mirar los dos
+  // sitios.
+  //
+  // Solo existe el par `-soft`/`-soft-text`, sin un color "base" sólido: es lo
+  // ÚNICO que se usa, y son además las dos combinaciones ya medidas del sistema
+  // (≥4.8:1 en los dos temas). El color pleno de cada familia se descartó tras
+  // medirlo: el ámbar de `warning` da 2,15:1 sobre blanco y el emerald 2,54:1,
+  // así que un icono pintado con ellos se lava justo en el tema claro.
+  //
+  // **Identidad, no estado.** Un dominio no es "correcto" ni "peligroso": el
+  // verde de Movimiento dice "esto es dinero", no "esto ha ido bien" — dentro
+  // del formulario, el signo lo sigue diciendo el badge success/danger de la
+  // categoría. Por eso Hábitos no reutiliza el verde con el que pinta su check:
+  // ahí el verde significa "hecho hoy", y dos significados en el mismo color y
+  // la misma pantalla es como se deja de poder leer ninguno de los dos.
+  --color-domain-event-soft: var(--color-primary-soft);
+  --color-domain-event-soft-text: var(--color-primary-soft-text);
+
+  --color-domain-task-soft: var(--color-warning-soft);
+  --color-domain-task-soft-text: var(--color-warning-soft-text);
+
+  --color-domain-money-soft: var(--color-success-soft);
+  --color-domain-money-soft-text: var(--color-success-soft-text);
+
+  --color-domain-habit-soft: var(--violet-50);
+  --color-domain-habit-soft-text: var(--violet-700);
 
   // Velo de los overlays modales (::backdrop). Es un token porque el negro
   // translúcido de un tema claro no sirve en oscuro: sobre un fondo ya oscuro
@@ -145,6 +195,13 @@
   --color-danger: var(--red-400);
   --color-danger-soft: #3b1a1c;
   --color-danger-soft-text: #fca5a5;
+
+  // Solo Hábitos: los otros tres colores de dominio son alias de `primary`,
+  // `warning` y `success`, que este mismo mixin ya ha reasignado unas líneas más
+  // arriba — redeclararlos aquí sería crear la segunda fuente que el alias viene
+  // a evitar.
+  --color-domain-habit-soft: #2a1f4d;
+  --color-domain-habit-soft-text: #ddd6fe;
 
   --color-scrim: rgb(2 6 23 / 0.65);
 

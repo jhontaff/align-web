@@ -1,0 +1,58 @@
+@if (task(); as task) {
+  <header
+    class="task-detail-view__header"
+    [class.task-detail-view__header--with-domain]="showDomain()"
+  >
+    <!-- Primero en el DOM aunque el CSS lo suba de fila: así se lee "Tareas, Comprar pan..." y luego los botones. -->
+    @if (showDomain()) {
+      <p class="kicker task-detail-view__domain">
+        <app-icon class="task-detail-view__domain-icon" name="bi:check2-circle" />
+        Tareas
+      </p>
+    }
+
+    <!-- Dos ramas y no un solo `<h1>`: solo cambia la etiqueta, ver `headingLevel`. -->
+    @if (headingLevel() === 1) {
+      <h1 class="task-detail-view__title" [attr.id]="titleId()">{{ task.title }}</h1>
+    } @else {
+      <h2 class="task-detail-view__title task-detail-view__title--compact" [attr.id]="titleId()">{{ task.title }}</h2>
+    }
+
+    <div class="task-detail-view__badges">
+      <span class="badge" [class]="'badge--status-' + task.status.toLowerCase()">{{ statusLabel(task.status) }}</span>
+      <span class="badge" [class]="'badge--priority-' + task.priority.toLowerCase()">{{ priorityLabel(task.priority) }}</span>
+    </div>
+
+    <!-- Hueco para las acciones de quien monta, en esta misma fila y sin envoltorio. -->
+    <!-- Sin envoltorio porque la ruta no proyecta nada y dejaría una caja vacía con su `gap`. -->
+    <!-- La vista no puede pintarlas: el contenido proyectado conserva la encapsulación de quien lo escribió. -->
+    <ng-content select="[headerActions]" />
+  </header>
+
+  <!-- `<dl>` porque son pares etiqueta/valor; los campos vacíos no se pintan, una fila sin valor es ruido. -->
+  <dl class="task-detail-view__fields">
+    @if (task.description) {
+      <div class="task-detail-view__field task-detail-view__field--wide">
+        <dt>Descripción</dt>
+        <dd>{{ task.description }}</dd>
+      </div>
+    }
+
+    @if (dueLabel(task); as due) {
+      <div class="task-detail-view__field">
+        <dt>Vencimiento</dt>
+        <dd>{{ due }}</dd>
+      </div>
+    }
+
+    <div class="task-detail-view__field">
+      <dt>Creada</dt>
+      <dd>{{ timestampLabel(task.createdAt) }}</dd>
+    </div>
+
+    <div class="task-detail-view__field">
+      <dt>Última actualización</dt>
+      <dd>{{ timestampLabel(task.updatedAt) }}</dd>
+    </div>
+  </dl>
+}

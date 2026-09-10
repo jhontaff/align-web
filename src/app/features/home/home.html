@@ -6,21 +6,44 @@
 <div class="page page--wide">
   <div class="page-header">
     <h1>Hola, {{ authState.user()?.firstName | titlecase }}</h1>
+
+    <!--
+      Un botón de icono con nombre accesible fijo: `aria-label` y `title` dicen
+      lo mismo y no cambian con el estado, porque el estado abierto/cerrado ya lo
+      lleva `aria-expanded` — que los lectores de pantalla sí reanuncian con el
+      foco encima, al revés que un nombre accesible que cambia.
+
+      No lleva `aria-controls`: el panel solo existe en el DOM mientras está
+      abierto, y un `aria-controls` que apunta a un id inexistente es peor que su
+      ausencia.
+    -->
     <button
       type="button"
       class="btn btn-primary btn-icon"
-      aria-label="Nuevo evento"
-      title="Nuevo evento"
-      (click)="calendar.openCreate()"
+      aria-label="Crear"
+      title="Crear"
+      [attr.aria-expanded]="creating()"
+      (click)="creating.set(true)"
     >
       <app-icon name="bi:plus-lg" />
     </button>
   </div>
 
   <div class="home-grid">
-    <app-calendar-widget #calendar />
+    <app-calendar-widget />
     <app-tasks-summary />
     <app-finance-summary />
     <app-habits-summary />
   </div>
 </div>
+
+@if (creating()) {
+  <app-quick-create (created)="onCreated($event)" (close)="creating.set(false)" />
+}
+
+<!--
+  Fuera del `@if` y siempre en el DOM: una región `aria-live` que se monta a la
+  vez que su texto no se anuncia de forma fiable — el lector tiene que estar ya
+  observándola cuando el contenido cambia.
+-->
+<p class="visually-hidden" role="status">{{ statusMessage() }}</p>

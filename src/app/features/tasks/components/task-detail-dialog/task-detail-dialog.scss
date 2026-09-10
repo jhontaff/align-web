@@ -1,0 +1,36 @@
+// Caja, velo y animación vienen de `.dialog`; aquí solo lo propio de este diálogo.
+// `display: contents` porque el host no pinta nada y ocuparía una caja vacía en el flujo del widget.
+:host {
+  display: contents;
+}
+
+// Solo para la rama de carga/error, sin cabecera donde proyectar: la X sola, a la derecha.
+.task-detail-dialog__fallback-header {
+  display: flex;
+  justify-content: flex-end;
+}
+
+// En reposo van en gris y solo se tiñen al apuntarlos: un icono rojo fijo grita peligro sin motivo.
+.task-detail-dialog__edit {
+  color: var(--color-text-muted);
+
+  // `--color-primary` y no el rojo del de al lado: editar no destruye nada.
+  &:hover,
+  &:focus-visible {
+    color: var(--color-primary);
+  }
+}
+
+.task-detail-dialog__delete {
+  color: var(--color-text-muted);
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    color: var(--color-danger);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: progress;
+  }
+}

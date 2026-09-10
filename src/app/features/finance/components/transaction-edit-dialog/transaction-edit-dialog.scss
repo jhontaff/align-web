@@ -1,0 +1,5 @@
+// Caja, velo y animación vienen de `.dialog`. Mismo ancho que `task-edit-dialog`: es un formulario.
+:host {
+  display: contents;
+  --dialog-width: 560px;
+}

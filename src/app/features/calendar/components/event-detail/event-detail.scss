@@ -76,14 +76,30 @@
   gap: var(--space-4);
 }
 
+// Rejilla de dos filas: arriba rótulo + acciones, abajo el título a todo lo ancho.
+// Más simple que en tarea y movimiento: sin badge que emparejar, el título abarca las dos columnas.
+// Sin modificador porque este componente no tiene versión ruteada: la cabecera es siempre así.
 .event-detail__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+
+  // Centra el rótulo contra los botones: una línea de texto contra 40px de alto.
+  align-items: center;
+
+  // Apretado: es un antetítulo y con más aire deja de leerse pegado al título.
+  gap: var(--space-2) var(--space-4);
 }
 
 .event-detail__title {
+  // `order` sube a la primera fila el par rótulo + acciones; sin él el título caería ahí.
+  order: 1;
+
+  // Las dos columnas: sin esto el título se quedaría en la izquierda con la de los botones vacía.
+  grid-column: 1 / -1;
+
+  // Se alinea arriba: el `center` de la rejilla descolgaría un título de dos líneas.
+  align-self: start;
+
   margin: 0;
   font-size: var(--text-h2);
   font-weight: var(--weight-semibold);
@@ -91,6 +107,13 @@
 
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+// El mismo color con el que `QuickCreate` marca este dominio; el par `soft-text` por contraste.
+.event-detail__domain-icon {
+  color: var(--color-domain-event-soft-text);
+  font-size: var(--text-base);
+  flex-shrink: 0;
 }
 
 .event-detail__actions {

@@ -1,0 +1,79 @@
+<!--
+  Los `id` llevan un prefijo por instancia (`fieldId`), no literales como
+  `event-title`: `id` es global al documento y este formulario ya se monta en dos
+  sitios distintos. Con literales, tener abiertos a la vez el cuadro de
+  `EventEdit` y la pestaña "Evento" de `QuickCreate` dejaría ocho `id`
+  duplicados, y un `<label for>` duplicado apunta al PRIMERO que encuentre — el
+  del otro diálogo. Mismo motivo que el `nextId` de `event-edit`/`confirm-dialog`.
+-->
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  @if (errorMessage()) {
+    <p class="form-error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  <div class="field">
+    <label [attr.for]="fieldId('title')">Título</label>
+    <input [id]="fieldId('title')" type="text" formControlName="title" />
+  </div>
+
+  <div class="field">
+    <label [attr.for]="fieldId('description')">Descripción</label>
+    <textarea [id]="fieldId('description')" formControlName="description" rows="2"></textarea>
+  </div>
+
+  <!--
+    Fecha y hora agrupadas: una etiqueta por par en vez de dos, que es lo que
+    hacía que un evento (dos pares) llenara media pantalla de móvil. Ver
+    `.date-time-group` en `_components.scss`.
+
+    El `aria-label` de cada input NO es redundante con el nombre del grupo: el
+    grupo dice "Inicio" y el control dice cuál de los dos es. Sin él se anuncian
+    dos campos seguidos sin distinguirse.
+  -->
+  <div class="date-time-group" role="group" [attr.aria-labelledby]="fieldId('start-label')">
+    <span class="date-time-group__label" [id]="fieldId('start-label')">Inicio</span>
+
+    <div class="date-time-group__controls">
+      <input type="date" formControlName="startDate" aria-label="Fecha de inicio" />
+      <input type="time" formControlName="startTime" aria-label="Hora de inicio" />
+    </div>
+  </div>
+
+  <div class="date-time-group" role="group" [attr.aria-labelledby]="fieldId('end-label')">
+    <span class="date-time-group__label" [id]="fieldId('end-label')">Fin (opcional)</span>
+
+    <div class="date-time-group__controls">
+      <input type="date" formControlName="endDate" aria-label="Fecha de fin" />
+      <input type="time" formControlName="endTime" aria-label="Hora de fin" />
+    </div>
+  </div>
+
+  @if (form.errors?.['endBeforeStart']) {
+    <p class="form-error" role="alert">La hora de fin debe ser posterior al inicio.</p>
+  }
+
+  <div class="field">
+    <label [attr.for]="fieldId('location')">Ubicación</label>
+    <input [id]="fieldId('location')" type="text" formControlName="location" />
+  </div>
+
+  <div class="field">
+    <label [attr.for]="fieldId('reminder')">Recordatorio</label>
+    <select [id]="fieldId('reminder')" formControlName="reminderMinutesBefore">
+      @for (option of reminderOptions; track option.value) {
+        <option [value]="option.value">{{ option.label }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn-ghost" type="button" (click)="cancel.emit()">Cancelar</button>
+    <button class="btn btn-primary" type="submit" [disabled]="submitting()">
+      @if (editing()) {
+        {{ submitting() ? 'Guardando...' : 'Guardar cambios' }}
+      } @else {
+        {{ submitting() ? 'Creando...' : 'Crear evento' }}
+      }
+    </button>
+  </div>
+</form>

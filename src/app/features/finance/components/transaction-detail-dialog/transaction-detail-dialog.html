@@ -1,0 +1,86 @@
+<dialog
+  #dialog
+  class="dialog"
+  [attr.aria-labelledby]="titleId"
+  (click)="onBackdropClick($event)"
+  (close)="onNativeClose()"
+>
+  <div class="dialog__panel">
+    @if (deleteError(); as message) {
+      <p class="form-error" role="alert">{{ message }}</p>
+    }
+
+    @if (errorMessage(); as message) {
+      <p class="form-error" role="alert">{{ message }}</p>
+    }
+
+    @if (transaction(); as transaction) {
+      <!-- Las acciones se proyectan en la cabecera de la vista — ver `task-detail-dialog.html`. -->
+      <app-transaction-detail-view
+        [transaction]="transaction"
+        [headingLevel]="2"
+        [titleId]="titleId"
+        [showDomain]="true"
+      >
+        <div headerActions class="dialog__actions">
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon transaction-detail-dialog__edit"
+            aria-label="Editar movimiento"
+            title="Editar movimiento"
+            (click)="onEditClick()"
+          >
+            <app-icon name="bi:pencil" />
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon transaction-detail-dialog__delete"
+            [disabled]="deleting()"
+            aria-label="Eliminar movimiento"
+            title="Eliminar movimiento"
+            (click)="onDeleteClick()"
+          >
+            <app-icon name="bi:trash3" />
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-ghost btn-icon"
+            aria-label="Cerrar"
+            title="Cerrar"
+            (click)="onCloseClick()"
+          >
+            <app-icon name="bi:x-lg" />
+          </button>
+        </div>
+      </app-transaction-detail-view>
+    } @else {
+      <!-- Sin cabecera de vista donde proyectar; ver `task-detail-dialog.html`. -->
+      <div class="transaction-detail-dialog__fallback-header">
+        <button
+          type="button"
+          class="btn btn-ghost btn-icon"
+          aria-label="Cerrar"
+          title="Cerrar"
+          (click)="onCloseClick()"
+        >
+          <app-icon name="bi:x-lg" />
+        </button>
+      </div>
+
+      @if (loading()) {
+        <p class="empty-state">Cargando...</p>
+      }
+    }
+
+    <app-confirm-dialog
+      [(open)]="confirmOpen"
+      heading="Eliminar movimiento"
+      [message]="confirmMessage()"
+      confirmLabel="Eliminar"
+      tone="danger"
+      (confirm)="onConfirmDelete()"
+    />
+  </div>
+</dialog>
