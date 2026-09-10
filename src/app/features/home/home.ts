@@ -18,7 +18,7 @@ import { TasksSummary } from './components/tasks-summary/tasks-summary';
  */
 @Component({
   selector: 'app-home',
-  imports: [TitleCasePipe, TasksSummary, FinanceSummary, HabitsSummary, CalendarWidget],
+  imports: [TitleCasePipe, Icon, TasksSummary, FinanceSummary, HabitsSummary, CalendarWidget],
   templateUrl: './home.html',
   styleUrl: './home.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
