@@ -1,0 +1,11 @@
+// Vino de `transaction-form.scss` con el formulario: la clase se renombró de
+// `__form` a `__fields` porque el elemento que la lleva ya no vive en la
+// pantalla, sino en el componente que ahora la pinta en los dos sitios.
+.transaction-fields__hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

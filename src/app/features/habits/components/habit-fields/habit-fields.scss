@@ -1,0 +1,119 @@
+@use '../../../../../styles/layout';
+
+// Vino de `habit-list.scss` con el formulario, renombrado `habit-create*` ->
+// `habit-fields*`: el marcado ya no vive en la pantalla de la lista.
+//
+// El formulario es una columna y CONTIENE la fila: debajo del nombre cuelga el
+// disparador de la hora, o el campo desplegado.
+.habit-fields {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+// El margen inferior solo es de la variante en línea, donde el formulario está
+// pegado a la rejilla de tarjetas. Dentro del diálogo lo separa el `gap` del
+// panel, y un margen extra lo despegaría de los botones del pie.
+.habit-fields--inline {
+  margin-bottom: var(--space-6);
+}
+
+.habit-fields__row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  // El contenedor es `align-items: flex-start`, así que la fila necesita pedir
+  // el ancho entero explícitamente o se encoge a su contenido.
+  align-self: stretch;
+}
+
+// `.field` global trae `margin-bottom`, que aquí desalinearía el campo respecto
+// al botón: la fila ya separa con `gap`.
+.habit-fields__field {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.habit-fields__submit {
+  flex-shrink: 0;
+  gap: var(--space-2);
+}
+
+// El pie de la variante `stacked` pide el ancho entero por el mismo motivo que
+// `__row`: el contenedor alinea a `flex-start`.
+.habit-fields .form-actions {
+  align-self: stretch;
+}
+
+// -----------------------------------------------------------------------------
+// La hora, plegada y desplegada
+// -----------------------------------------------------------------------------
+//
+// Apagado y pequeño: es una acción secundaria y opcional, y compitiendo en peso
+// con "Añadir" convertiría un formulario de un campo en uno de dos.
+.habit-fields__add-time {
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-primary);
+  }
+}
+
+.habit-fields__time {
+  margin-bottom: 0;
+}
+
+.habit-fields__time-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+// El input de hora se mide solo; sin el tope, algunos motores lo estiran a todo
+// el ancho disponible y una hora ocupando la pantalla entera se lee como un
+// campo de texto vacío.
+.habit-fields__time-control input {
+  inline-size: auto;
+  min-inline-size: 7rem;
+}
+
+.habit-fields__time-clear {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-danger);
+  }
+}
+
+// Dice lo que la hora HACE. Sin esto, el campo parece una anotación: que dispare
+// un aviso no se deduce de poner una hora.
+.habit-fields__time-hint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+// -----------------------------------------------------------------------------
+// Los bloques de media query van al FINAL de la hoja, nunca junto a la regla que
+// modifican: una media query no añade especificidad, solo decide el orden.
+// -----------------------------------------------------------------------------
+@include layout.below-tablet {
+  // El campo ocupa la fila entera y el botón cae debajo a todo el ancho: lado a
+  // lado en una pantalla estrecha, el campo se queda con ~180px, que no da ni
+  // para ver lo que se escribe.
+  //
+  // Apunta a `__row` y no a `.habit-fields`: el formulario ya es una columna, y
+  // lo que hay que apilar aquí son el nombre y el botón. Estirarlo entero
+  // dejaría además el disparador de la hora a todo el ancho, con el peso visual
+  // de una acción principal que no es.
+  .habit-fields__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -1,0 +1,110 @@
+<dialog
+  #dialog
+  class="quick-create__dialog"
+  [attr.aria-labelledby]="titleId"
+  (click)="onBackdropClick($event)"
+  (close)="onNativeClose()"
+>
+  <div class="quick-create__panel">
+    <header class="quick-create__header">
+      <h2 class="quick-create__title" [id]="titleId">Crear</h2>
+
+      <button
+        type="button"
+        class="btn btn-ghost btn-icon"
+        aria-label="Cerrar"
+        title="Cerrar"
+        (click)="onCloseClick()"
+      >
+        <app-icon name="bi:x-lg" />
+      </button>
+    </header>
+
+    <!--
+      Patrón de tabs de WAI-ARIA, a mano: `@angular/aria` (`ngTabs`) haría esto
+      solo, pero es v21+ y no está instalado — traerlo ahora rompería la regla de
+      que las dependencias atadas a la versión de Angular suben DESPUÉS de
+      Angular, no antes. Las tres piezas que hay que poner a mano son
+      `aria-selected`, el `tabindex` móvil (solo la activa es tabulable: dentro
+      de un tablist se navega con flechas, no con Tab) y `onTabKeydown`.
+    -->
+    <div class="quick-create__tabs" role="tablist" aria-label="Qué quieres crear">
+      @for (tab of tabs; track tab.id; let i = $index) {
+        <button
+          #tabButton
+          type="button"
+          role="tab"
+          class="quick-create__tab quick-create__tab--{{ tab.id }}"
+          [id]="tabId(tab.id)"
+          [attr.aria-selected]="active() === tab.id"
+          [attr.aria-controls]="panelId(tab.id)"
+          [attr.tabindex]="active() === tab.id ? 0 : -1"
+          (click)="select(tab.id)"
+          (keydown)="onTabKeydown($event, i)"
+        >
+          <!--
+            La etiqueta va en su propio `<span>` porque en móvil se oculta a la
+            vista en los chips NO activos — pero recortada, no con
+            `display: none`: el nombre accesible del botón sale de este texto, y
+            quitarlo del árbol dejaría tres botones sin nombre. Ver
+            `.quick-create__tab-label` en la hoja.
+          -->
+          <app-icon class="quick-create__tab-icon" [name]="tab.icon" />
+          <span class="quick-create__tab-label">{{ tab.label }}</span>
+        </button>
+      }
+    </div>
+
+    <!--
+      Los cuatro paneles están SIEMPRE en el DOM y solo se ocultan; ver el
+      comentario de la clase para el porqué. `[hidden]` y no una clase con
+      `visibility`: hace falta `display: none` de verdad para que los campos del
+      panel oculto salgan del orden de tabulación y del árbol de accesibilidad.
+
+      Van dentro de `__body`, que es la única zona con scroll: la cabecera y las
+      pestañas quedan fuera a propósito para que no se vayan hacia arriba con un
+      formulario alto. Ver `.quick-create__body`.
+    -->
+    <div class="quick-create__body">
+      <div
+        class="quick-create__tabpanel"
+        role="tabpanel"
+        [id]="panelId('event')"
+        [attr.aria-labelledby]="tabId('event')"
+        [hidden]="active() !== 'event'"
+      >
+        <app-event-fields (saved)="onCreated(tabs[0])" (cancel)="onCloseClick()" />
+      </div>
+
+      <div
+        class="quick-create__tabpanel"
+        role="tabpanel"
+        [id]="panelId('task')"
+        [attr.aria-labelledby]="tabId('task')"
+        [hidden]="active() !== 'task'"
+      >
+        <app-task-fields (saved)="onCreated(tabs[1])" (cancel)="onCloseClick()" />
+      </div>
+
+      <div
+        class="quick-create__tabpanel"
+        role="tabpanel"
+        [id]="panelId('transaction')"
+        [attr.aria-labelledby]="tabId('transaction')"
+        [hidden]="active() !== 'transaction'"
+      >
+        <app-transaction-fields (saved)="onCreated(tabs[2])" (cancel)="onCloseClick()" />
+      </div>
+
+      <div
+        class="quick-create__tabpanel"
+        role="tabpanel"
+        [id]="panelId('habit')"
+        [attr.aria-labelledby]="tabId('habit')"
+        [hidden]="active() !== 'habit'"
+      >
+        <app-habit-fields variant="stacked" (created)="onCreated(tabs[3])" (cancel)="onCloseClick()" />
+      </div>
+    </div>
+  </div>
+</dialog>
