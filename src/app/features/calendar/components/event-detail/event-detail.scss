@@ -76,40 +76,28 @@
   gap: var(--space-4);
 }
 
-// Rejilla de dos columnas y dos filas: arriba rótulo + acciones, abajo el
-// título a todo lo ancho. Mismo idioma que `task-detail-view.scss` y
-// `transaction-detail-view.scss`; el porqué de la rejilla en vez de flex con
-// `wrap` está escrito allí.
-//
-// Aquí es más simple que en los otros dos: no hay badge que emparejar con el
-// título, así que el título abarca las dos columnas y no hace falta envolverlo
-// en una fila propia. Y no hay modificador porque este componente no tiene
-// versión ruteada: la cabecera es SIEMPRE así.
+// Rejilla de dos filas: arriba rótulo + acciones, abajo el título a todo lo ancho.
+// Más simple que en tarea y movimiento: sin badge que emparejar, el título abarca las dos columnas.
+// Sin modificador porque este componente no tiene versión ruteada: la cabecera es siempre así.
 .event-detail__header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
 
-  // Lo que centra el rótulo contra los botones: una línea de texto contra 40px.
+  // Centra el rótulo contra los botones: una línea de texto contra 40px de alto.
   align-items: center;
 
-  // Fila apretada: esto es un antetítulo, y con más aire deja de leerse pegado
-  // al título.
+  // Apretado: es un antetítulo y con más aire deja de leerse pegado al título.
   gap: var(--space-2) var(--space-4);
 }
 
 .event-detail__title {
-  // `order` es lo que sube a la primera fila el par rótulo + acciones: la
-  // auto-colocación recorre los elementos en orden de documento modificado por
-  // `order`, y el título es el único que se retrasa. Sin él, el título caería
-  // en la primera fila y las acciones bajarían solas a la segunda.
+  // `order` sube a la primera fila el par rótulo + acciones; sin él el título caería ahí.
   order: 1;
 
-  // Las dos columnas: el título no tiene con quién compartir fila, y sin esto
-  // se quedaría en la columna izquierda con la de los botones vacía al lado.
+  // Las dos columnas: sin esto el título se quedaría en la izquierda con la de los botones vacía.
   grid-column: 1 / -1;
 
-  // Se alinea arriba: el `center` de la rejilla hace falta en la primera fila,
-  // pero heredado aquí descolgaría un título de dos líneas.
+  // Se alinea arriba: el `center` de la rejilla descolgaría un título de dos líneas.
   align-self: start;
 
   margin: 0;
@@ -121,9 +109,7 @@
   overflow-wrap: anywhere;
 }
 
-// El único color del rótulo, y el mismo con el que la pestaña "Evento" de
-// `QuickCreate` marca este dominio. Par `soft-text` por lo mismo que en los
-// otros dos: es el que tiene contraste medido en ambos temas.
+// El mismo color con el que `QuickCreate` marca este dominio; el par `soft-text` por contraste.
 .event-detail__domain-icon {
   color: var(--color-domain-event-soft-text);
   font-size: var(--text-base);

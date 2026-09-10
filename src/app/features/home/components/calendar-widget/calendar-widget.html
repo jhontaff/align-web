@@ -102,23 +102,32 @@
           <span class="badge cw__carousel-week-badge">{{ weekBadgeLabel() }}</span>
         </div>
 
+        <!-- La dirección vive en la PISTA, no en la tarjeta: la saliente se destruye sin re-evaluar sus bindings. -->
+        <!-- La pista sobrevive, su binding sí se actualiza, y las dos tarjetas heredan el valor nuevo. -->
         <div
           class="cw__carousel-track"
+          [style.--cw-dir]="slideDirection()"
           (pointerdown)="onCarouselPointerDown($event)"
           (pointerup)="onCarouselPointerUp($event)"
           (pointercancel)="onCarouselPointerCancel($event)"
         >
           <!-- Sin flechas: el propio vecino es el control "día anterior", con contenido propio en vez de `aria-label` (réplica en miniatura de la tarjeta activa). -->
+          <!-- El hueco persiste; la vecina de dentro se recrea cada día para que su entrada se repita. -->
+          <!-- Y le da a la saliente un ancla de su tamaño exacto (`inset: 0`), o sea donde estaba. -->
+          <!-- Contra la pista su posición estática se resolvería en el centro y daría un salto antes de irse. -->
+          <div class="cw__carousel-peek-slot">
+            @for (peek of [peekDays().prev]; track peek.iso) {
           <button
             type="button"
             class="cw__carousel-peek cw__carousel-peek--prev"
-            (click)="setActiveDay(peekDays().prev.iso)"
+            [animate.leave]="'cw__carousel-peek--leaving'"
+            (click)="setActiveDay(peek.iso)"
           >
             <span class="badge cw__carousel-peek-badge">Ayer</span>
-            <p class="cw__carousel-peek-number">{{ peekDays().prev.day }}</p>
-            <p class="cw__carousel-peek-label">{{ peekDays().prev.label }}</p>
+            <p class="cw__carousel-peek-number">{{ peek.day }}</p>
+            <p class="cw__carousel-peek-label">{{ peek.label }}</p>
 
-            @if (peekDays().prev.card; as prevCard) {
+            @if (peek.card; as prevCard) {
               @if (prevCard.totalCount > 0) {
                 <span class="cw__dots cw__carousel-peek-dots">
                   @for (item of dotItems(prevCard); track item.id) {
@@ -133,14 +142,19 @@
               }
             }
           </button>
+            }
+          </div>
 
           <!-- El disparador es `.cw__carousel-card-toggle` (dentro), no la tarjeta: un `<button>` dentro de otro es HTML inválido y la agenda trae los suyos por ítem. -->
           <!-- El `@for` de un solo elemento (keyed por `card.iso`) fuerza a recrear el nodo en cada día para que `cw-carousel-card-in` (entrada) se repita; `@if`/`@else if` solo re-vincularía bindings. -->
+          <!-- `animate.leave` convierte el cambio de día en un deslizamiento y no en un relevo. -->
+          <!-- Angular mantiene el nodo en el DOM hasta que termina la animación de esa clase. -->
+          <!-- Sintaxis de plantilla de Angular 20.2+ que anima con CSS nativo: no vuelve `@angular/animations`. -->
           @for (card of [active]; track card.iso) {
             <div
               class="cw__carousel-card"
               [class.cw__carousel-card--expanded]="dayPanelExpanded()"
-              [style.--cw-slide-from]="slideDirection() === 1 ? '24px' : '-24px'"
+              [animate.leave]="'cw__carousel-card--leaving'"
             >
               <button
                 type="button"
@@ -219,16 +233,20 @@
             </div>
           }
 
+          <!-- Mismo hueco persistente que la vecina anterior. -->
+          <div class="cw__carousel-peek-slot">
+            @for (peek of [peekDays().next]; track peek.iso) {
           <button
             type="button"
             class="cw__carousel-peek cw__carousel-peek--next"
-            (click)="setActiveDay(peekDays().next.iso)"
+            [animate.leave]="'cw__carousel-peek--leaving'"
+            (click)="setActiveDay(peek.iso)"
           >
             <span class="badge cw__carousel-peek-badge">Mañana</span>
-            <p class="cw__carousel-peek-number">{{ peekDays().next.day }}</p>
-            <p class="cw__carousel-peek-label">{{ peekDays().next.label }}</p>
+            <p class="cw__carousel-peek-number">{{ peek.day }}</p>
+            <p class="cw__carousel-peek-label">{{ peek.label }}</p>
 
-            @if (peekDays().next.card; as nextCard) {
+            @if (peek.card; as nextCard) {
               @if (nextCard.totalCount > 0) {
                 <span class="cw__dots cw__carousel-peek-dots">
                   @for (item of dotItems(nextCard); track item.id) {
@@ -243,6 +261,8 @@
               }
             }
           </button>
+            }
+          </div>
         </div>
 
         <div class="cw__carousel-pagination">
@@ -307,17 +327,9 @@
     </div>
   }
 
-  <!--
-    Los seis cuadros flotantes del widget, uno por rama de `WidgetMode`. Los
-    tres dominios siguen el MISMO camino —detalle en burbuja, y de ahí a editar
-    en otra burbuja— para que tocar un chip signifique lo mismo en los tres.
-    Ninguno navega: cerrar devuelve a Inicio tal y como estaba, que es la razón
-    de que tarea y movimiento dejaran de abrirse con `router.navigate`.
-
-    `@else if` encadenados y no seis `@if` sueltos: `WidgetMode` es una unión
-    cerrada y solo una rama puede estar viva, así que encadenarlos lo hace
-    cumplir por construcción en vez de por disciplina.
-  -->
+  <!-- Los seis cuadros flotantes, uno por rama de `WidgetOverlay`: los tres dominios siguen el mismo camino. -->
+  <!-- Ninguno navega: cerrar devuelve a Inicio tal y como estaba. -->
+  <!-- `@else if` encadenados y no seis `@if`: la unión solo admite una rama viva, y así se cumple por construcción. -->
   @if (detailEventId(); as id) {
     <app-event-detail
       [eventId]="id"

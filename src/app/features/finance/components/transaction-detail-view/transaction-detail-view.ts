@@ -7,12 +7,8 @@ import { TransactionResponse } from '../../models/transaction.model';
 import { CATEGORY_LABELS, TYPE_LABELS } from '../../transaction-labels';
 
 /**
- * El cuerpo de la vista de un movimiento: importe, tipo y la lista de campos.
- *
- * Mismo corte —y misma razón— que `TaskDetailView`: lo montan la ruta
- * `TransactionDetail` (`/finance/:id`) y `TransactionDetailDialog` (el cuadro
- * flotante del widget de Calendario en Inicio), y ninguna de las dos chromes
- * sirve para la otra. Ver el comentario de `TaskDetailView`.
+ * Cuerpo de la vista de un movimiento: importe, tipo y lista de campos.
+ * Mismo corte que `TaskDetailView`: lo montan la ruta `/finance/:id` y el cuadro flotante de Inicio.
  */
 @Component({
   selector: 'app-transaction-detail-view',
@@ -28,7 +24,7 @@ export class TransactionDetailView {
 
   readonly transaction = input.required<TransactionResponse>();
 
-  /** Ver `TaskDetailView.headingLevel`: en `/finance/:id` el importe es el `<h1>`. */
+  /** En `/finance/:id` el importe es el `<h1>`; en el diálogo baja a `<h2>`. */
   readonly headingLevel = input<1 | 2>(1);
 
   /** Lo consume el `aria-labelledby` del diálogo; en la ruta no hace falta. */
@@ -39,7 +35,7 @@ export class TransactionDetailView {
 
   protected readonly isIncome = computed(() => this.transaction().type === 'INCOME');
 
-  /** El signo lo pone la plantilla, así que el importe se pinta siempre positivo. */
+  /** El signo lo pone la plantilla, así que aquí el importe va siempre positivo. */
   protected readonly amount = computed(() => Math.abs(this.transaction().amount));
 
   protected readonly typeLabel = computed(() => TYPE_LABELS[this.transaction().type]);

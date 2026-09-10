@@ -1,5 +1,4 @@
-// La caja, el velo y la animación vienen de `.dialog` en `_components.scss`.
-// Mismo ancho que `task-edit-dialog`: es un formulario, no una ficha.
+// Caja, velo y animación vienen de `.dialog`. Mismo ancho que `task-edit-dialog`: es un formulario.
 :host {
   display: contents;
   --dialog-width: 560px;

@@ -204,6 +204,20 @@
 
   // `pan-y`, no `none`: reclama el gesto horizontal para el swipe sin robarle al navegador el scroll vertical.
   touch-action: pan-y;
+
+  // Bloque contenedor de la tarjeta saliente, que va en absoluto para salirse del flujo.
+  // Sin esto su contenedor sería un ancestro y el `overflow: hidden` de aquí no la recortaría.
+  position: relative;
+}
+
+// El hueco que la vecina ocupa y que NO se recrea al cambiar de día: mantiene el sitio en el flujo.
+// Y le da a la saliente un bloque contenedor de su tamaño exacto (`inset: 0`).
+// El tamaño vive aquí y no en el botón: si no, el hueco no mediría nada durante la animación.
+.cw__carousel-peek-slot {
+  position: relative;
+  flex-shrink: 0;
+  width: calc(var(--cw-card-w) * 0.8);
+  height: calc(var(--cw-card-h) * 0.8);
 }
 
 // Base compartida: cajas de tamaño fijo recortadas a sus esquinas. La tarjeta es un `<div>` contenedor (alto solo con
@@ -213,12 +227,24 @@
   flex-shrink: 0;
   overflow: hidden;
   border-radius: var(--radius-lg);
+
+  // Las tres entran igual y por eso la declaración es una: así se lee como un movimiento del carrusel entero.
+  // El recorrido es un porcentaje del ancho propio, así que las vecinas recorren menos y dan profundidad.
+  animation: cw-carousel-card-in 280ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 // `color-mix`, no `opacity`: `opacity` en toda la tarjeta apagaría también el texto, que sigue teniendo que leerse.
 .cw__carousel-peek {
-  width: calc(var(--cw-card-w) * 0.8);
-  height: calc(var(--cw-card-h) * 0.8);
+  // Rellena su hueco: el tamaño lo fija `.cw__carousel-peek-slot`.
+  width: 100%;
+  height: 100%;
+
+  // Posicionada y con `z-index` para quedar por encima de la vecina que se va.
+  // No basta el `z-index: 0` de la saliente: un elemento posicionado se pinta sobre uno que no lo está.
+  // Con los fondos translúcidos de las dos, esa superposición apilaba dos veladuras.
+  position: relative;
+  z-index: 1;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -230,6 +256,12 @@
   font-family: inherit;
   text-align: center;
   cursor: pointer;
+}
+
+// Lo único que la vecina no comparte con la tarjeta: se ancla a su hueco con `inset: 0`.
+// La tarjeta no lo necesita porque su posición estática ya es donde estaba; la de la vecina sería el centro.
+.cw__carousel-peek--leaving {
+  inset: 0;
 }
 
 // Sin `.card-metric` (fija `--text-h1`, muy grande aquí): tamaño propio, y evita el empate de especificidad al pisarla.
@@ -263,7 +295,6 @@
   // `--shadow-md`, no `--shadow-lg`: esta última alcanza ~20px más allá del borde, por encima del hueco de 8px con los
   // vecinos, y con `z-index: 1` se pintaba encima de su fondo translúcido — la tarjeta se leía partida en dos colores.
   box-shadow: var(--shadow-md);
-  animation: cw-carousel-card-in 240ms ease-out;
   // Solo `width` anima aquí: el alto ya sigue a `.cw__carousel-agenda` en cada fotograma vía `min-height`.
   transition: width 220ms ease;
 }
@@ -274,9 +305,68 @@
   width: min(calc(var(--cw-card-w) * 1.3), 100%);
 }
 
+// El recorrido es el 70% del ancho propio: con los 24px de antes el ojo no seguía nada, veía aparecer.
+// El signo lo pone `--cw-dir`, que hereda de la pista.
+// La opacidad termina en el 35% y no al final: una carta que se desliza se ve mientras viaja.
 @keyframes cw-carousel-card-in {
   from {
-    transform: translateX(var(--cw-slide-from, 0));
+    transform: translateX(calc(var(--cw-dir, 1) * 70%));
+    opacity: 0;
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+// La tarjeta que se va, en sentido contrario a la que entra; la clase la pone `animate.leave`.
+// `position: absolute` es obligatorio: mientras dura la salida coexisten dos, y en flujo darían un salto lateral.
+// Sin `inset` el elemento se queda en su posición estática, que en este flex centrado es donde estaba.
+.cw__carousel-card--leaving,
+.cw__carousel-peek--leaving {
+  position: absolute;
+
+  // Por debajo de la entrante, que lleva `z-index: 1`.
+  z-index: 0;
+
+  // Ya no son interactivas: un toque a destiempo alcanzaría a un día que ya no está en pantalla.
+  pointer-events: none;
+
+  // 200ms contra los 280ms de la entrada: lo que se va debe irse antes de que lo que llega se vuelva opaco.
+  animation: cw-carousel-card-out 200ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+// El `0%` va explícito — a propósito, aunque hoy coincide con el valor
+// subyacente (sin transformación ni opacidad propias fuera de la animación,
+// que es lo mismo que dicen estos dos valores) y por tanto no cambia nada en
+// caliente. Lo que evita es que el punto de arranque de la salida dependa de
+// un valor implícito: si el día que `.cw__carousel-card` gane un `transform`
+// o una `opacity` base por otro motivo, la salida seguiría arrancando desde
+// AQUÍ y no desde ese valor nuevo, sin que nadie tenga que acordarse de por
+// qué.
+@keyframes cw-carousel-card-out {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  // La opacidad se agota antes que el recorrido: termina de viajar ya invisible.
+  60% {
+    opacity: 0;
+  }
+
+  // `opacity: 0` aquí también, y no es redundante: es el arreglo del parpadeo.
+  // Un valor de un fotograma intermedio NO se mantiene hasta el final: si falta el `100%` de esa
+  // propiedad, el navegador sintetiza uno con el valor subyacente, que para `opacity` es 1.
+  // Sin esta línea la opacidad hacía 1 → 0 → 1 y la tarjeta reaparecía antes de salir del DOM.
+  // Medido en Chrome: 0.00 a mitad de recorrido y 0.92 al final.
+  to {
+    transform: translateX(calc(var(--cw-dir, 1) * -70%));
     opacity: 0;
   }
 }
@@ -528,7 +618,23 @@
   }
 
   .cw__carousel-pulse,
-  .cw__carousel-card {
+  .cw__carousel-card,
+  .cw__carousel-peek {
     animation: none;
+  }
+
+  // Aquí se quita el recorrido, no la animación entera, y el motivo es funcional:
+  // `animate.leave` retiene el nodo hasta el `animationend`, así que un `animation: none` lo dejaría colgado.
+  // Va después a propósito: con el mismo peso (0,1,0), gana la última.
+  // Las dos salientes, después de sus reglas `animation: none`, con las que empatan en peso.
+  .cw__carousel-card--leaving,
+  .cw__carousel-peek--leaving {
+    animation: cw-carousel-card-out-reduced 120ms linear both;
+  }
+}
+
+@keyframes cw-carousel-card-out-reduced {
+  to {
+    opacity: 0;
   }
 }
