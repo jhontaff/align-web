@@ -49,10 +49,17 @@
               [class.tasks-summary__dot--medium]="task.priority === 'MEDIUM'"
             ></span>
 
-            <span class="card-row__label">
+            <!--
+              Enlace estirado: el `<a>` envuelve solo el titulo, pero su
+              `::after` (en `tasks-summary.scss`) cubre `.card-row` entero, asi
+              que se puede pulsar en cualquier punto de la fila. Mismo patron
+              que `task-item__link` en `/tasks` y que el nombre en la tarjeta
+              de Habitos de este mismo panel.
+            -->
+            <a class="card-row__label card-row__link" [routerLink]="['/tasks', task.id]">
               {{ task.title }}
               <span class="visually-hidden">. {{ priorityLabel(task.priority) }}</span>
-            </span>
+            </a>
 
             @if (dueLabel(task); as due) {
               <span class="card-row__meta">{{ due }}</span>
