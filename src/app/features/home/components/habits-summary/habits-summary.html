@@ -29,19 +29,38 @@
             backend en `isCompletedToday` — no se deduce aqui de ninguna fecha.
             Dos iconos distintos y no el mismo teñido: el estado no puede
             depender solo del color.
+
+            Es un TOGGLE real, no decoracion: pulsarlo marca o desmarca sin
+            salir de Inicio. `aria-pressed` lleva el estado porque el nombre
+            accesible es fijo — mismo criterio que `.habit-check` en
+            `/habits`. `aria-disabled` solo cubre la peticion en vuelo; como no
+            bloquea el clic por si solo, el guard real vive en `onToggle()`.
           -->
-          <app-icon
+          <button
+            type="button"
             class="habits-summary__check"
             [class.habits-summary__check--done]="habit.isCompletedToday"
-            [name]="habit.isCompletedToday ? 'bi:check-circle-fill' : 'bi:circle'"
-          />
+            [attr.aria-pressed]="habit.isCompletedToday"
+            [attr.aria-disabled]="markingId() === habit.id"
+            [attr.aria-label]="'Hecho hoy: ' + habit.name"
+            [title]="habit.isCompletedToday ? 'Desmarcar hoy' : 'Marcar hoy como hecho'"
+            (click)="onToggle(habit)"
+          >
+            <app-icon [name]="habit.isCompletedToday ? 'bi:check-circle-fill' : 'bi:circle'" />
+          </button>
 
-          <span class="card-row__label">
+          <!--
+            El resto de la fila es el destino: mismo enlace estirado que
+            `TasksSummary`, con el check excluido a proposito (ver
+            `habits-summary.scss`) para que marcar y navegar sean dos gestos
+            distintos sobre la misma fila.
+          -->
+          <a class="card-row__label card-row__link" [routerLink]="['/habits', habit.id]">
             {{ habit.name }}
             <span class="visually-hidden">
               . {{ habit.isCompletedToday ? 'Hecho hoy' : 'Pendiente hoy' }}
             </span>
-          </span>
+          </a>
 
           <!--
             La racha va escrita en palabras ("5 días") y no como un numero
@@ -60,5 +79,16 @@
         </li>
       }
     </ul>
+
+    @if (actionError(); as message) {
+      <p class="form-error" role="alert">{{ message }}</p>
+    }
   }
 </app-summary-card>
+
+<!--
+  Fuera del `@if`/`@else`, siempre en el DOM: una region `aria-live` que se
+  monta a la vez que su texto no se anuncia de forma fiable — el lector tiene
+  que estar ya observandola cuando el contenido cambia.
+-->
+<p class="visually-hidden" role="status">{{ statusMessage() }}</p>
