@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, model } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, effect, inject, model } from '@angular/core';
 import { ChatComposer } from '../../features/chat/components/chat-composer/chat-composer';
 import { ChatThread } from '../../features/chat/components/chat-thread/chat-thread';
 import { ChatStore } from '../../features/chat/chat.store';
+import { TourRunnerService } from '../../core/onboarding/tour-runner.service';
 import { Icon } from '../../shared/ui/icon/icon';
+import { buildChatPanelOnboardingSteps } from './chat-panel-onboarding-steps';
 
 /**
  * El montaje del chat en el shell. Tiene dos formas y las dos son este mismo
@@ -28,6 +30,7 @@ import { Icon } from '../../shared/ui/icon/icon';
 })
 export class ChatPanel implements OnInit {
   private readonly store = inject(ChatStore);
+  private readonly tourRunner = inject(TourRunnerService);
 
   protected readonly messages = this.store.messages;
   protected readonly loadingHistory = this.store.loadingHistory;
@@ -41,6 +44,22 @@ export class ChatPanel implements OnInit {
    * cerrar sigan funcionando sin conocer a nadie.
    */
   readonly open = model(false);
+
+  constructor() {
+    // Sin `afterNextRender`: `<app-chat-thread>`/`<app-chat-composer>` los
+    // monta el mismo `@if (open())` que dispara este effect, así que ya
+    // están pintados cuando corre. La rama `else` no es cosmética — ese
+    // mismo `@if` los DESTRUYE al cerrar, y sin `stop('chat')` driver.js se
+    // quedaría apuntando a nodos ya retirados del DOM si el panel se
+    // cerrara a mitad de su propio tour.
+    effect(() => {
+      if (this.open()) {
+        this.tourRunner.runOnce('chat', buildChatPanelOnboardingSteps());
+      } else {
+        this.tourRunner.stop('chat');
+      }
+    });
+  }
 
   ngOnInit(): void {
     // El store se encarga de que esto sea un único GET por sesión, aunque

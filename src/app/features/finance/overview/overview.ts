@@ -31,12 +31,14 @@ import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { DateRange } from '../../../core/date/date-range';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { BreakpointService } from '../../../core/layout/breakpoint.service';
+import { injectTourOnMount } from '../../../core/onboarding/inject-tour-on-mount';
 import { DateRangePicker } from '../../../shared/ui/date-range-picker/date-range-picker';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { ExpenseByCategory } from '../components/expense-by-category/expense-by-category';
 import { MonthlyFlow } from '../components/monthly-flow/monthly-flow';
 import { SpendingPace } from '../components/spending-pace/spending-pace';
 import { TransactionRow } from '../components/transaction-row/transaction-row';
+import { buildOverviewOnboardingSteps } from './overview-onboarding-steps';
 import {
   DASHBOARD_CARD_IDS,
   DASHBOARD_COLUMNS,
@@ -192,11 +194,11 @@ export class Overview implements OnInit {
   /**
    * Namespacing del layout guardado: sin esto, un navegador compartido
    * mezclaría la disposición de dos cuentas. Puede ser `undefined` si esta
-   * pantalla se construye antes de que `GET /auth/me` resuelva (hard-reload
+   * pantalla se construye antes de que `GET /api/users/me` resuelva (hard-reload
    * directo a `/finance`) — `loadLayout`/`saveLayout`/`clearLayout` caen a un
    * espacio `'anon'` en ese caso, ver `dashboard-layout.ts`.
    */
-  private userId(): number | undefined {
+  private userId(): string | undefined {
     return this.authState.user()?.id;
   }
 
@@ -315,6 +317,8 @@ export class Overview implements OnInit {
   private readonly recentCard = viewChild.required<ElementRef<HTMLElement>>('recentCard');
 
   constructor() {
+    injectTourOnMount('finance', buildOverviewOnboardingSteps());
+
     // Los tiradores son por item: las tarjetas automáticas solo se estiran a lo
     // ancho. Ver `handlesFor()`.
     for (const id of DASHBOARD_CARD_IDS) {

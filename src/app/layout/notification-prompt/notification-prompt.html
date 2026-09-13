@@ -1,0 +1,10 @@
+<app-confirm-dialog
+  [open]="show()"
+  heading="Activar notificaciones"
+  message="Para más comodidad, activa las notificaciones y recibe avisos de hábitos y tareas en este dispositivo."
+  tone="primary"
+  confirmLabel="Activar"
+  cancelLabel="Ahora no"
+  (confirm)="onConfirm()"
+  (cancel)="onCancel()"
+/>

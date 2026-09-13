@@ -1,0 +1,114 @@
+<div class="page page--wide">
+  <div class="page-header">
+    <h1>Editar perfil</h1>
+  </div>
+
+  <div class="profile-edit-grid">
+    <section class="card profile-edit-grid__photo">
+      <div class="profile-edit-photo__avatar-wrap">
+        <app-avatar [seed]="avatarSeed()" [photoUrl]="avatarUrl()" [size]="96" />
+        <button
+          type="button"
+          class="btn btn-primary btn-icon profile-edit-photo__camera"
+          aria-label="Cambiar foto de perfil"
+          [disabled]="avatarBusy()"
+          (click)="onPickPhoto()"
+        >
+          <app-icon name="bi:camera-fill" />
+        </button>
+      </div>
+
+      <input
+        #fileInput
+        type="file"
+        accept="image/*"
+        class="visually-hidden"
+        (change)="onPhotoSelected($event)"
+      />
+
+      <div class="profile-edit-photo__actions">
+        <button
+          type="button"
+          class="profile-edit-photo__action"
+          [disabled]="avatarBusy()"
+          (click)="onPickPhoto()"
+        >
+          Cambiar foto de perfil
+        </button>
+        @if (user()?.hasAvatar) {
+          <span aria-hidden="true">·</span>
+          <button
+            type="button"
+            class="profile-edit-photo__action profile-edit-photo__action--danger"
+            [disabled]="avatarBusy()"
+            (click)="onDeletePhoto()"
+          >
+            Eliminar foto
+          </button>
+        }
+      </div>
+
+      @if (avatarError()) {
+        <p class="form-error" role="alert">{{ avatarError() }}</p>
+      }
+    </section>
+
+    <section class="card profile-edit-grid__info">
+      <h2 class="section-title">
+        <app-icon name="bi:person-vcard" />
+        <span>Información Personal</span>
+      </h2>
+
+      <form id="profile-edit-form" [formGroup]="form" (ngSubmit)="onSubmit()">
+        @if (errorMessage()) {
+          <p class="form-error" role="alert">{{ errorMessage() }}</p>
+        }
+
+        <div class="field">
+          <label for="firstName">Nombre</label>
+          <input id="firstName" type="text" formControlName="firstName" autocomplete="given-name" />
+        </div>
+
+        <div class="field">
+          <label for="lastName">Apellido</label>
+          <input id="lastName" type="text" formControlName="lastName" autocomplete="family-name" />
+        </div>
+
+        <div class="field">
+          <label for="email">Correo electrónico</label>
+          <input id="email" type="email" [value]="user()?.email" disabled />
+        </div>
+      </form>
+    </section>
+
+    <section class="card profile-edit-grid__security">
+      <h2 class="section-title">
+        <app-icon name="bi:shield-lock" />
+        <span>Seguridad y Gestión</span>
+      </h2>
+
+      <!-- Inerte a propósito: el cambio de contraseña se configura explícitamente
+           en otra iteración (PUT /me/password ya existe, sin consumir aún). -->
+      <div class="menu-item profile-edit-security-row" aria-disabled="true">
+        <span class="menu-item__group">
+          <app-icon class="menu-item__icon" name="bi:lock" />
+          <span class="profile-stack">
+            <span>Cambiar contraseña</span>
+            <span class="card-note">Se configura próximamente</span>
+          </span>
+        </span>
+        <span class="badge">Próximamente</span>
+      </div>
+    </section>
+
+    <button
+      class="btn btn-primary btn-block profile-edit-grid__save"
+      type="submit"
+      form="profile-edit-form"
+      [disabled]="submitting()"
+    >
+      <app-icon name="bi:check-lg" />
+      <span>{{ submitting() ? 'Guardando...' : 'Guardar Cambios' }}</span>
+    </button>
+  </div>
+</div>

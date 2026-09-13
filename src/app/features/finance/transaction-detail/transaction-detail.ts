@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, LOCALE_ID, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, LOCALE_ID, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
+import { buildDetailOnboardingSteps } from '../../../core/onboarding/detail-onboarding-steps';
+import { TourRunnerService } from '../../../core/onboarding/tour-runner.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '../../../shared/ui/icon/icon';
@@ -29,6 +31,7 @@ export class TransactionDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly locale = inject(LOCALE_ID);
+  private readonly tourRunner = inject(TourRunnerService);
 
   private readonly transactionId$ = this.route.paramMap.pipe(
     map(params => params.get('id')),
@@ -67,6 +70,15 @@ export class TransactionDetail {
     const state = this.state();
     return state.status === 'ready' ? state.transaction : null;
   });
+
+  constructor() {
+    // Sin rama `else`: ver el comentario equivalente en `TaskDetail`.
+    effect(() => {
+      if (this.transaction()) {
+        this.tourRunner.runOnce('transaction-detail', buildDetailOnboardingSteps('transaction', 'el movimiento'));
+      }
+    });
+  }
 
   protected readonly deleting = signal(false);
   protected readonly deleteError = signal<string | null>(null);

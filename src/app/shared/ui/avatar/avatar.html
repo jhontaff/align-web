@@ -1,0 +1,8 @@
+<!-- El marco siempre está (placeholder mientras carga el chunk de DiceBear);
+     el <img> solo entra cuando hay algo que mostrar. Decorativo: el nombre
+     accesible lo pone quien envuelve este componente. -->
+<span class="avatar__frame" [style.width.px]="size()" [style.height.px]="size()">
+  @if (src(); as url) {
+    <img class="avatar__img" [src]="url" alt="" />
+  }
+</span>
