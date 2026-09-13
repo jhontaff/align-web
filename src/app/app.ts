@@ -6,6 +6,7 @@ import { PushService } from './core/notifications/push.service';
 import { AppHeader } from './layout/app-header/app-header';
 import { BottomNav } from './layout/bottom-nav/bottom-nav';
 import { ChatPanel } from './layout/chat-panel/chat-panel';
+import { PendingDeleteConfirm } from './layout/pending-delete-confirm/pending-delete-confirm';
 import { SidebarNav } from './layout/sidebar-nav/sidebar-nav';
 import { UpdateBanner } from './layout/update-banner/update-banner';
 
@@ -26,7 +27,7 @@ import { UpdateBanner } from './layout/update-banner/update-banner';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, AppHeader, SidebarNav, BottomNav, ChatPanel, UpdateBanner],
+  imports: [RouterOutlet, AppHeader, SidebarNav, BottomNav, ChatPanel, PendingDeleteConfirm, UpdateBanner],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
