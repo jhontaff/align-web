@@ -1,3 +1,46 @@
+// La fila entera es pulsable, mismo patron que `.task-item` en `/tasks`,
+// `.row` en `transaction-row` y la tarjeta de Habitos de este mismo panel: un
+// `<a>` real sobre el titulo (accesible, focable, con href) que se estira con
+// `::after` sobre todo `.card-row`, en vez de un `(click)` en el `<li>` que
+// exigiria reimplementar a mano el foco por teclado que un enlace ya trae.
+// `.card-row` es la clase global de `_components.scss`; este bloque vive aqui
+// (encapsulado a `TasksSummary`) y no la toca, asi que Finanzas —el otro
+// consumidor sin capa pulsable— no hereda nada que no pide.
+.card-row {
+  position: relative;
+
+  &:has(.card-row__link:hover),
+  &:has(.card-row__link:focus-visible) {
+    background: var(--color-surface);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+  }
+}
+
+.card-row__link {
+  text-decoration: none;
+  color: inherit;
+  overflow-wrap: anywhere;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+
+  // Mismo motivo que en `task-item__link`: el anillo por defecto rodearia solo
+  // el texto del titulo, y en una fila que se percibe entera como el destino
+  // eso se lee como que el foco esta en otro sitio. Se apaga aqui y se
+  // redibuja sobre la capa estirada.
+  &:focus-visible {
+    box-shadow: none;
+
+    &::after {
+      box-shadow: var(--focus-ring);
+    }
+  }
+}
+
 // El punto de prioridad. Mapeo dominio -> semantica, el mismo que los badges de
 // `task-list`: alta apunta a `danger`, media a `warning`, baja al neutro. Ningun
 // hex, asi que el tema oscuro sale gratis.

@@ -527,12 +527,10 @@
 // Filas de menú desplegable
 // -----------------------------------------------------------------------------
 // Global y no un componente de `shared/ui/` por el criterio de siempre: es
-// pintura sobre un `<button>` que el consumidor ya escribe, sin estructura
-// interna ni variantes. Es global —y no un `.scss` de `session-menu`— porque
-// la usan dos componentes con encapsulación distinta (`session-menu` y la
-// variante `menu` de `theme-toggle`), y perforar la encapsulación con
-// `::ng-deep` para compartir cuatro declaraciones es exactamente lo que una
-// clase global evita.
+// pintura sobre un `<button>`/`<a>`/`<label>` que el consumidor ya escribe,
+// sin estructura interna ni variantes. Hoy la usa `features/user/profile/`
+// (nació en `session-menu`, eliminado 2026-09-13 en favor de consolidar
+// tema/sesión en el perfil).
 .menu-item {
   width: 100%;
   display: flex;
@@ -560,6 +558,19 @@
   font-size: var(--text-lg);
 }
 
+// Variante con chevron a la derecha. `.menu-item__group` agrupa icono+texto:
+// sin él, `space-between` separaría también el icono del texto.
+.menu-item--chevron {
+  justify-content: space-between;
+}
+
+.menu-item__group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
 // Los iconos son SVG de 1em, así que su tamaño lo fija el `font-size` del
 // contenedor y no un `width`. Centralizarlo aquí es lo que evita que cada
 // botón de icono elija el suyo y acaben a tres tamaños distintos.
@@ -574,6 +585,69 @@
   background: var(--color-border);
 }
 
+// Encabezado de sección con icono ("Asistente IA", "Preferencias de app",
+// "Información Personal"...). Subió de `features/user/profile/` a global al
+// llegar su segundo consumidor (`profile-edit/`) — mismo criterio que
+// `.menu-item`.
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+}
+
+// Label + subtítulo apilados dentro de una fila de menú. Mismo origen que
+// `.section-title`: subió al segundo consumidor.
+.profile-stack {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+// -----------------------------------------------------------------------------
+// Interruptor — checkbox nativo pintado como switch
+// -----------------------------------------------------------------------------
+// Pintura sobre un <input type="checkbox">, como `.btn` sobre un <button>.
+// `role="switch"` lo pone el consumidor en el markup, no esta hoja.
+.switch {
+  appearance: none;
+  flex-shrink: 0;
+  width: 44px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--color-border-strong);
+  position: relative;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.switch::before {
+  content: '';
+  position: absolute;
+  inset: 2px auto 2px 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  transition: translate var(--transition-fast);
+}
+
+.switch:checked {
+  background: var(--color-primary);
+}
+
+.switch:checked::before {
+  translate: 20px 0;
+}
+
+.switch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 
 // -----------------------------------------------------------------------------
 // Cuadro flotante (`.dialog`)

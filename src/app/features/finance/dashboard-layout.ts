@@ -249,10 +249,26 @@ export function handlesFor(card: DashboardCard): DashboardCard['resizableHandles
  */
 export type DashboardLayoutVariant = 'desktop' | 'mobile';
 
-const STORAGE_KEYS: Record<DashboardLayoutVariant, string> = {
+const STORAGE_KEY_BASE: Record<DashboardLayoutVariant, string> = {
   desktop: 'align_finance_layout',
   mobile: 'align_finance_mobile_layout'
 };
+
+/**
+ * La clave lleva el id del usuario para que un navegador compartido no mezcle
+ * la disposición de dos cuentas — sin esto, el usuario B heredaba las
+ * tarjetas que el usuario A dejó movidas.
+ *
+ * `userId` puede llegar `undefined` en una ventana breve tras un hard-reload
+ * directo a `/finance`: `authGuard` solo exige que exista token, no que
+ * `GET /api/users/me` ya haya resuelto, así que `Overview` puede construirse antes
+ * de que `AuthStateService.user()` esté poblado. Se cae a `'anon'` en vez de
+ * fallar: es puramente cosmético (posiciones de tarjetas, no datos reales) y
+ * se autocorrige en la siguiente visita, cuando la sesión ya está hidratada.
+ */
+function storageKey(variant: DashboardLayoutVariant, userId: string | undefined): string {
+  return `${STORAGE_KEY_BASE[variant]}_${userId ?? 'anon'}`;
+}
 
 /**
  * Sube cuando cambie la forma de lo guardado. Un layout de una versión anterior
@@ -286,9 +302,9 @@ interface StoredLayout {
  * en la disposición de fábrica de esa variante, que es la única respuesta útil:
  * una rejilla medio poblada sería peor que ninguna.
  */
-export function loadLayout(variant: DashboardLayoutVariant): DashboardCards {
+export function loadLayout(variant: DashboardLayoutVariant, userId: string | undefined): DashboardCards {
   const cards = defaultLayout(variant);
-  const stored = readStored(variant);
+  const stored = readStored(variant, userId);
   if (!stored) {
     return cards;
   }
@@ -308,7 +324,11 @@ export function loadLayout(variant: DashboardLayoutVariant): DashboardCards {
   return cards;
 }
 
-export function saveLayout(variant: DashboardLayoutVariant, cards: DashboardCards): void {
+export function saveLayout(
+  variant: DashboardLayoutVariant,
+  cards: DashboardCards,
+  userId: string | undefined
+): void {
   const payload: StoredLayout = {
     version: LAYOUT_VERSION,
     cards: DASHBOARD_CARD_IDS.map(id => {
@@ -318,25 +338,25 @@ export function saveLayout(variant: DashboardLayoutVariant, cards: DashboardCard
   };
 
   try {
-    localStorage.setItem(STORAGE_KEYS[variant], JSON.stringify(payload));
+    localStorage.setItem(storageKey(variant, userId), JSON.stringify(payload));
   } catch {
     // Guardar la disposición es una comodidad, no parte de la función de la
     // pantalla: si el navegador no deja escribir, se pierde al recargar y ya.
   }
 }
 
-export function clearLayout(variant: DashboardLayoutVariant): void {
+export function clearLayout(variant: DashboardLayoutVariant, userId: string | undefined): void {
   try {
-    localStorage.removeItem(STORAGE_KEYS[variant]);
+    localStorage.removeItem(storageKey(variant, userId));
   } catch {
     // Ver `saveLayout`.
   }
 }
 
-function readStored(variant: DashboardLayoutVariant): StoredLayout | null {
+function readStored(variant: DashboardLayoutVariant, userId: string | undefined): StoredLayout | null {
   let raw: string | null;
   try {
-    raw = localStorage.getItem(STORAGE_KEYS[variant]);
+    raw = localStorage.getItem(storageKey(variant, userId));
   } catch {
     return null;
   }

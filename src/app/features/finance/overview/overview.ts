@@ -26,16 +26,19 @@ import {
   GridsterPush
 } from 'angular-gridster2';
 import { forkJoin } from 'rxjs';
+import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { DateRange } from '../../../core/date/date-range';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { BreakpointService } from '../../../core/layout/breakpoint.service';
+import { injectTourOnMount } from '../../../core/onboarding/inject-tour-on-mount';
 import { DateRangePicker } from '../../../shared/ui/date-range-picker/date-range-picker';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { ExpenseByCategory } from '../components/expense-by-category/expense-by-category';
 import { MonthlyFlow } from '../components/monthly-flow/monthly-flow';
 import { SpendingPace } from '../components/spending-pace/spending-pace';
 import { TransactionRow } from '../components/transaction-row/transaction-row';
+import { buildOverviewOnboardingSteps } from './overview-onboarding-steps';
 import {
   DASHBOARD_CARD_IDS,
   DASHBOARD_COLUMNS,
@@ -170,6 +173,7 @@ export class Overview implements OnInit {
   private readonly locale = inject(LOCALE_ID);
   private readonly zone = inject(NgZone);
   private readonly breakpoint = inject(BreakpointService);
+  private readonly authState = inject(AuthStateService);
 
   // ---------------------------------------------------------------------------
   // La rejilla
@@ -185,6 +189,17 @@ export class Overview implements OnInit {
    */
   private layoutVariant(): DashboardLayoutVariant {
     return this.breakpoint.isDesktop() ? 'desktop' : 'mobile';
+  }
+
+  /**
+   * Namespacing del layout guardado: sin esto, un navegador compartido
+   * mezclaría la disposición de dos cuentas. Puede ser `undefined` si esta
+   * pantalla se construye antes de que `GET /api/users/me` resuelva (hard-reload
+   * directo a `/finance`) — `loadLayout`/`saveLayout`/`clearLayout` caen a un
+   * espacio `'anon'` en ese caso, ver `dashboard-layout.ts`.
+   */
+  private userId(): string | undefined {
+    return this.authState.user()?.id;
   }
 
   /**
@@ -209,7 +224,7 @@ export class Overview implements OnInit {
    * de referencia y gridster reconstruyera cada item), sino los NÚMEROS que
    * esos objetos contienen — ver `applyColumnLayout()`.
    */
-  protected readonly cards: DashboardCards = loadLayout(this.layoutVariant());
+  protected readonly cards: DashboardCards = loadLayout(this.layoutVariant(), this.userId());
 
   /** Si el usuario está recolocando. Esto sí es estado de la pantalla. */
   protected readonly editing = signal(false);
@@ -281,7 +296,7 @@ export class Overview implements OnInit {
     // Se guarda en cada cambio y no solo al salir del modo edición: gridster
     // avisa por item. `layoutVariant()` decide si lo que acaba de cambiar es la
     // disposición de escritorio o la de móvil.
-    itemChangeCallback: () => saveLayout(this.layoutVariant(), this.cards)
+    itemChangeCallback: () => saveLayout(this.layoutVariant(), this.cards, this.userId())
   };
 
   /**
@@ -302,6 +317,8 @@ export class Overview implements OnInit {
   private readonly recentCard = viewChild.required<ElementRef<HTMLElement>>('recentCard');
 
   constructor() {
+    injectTourOnMount('finance', buildOverviewOnboardingSteps());
+
     // Los tiradores son por item: las tarjetas automáticas solo se estiran a lo
     // ancho. Ver `handlesFor()`.
     for (const id of DASHBOARD_CARD_IDS) {
@@ -365,7 +382,7 @@ export class Overview implements OnInit {
     this.gridOptions.maxCols = columns;
     this.gridOptions.resizable = { ...this.gridOptions.resizable, enabled: this.editing() && desktop };
 
-    const positions = loadLayout(desktop ? 'desktop' : 'mobile');
+    const positions = loadLayout(desktop ? 'desktop' : 'mobile', this.userId());
     for (const id of DASHBOARD_CARD_IDS) {
       const card = this.cards[id];
       const from = positions[id];
@@ -549,7 +566,7 @@ export class Overview implements OnInit {
     this.gridOptions.api?.optionsChanged?.();
 
     if (!editing) {
-      saveLayout(this.layoutVariant(), this.cards);
+      saveLayout(this.layoutVariant(), this.cards, this.userId());
     }
   }
 
@@ -587,7 +604,7 @@ export class Overview implements OnInit {
       this.syncEngine(card);
     }
 
-    clearLayout(variant);
+    clearLayout(variant, this.userId());
     this.gridOptions.api?.optionsChanged?.();
   }
 

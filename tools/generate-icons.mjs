@@ -53,7 +53,14 @@ const ICON_NAMES = [
   'bi:circle',
   'bi:arrows-move',
   'bi:arrow-counterclockwise',
-  'bi:clock'
+  'bi:clock',
+  'bi:graph-up-arrow',
+  'bi:grid-3x3-gap',
+  'bi:gear',
+  'bi:camera-fill',
+  'bi:person-vcard',
+  'bi:shield-lock',
+  'bi:lock'
 ];
 
 const OUT = 'src/app/shared/ui/icon/icon-set.ts';

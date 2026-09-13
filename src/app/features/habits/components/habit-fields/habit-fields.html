@@ -33,6 +33,32 @@
       />
     </div>
 
+    <!--
+      Opcional, siempre visible — no es una disclosure. Sin etiqueta a la
+      vista: "Hora" hace de nombre accesible, oculta, en vez de ocupar una
+      línea aparte como el nombre — el hueco visual lo cubre el propio input,
+      igual que el placeholder del campo de nombre. Se queda como `<label>`
+      visualmente oculto y no `aria-label` porque `type="time"` ya ignora
+      `placeholder` en todos los motores: sin un `<label>` asociado (aunque
+      esté oculto) el campo se quedaría sin nombre accesible en absoluto.
+
+      `aria-describedby` lleva el mismo texto que antes iba en un párrafo
+      visible ("Recibirás un aviso a esa hora"): aquí no hay sitio para una
+      segunda línea sin romper la fila compacta, pero el lector de pantalla lo
+      sigue anunciando.
+    -->
+    <div class="field habit-fields__time-field">
+      <label class="visually-hidden" [attr.for]="fieldId('time')">Hora</label>
+      <input
+        [id]="fieldId('time')"
+        type="time"
+        formControlName="scheduledTime"
+        title="Recibirás un aviso a esa hora."
+        [attr.aria-describedby]="fieldId('time-hint')"
+      />
+      <span class="visually-hidden" [id]="fieldId('time-hint')">Recibirás un aviso a esa hora.</span>
+    </div>
+
     @if (variant() === 'inline') {
       <button class="btn btn-primary habit-fields__submit" type="submit" [disabled]="submitting()">
         <app-icon name="bi:plus-lg" />
@@ -40,53 +66,6 @@
       </button>
     }
   </div>
-
-  <!--
-    La hora, bajo demanda y solo con el nombre puesto. El control
-    `scheduledTime` existe en el `FormGroup` esté o no montado el input: lo que
-    el `@if` decide es la pintura, no el formulario.
-  -->
-  @if (hasName()) {
-    @if (!showTime()) {
-      <button
-        #addTimeButton
-        type="button"
-        class="btn btn-ghost btn-sm habit-fields__add-time"
-        aria-expanded="false"
-        [attr.aria-controls]="fieldId('time-field')"
-        (click)="revealTime()"
-      >
-        <app-icon name="bi:clock" />
-        Añadir hora
-      </button>
-    } @else {
-      <div class="field habit-fields__time" [id]="fieldId('time-field')">
-        <label [attr.for]="fieldId('time')">Hora</label>
-
-        <div class="habit-fields__time-control">
-          <input #timeInput [id]="fieldId('time')" type="time" formControlName="scheduledTime" />
-
-          <!--
-            Quitar la hora PLIEGA y BORRA a la vez: dejar el valor puesto y solo
-            ocultarlo mandaría al backend una hora que el usuario cree haber
-            quitado. El nombre accesible va en `aria-label` porque el botón solo
-            tiene icono, y `<app-icon>` lleva `aria-hidden` fijo.
-          -->
-          <button
-            type="button"
-            class="btn btn-ghost btn-icon habit-fields__time-clear"
-            aria-label="Quitar hora"
-            title="Quitar hora"
-            (click)="clearTime()"
-          >
-            <app-icon name="bi:x-lg" />
-          </button>
-        </div>
-
-        <p class="habit-fields__time-hint">Recibirás un aviso a esa hora.</p>
-      </div>
-    }
-  }
 
   @if (createError(); as message) {
     <p class="form-error" role="alert">{{ message }}</p>

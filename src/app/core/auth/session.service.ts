@@ -1,4 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
+import { Observable, Subject } from 'rxjs';
 import { UserResponse } from '../models/user-response.model';
 import { clearToken, getToken, setToken } from './token-storage';
 
@@ -35,6 +36,17 @@ export class SessionService {
    */
   readonly isAuthenticated = computed(() => this._token() !== null);
 
+  private readonly _cleared = new Subject<void>();
+
+  /**
+   * Emite cuando la sesión termina (logout explícito o 401 automático), para
+   * que estado ajeno a `core/auth` que guarda datos por usuario —hoy
+   * `ChatStore`— pueda resetearse sin que este servicio lo conozca. Mismo
+   * patrón que `DataRefreshService`: un evento, no un signal, porque a nadie
+   * le importa el valor, solo que ocurrió.
+   */
+  readonly cleared: Observable<void> = this._cleared.asObservable();
+
   start(token: string): void {
     setToken(token);
     this._token.set(token);
@@ -49,5 +61,6 @@ export class SessionService {
     clearToken();
     this._token.set(null);
     this._user.set(null);
+    this._cleared.next();
   }
 }

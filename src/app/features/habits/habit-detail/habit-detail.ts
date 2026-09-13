@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Observable, catchError, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
+import { buildDetailOnboardingSteps } from '../../../core/onboarding/detail-onboarding-steps';
+import { TourRunnerService } from '../../../core/onboarding/tour-runner.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog/confirm-dialog';
 import { Icon } from '../../../shared/ui/icon/icon';
@@ -26,6 +28,7 @@ export class HabitDetail {
   private readonly habits = inject(HabitService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly tourRunner = inject(TourRunnerService);
 
   private readonly habitId$ = this.route.paramMap.pipe(
     map(params => params.get('id')),
@@ -77,6 +80,15 @@ export class HabitDetail {
     const state = this.state();
     return state.status === 'ready' ? state.habit : null;
   });
+
+  constructor() {
+    // Sin rama `else`: ver el comentario equivalente en `TaskDetail`.
+    effect(() => {
+      if (this.habit()) {
+        this.tourRunner.runOnce('habit-detail', buildDetailOnboardingSteps('habit', 'el hábito'));
+      }
+    });
+  }
 
   protected readonly deleting = signal(false);
 

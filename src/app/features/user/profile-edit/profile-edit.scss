@@ -1,0 +1,91 @@
+@use '../../../../styles/layout';
+
+// DOM en orden de móvil (foto → info → seguridad → guardar); en escritorio
+// `grid-template-areas` reubica en 2 columnas sin tocar el HTML. `flex` en
+// móvil y no `grid` sin plantilla — mismo motivo que `profile.scss`: los
+// hijos ya llevan `grid-area` para la rejilla de escritorio.
+.profile-edit-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.profile-edit-grid__photo {
+  grid-area: photo;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.profile-edit-grid__info {
+  grid-area: info;
+}
+
+.profile-edit-grid__security {
+  grid-area: security;
+}
+
+.profile-edit-grid__save {
+  grid-area: save;
+  gap: var(--space-2);
+}
+
+@include layout.desktop {
+  .profile-edit-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'photo    info'
+      'security info'
+      'security save';
+    align-items: start;
+  }
+}
+
+.profile-edit-photo__avatar-wrap {
+  position: relative;
+}
+
+.profile-edit-photo__camera {
+  position: absolute;
+  inset-block-end: -2px;
+  inset-inline-end: -2px;
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--color-surface);
+}
+
+.profile-edit-photo__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+// Botón pintado como enlace: dispara una acción de JS, no navega, así que
+// sigue siendo un <button> — un <a> sin href engañaría al lector de pantalla.
+.profile-edit-photo__action {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  color: var(--color-primary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.profile-edit-photo__action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.profile-edit-photo__action--danger {
+  color: var(--color-danger);
+}
+
+.profile-edit-security-row {
+  cursor: default;
+}

@@ -8,6 +8,7 @@ import {
   signal
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { DataRefreshService } from '../../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../../core/http/extract-error-message';
 import { SummaryCard } from '../summary-card/summary-card';
@@ -37,7 +38,7 @@ const PREVIEW_SIZE = 3;
  */
 @Component({
   selector: 'app-tasks-summary',
-  imports: [SummaryCard],
+  imports: [SummaryCard, RouterLink],
   templateUrl: './tasks-summary.html',
   styleUrl: './tasks-summary.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

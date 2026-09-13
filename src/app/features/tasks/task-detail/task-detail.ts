@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
+import { buildDetailOnboardingSteps } from '../../../core/onboarding/detail-onboarding-steps';
+import { TourRunnerService } from '../../../core/onboarding/tour-runner.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { TaskService } from '../task.service';
 import { TaskResponse } from '../models/task.model';
@@ -38,6 +40,7 @@ export class TaskDetail {
   private readonly taskService = inject(TaskService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly tourRunner = inject(TourRunnerService);
 
   /**
    * El `:id` se lee de `ActivatedRoute.paramMap`, no de un `input()` enlazado
@@ -114,6 +117,18 @@ export class TaskDetail {
     const state = this.state();
     return state.status === 'ready' ? state.task : null;
   });
+
+  constructor() {
+    // Sin rama `else`: `disableActiveInteraction` (dentro de
+    // `TourRunnerService`) deja inerte toda la página salvo el popover
+    // mientras el tour corre, así que no hay forma de que el usuario navegue
+    // fuera de esta pantalla —ni de aquí a otro id— mientras está activo.
+    effect(() => {
+      if (this.task()) {
+        this.tourRunner.runOnce('task-detail', buildDetailOnboardingSteps('task', 'la tarea'));
+      }
+    });
+  }
 
   /**
    * Estado del borrado, aparte de `DetailState`.

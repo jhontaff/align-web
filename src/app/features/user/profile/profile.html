@@ -1,0 +1,143 @@
+<div class="page page--wide" [class.is-closing]="closing()">
+  <div class="page-header">
+    <h1>Perfil</h1>
+  </div>
+
+  <div class="profile-grid" [class.profile-grid--no-ai]="!push.supported()">
+    <section class="card profile-grid__identity">
+      <app-avatar [seed]="user()?.id ?? 'anon'" [photoUrl]="avatarUrl()" [size]="72" />
+      <div>
+        <p class="profile-identity__name">{{ user()?.firstName }} {{ user()?.lastName }}</p>
+        <p class="text-muted">{{ user()?.email }}</p>
+      </div>
+    </section>
+
+    <section class="card profile-grid__stats">
+      @if (loadingStats()) {
+        <p class="text-muted">Cargando estadísticas…</p>
+      } @else if (statsError()) {
+        <p class="form-error" role="alert">{{ statsError() }}</p>
+      } @else {
+        <div class="profile-stats">
+          <div class="profile-stats__item">
+            <span class="profile-stats__icon profile-stats__icon--warning">
+              <app-icon name="bi:fire" />
+            </span>
+            <p class="card-metric">{{ bestStreak() }} d</p>
+            <p class="card-note">Racha hábitos</p>
+          </div>
+          <div class="profile-stats__item">
+            <span class="profile-stats__icon profile-stats__icon--primary">
+              <app-icon name="bi:check2-circle" />
+            </span>
+            <p class="card-metric">{{ completedTasks() }}</p>
+            <p class="card-note">Tareas listas</p>
+          </div>
+          <div class="profile-stats__item">
+            <span class="profile-stats__icon profile-stats__icon--success">
+              <app-icon name="bi:graph-up-arrow" />
+            </span>
+            <p class="card-metric">{{ consistencyPct() === null ? '—' : consistencyPct() + '%' }}</p>
+            <p class="card-note">Constancia</p>
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- Tarjeta entera condicionada, no solo el interruptor: sin esto, sin
+         soporte de push (siempre el caso en `ng serve`, SW desactivado)
+         quedaba una tarjeta vacía con solo el título — un control roto es
+         peor que su ausencia, mismo criterio que ya usa `habit-list`. -->
+    @if (push.supported()) {
+      <section class="card profile-grid__ai">
+        <h2 class="section-title">
+          <app-icon name="bi:robot" />
+          <span>Asistente IA</span>
+        </h2>
+
+        <label class="menu-item profile-switch-row" for="push-switch">
+          <span class="menu-item__group">
+            <app-icon
+              class="menu-item__icon"
+              [name]="push.status() === 'denied' ? 'bi:bell-slash' : 'bi:bell'"
+            />
+            <span class="profile-stack">
+              <span class="profile-switch-row__title">
+                Notificaciones inteligentes
+                @if (push.status() !== 'denied' && !push.subscribed()) {
+                  <span class="badge badge--primary">Pendiente</span>
+                }
+              </span>
+              @if (push.status() === 'denied') {
+                <span class="card-note">
+                  Notificaciones bloqueadas en este navegador. Para recibirlas hay que
+                  permitirlas desde el candado de la barra de direcciones.
+                </span>
+              } @else if (push.subscribed()) {
+                <span class="card-note">Recordatorios activados en este dispositivo.</span>
+              } @else {
+                <span class="card-note">Recibe avisos de hábitos y tareas en este dispositivo.</span>
+              }
+            </span>
+          </span>
+          <input
+            id="push-switch"
+            class="switch"
+            type="checkbox"
+            role="switch"
+            [checked]="push.subscribed()"
+            [disabled]="push.busy() || push.status() === 'denied'"
+            (change)="onTogglePush($any($event.target).checked)"
+          />
+        </label>
+
+        @if (push.subscribed()) {
+          <button
+            class="btn btn-outlined btn-sm profile-test-btn"
+            type="button"
+            [disabled]="push.busy()"
+            (click)="onTestNotification()"
+          >
+            Probar
+          </button>
+        }
+      </section>
+    }
+
+    <section class="card profile-grid__prefs">
+      <h2 class="section-title">
+        <app-icon name="bi:display" />
+        <span>Preferencias de app</span>
+      </h2>
+
+      <button class="menu-item menu-item--chevron" type="button" (click)="theme.cycle()">
+        <span class="menu-item__group">
+          <app-icon class="menu-item__icon" name="bi:moon-stars" />
+          <span class="profile-stack">
+            <span>Apariencia</span>
+            <span class="card-note">{{ themeLabel() }}</span>
+          </span>
+        </span>
+        <app-icon name="bi:chevron-right" />
+      </button>
+
+      <a class="menu-item menu-item--chevron" routerLink="/finance">
+        <span class="menu-item__group">
+          <app-icon class="menu-item__icon" name="bi:grid-3x3-gap" />
+          <span class="profile-stack">
+            <span>Gestión de módulos</span>
+            <span class="card-note">Personalizar el panel de Finanzas</span>
+          </span>
+        </span>
+        <app-icon name="bi:chevron-right" />
+      </a>
+    </section>
+
+    <button class="btn btn-danger btn-block profile-grid__logout" type="button" (click)="onLogout()">
+      <app-icon name="bi:box-arrow-right" />
+      <span>Cerrar sesión</span>
+    </button>
+
+    <footer class="profile-grid__version text-muted">Align v{{ appVersion }}</footer>
+  </div>
+</div>
