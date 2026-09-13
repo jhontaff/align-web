@@ -1,7 +1,10 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { DataRefreshService } from '../../core/data/data-refresh.service';
+import { extractErrorMessage } from '../../core/http/extract-error-message';
 import { ChatService } from './chat.service';
 import { ChatMessage } from './models/chat.model';
+import { PendingActionResponse } from './models/pending-action.model';
 
 /**
  * Mensajes de error mostrados como burbuja del propio agente. Variados para
@@ -42,10 +45,12 @@ export class ChatStore {
   private readonly _messages = signal<ChatMessage[]>([]);
   private readonly _loadingHistory = signal(false);
   private readonly _sending = signal(false);
+  private readonly _pendingActions = signal<PendingActionResponse[]>([]);
 
   readonly messages = this._messages.asReadonly();
   readonly loadingHistory = this._loadingHistory.asReadonly();
   readonly sending = this._sending.asReadonly();
+  readonly pendingActions = this._pendingActions.asReadonly();
 
   /**
    * Se marca antes de disparar la petición, no en el `next`: así un fallo de
@@ -71,6 +76,11 @@ export class ChatStore {
         this._loadingHistory.set(false);
       }
     });
+
+    // Una eliminación pudo quedar pendiente de una sesión anterior; se pide
+    // junto al historial para que aparezca en cuanto el shell monta el chat,
+    // no solo tras el próximo mensaje.
+    this.refreshPendingActions();
   }
 
   send(text: string): void {
@@ -97,10 +107,61 @@ export class ChatStore {
         // localhost. La solución real es del backend: que AgentResponse diga
         // qué tocó.
         this.dataRefresh.invalidate();
+
+        // La tool de eliminar pudo haber dejado una acción pendiente en este
+        // turno; `AgentResponse` no la trae inline (solo `{ reply: string }`),
+        // así que hay que volver a pedirla.
+        this.refreshPendingActions();
       },
       error: () => {
         this._messages.update(msgs => [...msgs, { role: 'assistant', text: randomChatErrorMessage() }]);
         this._sending.set(false);
+      }
+    });
+  }
+
+  /**
+   * Confirma una eliminación propuesta por el agente.
+   *
+   * Se quita de `pendingActions` de inmediato, antes de que responda el
+   * backend: así el diálogo no se vuelve a abrir para la misma acción
+   * mientras la petición está en vuelo. Si falla, no se repone — la próxima
+   * `refreshPendingActions()` (tras el siguiente mensaje, o al recargar) la
+   * trae de vuelta si de verdad sigue pendiente en el servidor.
+   */
+  confirmAction(id: string): void {
+    this._pendingActions.update(actions => actions.filter(action => action.id !== id));
+
+    this.chatService.confirmPendingAction(id).subscribe({
+      next: () => this.dataRefresh.invalidate(),
+      error: err => this.pushActionError(err)
+    });
+  }
+
+  /**
+   * Rechaza una eliminación propuesta por el agente. A diferencia de
+   * `confirmAction`, no invalida datos: rechazar no cambia nada en el servidor.
+   */
+  rejectAction(id: string): void {
+    this._pendingActions.update(actions => actions.filter(action => action.id !== id));
+
+    this.chatService.rejectPendingAction(id).subscribe({
+      error: err => this.pushActionError(err)
+    });
+  }
+
+  private pushActionError(err: unknown): void {
+    const message = err instanceof HttpErrorResponse ? extractErrorMessage(err) : randomChatErrorMessage();
+    this._messages.update(msgs => [...msgs, { role: 'assistant', text: message }]);
+  }
+
+  private refreshPendingActions(): void {
+    this.chatService.pendingActions().subscribe({
+      next: actions => this._pendingActions.set(actions),
+      error: () => {
+        // Silencioso a propósito: es un refresco de fondo, no una acción que el
+        // usuario disparó. Si falla, la próxima llamada (tras el siguiente
+        // mensaje) lo vuelve a intentar.
       }
     });
   }
