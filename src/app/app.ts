@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthStateService } from './core/auth/auth-state.service';
+import { OnboardingTourService } from './core/onboarding/onboarding-tour.service';
 import { AppUpdateService } from './core/pwa/app-update.service';
 import { PushService } from './core/notifications/push.service';
 import { AppHeader } from './layout/app-header/app-header';
 import { BottomNav } from './layout/bottom-nav/bottom-nav';
 import { ChatPanel } from './layout/chat-panel/chat-panel';
+import { NotificationPrompt } from './layout/notification-prompt/notification-prompt';
 import { PendingDeleteConfirm } from './layout/pending-delete-confirm/pending-delete-confirm';
 import { SidebarNav } from './layout/sidebar-nav/sidebar-nav';
 import { UpdateBanner } from './layout/update-banner/update-banner';
@@ -27,7 +29,16 @@ import { UpdateBanner } from './layout/update-banner/update-banner';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, AppHeader, SidebarNav, BottomNav, ChatPanel, PendingDeleteConfirm, UpdateBanner],
+  imports: [
+    RouterOutlet,
+    AppHeader,
+    SidebarNav,
+    BottomNav,
+    ChatPanel,
+    PendingDeleteConfirm,
+    NotificationPrompt,
+    UpdateBanner
+  ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -56,6 +67,11 @@ export class App {
 
   private readonly push = inject(PushService);
   private readonly appUpdate = inject(AppUpdateService);
+
+  // Sin plantilla propia: arranca el tour de bienvenida por su cuenta al
+  // detectar sesión sin el flag de `localStorage`. Mismo molde que `push` y
+  // `appUpdate` arriba — el shell es lo único montado en todo momento.
+  private readonly onboardingTour = inject(OnboardingTourService);
 
   constructor() {
     // Un token guardado tiene que rehidratar user/isAuthenticated antes de que

@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
+import { TourRunnerService } from '../../../core/onboarding/tour-runner.service';
 import { HabitList } from './habit-list';
 import { HabitResponse } from '../models/habit.model';
 
@@ -58,13 +59,22 @@ describe('HabitList — marcar y desmarcar', () => {
     return '/api/habits/' + id + '/completions';
   }
 
+  let tourRunnerRunOnce: jasmine.Spy;
+
   beforeEach(() => {
+    tourRunnerRunOnce = jasmine.createSpy('runOnce');
+
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideServiceWorker('ngsw-worker.js', { enabled: false })
+        provideServiceWorker('ngsw-worker.js', { enabled: false }),
+        // Sin esto, `injectTourOnMount('habits', ...)` del constructor arranca
+        // un `driver.js` real: un popover de verdad quedaría en el DOM y sus
+        // clases `pointer-events: none` interferirían con los clics que estas
+        // pruebas hacen sobre las tarjetas.
+        { provide: TourRunnerService, useValue: { runOnce: tourRunnerRunOnce, stop: () => {} } }
       ]
     });
 
@@ -194,5 +204,16 @@ describe('HabitList — marcar y desmarcar', () => {
     // Sigue marcado: el estado no se toca hasta que el servidor confirma.
     expect(check(A).getAttribute('aria-pressed')).toBe('true');
     expect(fixture.nativeElement.querySelector('.form-error')?.textContent).toBeTruthy();
+  });
+
+  it('I) crear un hábito arranca el tour que explica la tarjeta', () => {
+    mount([]);
+
+    (fixture.componentInstance as unknown as { onHabitCreated(h: HabitResponse): void }).onHabitCreated(
+      habit(A, 'Leer', false)
+    );
+    fixture.detectChanges();
+
+    expect(tourRunnerRunOnce).toHaveBeenCalledWith('habit-card', jasmine.any(Array));
   });
 });

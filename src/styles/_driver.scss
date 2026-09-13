@@ -1,0 +1,76 @@
+// =============================================================================
+// Correcciones a driver.js (tour de onboarding)
+// -----------------------------------------------------------------------------
+// driver.js no es un componente Angular: `driver({...}).drive()` inserta sus
+// nodos directamente en `<body>`, así que sus clases (`.driver-popover`, etc.)
+// son globales por naturaleza — no hay una encapsulación de componente que las
+// alcance, ni falta que hace. Se sobreescriben aquí, con los mismos tokens de
+// nivel 2 que usa el resto de la app, nunca literales nuevos.
+//
+// Va el último en `styles.scss`, después de `gridster`, por el mismo motivo:
+// solo puede pisar, nunca definir.
+// =============================================================================
+
+@use 'driver.js/dist/driver.css';
+
+.driver-popover {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border);
+  padding: var(--space-5);
+}
+
+.driver-popover-title {
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.driver-popover-description {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.driver-popover-progress-text {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.driver-popover-footer-btn {
+  background: var(--color-surface-muted);
+  color: var(--color-text-body);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.driver-popover-footer-btn:hover,
+.driver-popover-footer-btn:focus {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-soft-text);
+}
+
+.driver-popover-close-btn {
+  color: var(--color-text-muted);
+}
+
+.driver-popover-close-btn:hover,
+.driver-popover-close-btn:focus {
+  color: var(--color-text);
+}
+
+// La flecha del popover: driver.js la pinta con `border-color`, no `fill`.
+.driver-popover-arrow-side-left { border-left-color: var(--color-surface); }
+.driver-popover-arrow-side-right { border-right-color: var(--color-surface); }
+.driver-popover-arrow-side-top { border-top-color: var(--color-surface); }
+.driver-popover-arrow-side-bottom { border-bottom-color: var(--color-surface); }
+
+@media (prefers-reduced-motion: reduce) {
+  .driver-popover,
+  .driver-overlay {
+    transition: none !important;
+    animation: none !important;
+  }
+}

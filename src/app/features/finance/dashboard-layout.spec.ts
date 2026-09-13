@@ -7,8 +7,8 @@ import {
   saveLayout
 } from './dashboard-layout';
 
-const USER_A = 1;
-const USER_B = 2;
+const USER_A = 'user-a';
+const USER_B = 'user-b';
 
 describe('dashboard-layout: disposición de escritorio', () => {
   it('reparte las tres cifras en una sola fila a cuatro columnas cada una', () => {

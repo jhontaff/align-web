@@ -55,7 +55,7 @@ export class AuthStateService {
     }
 
     hydrateUser(): Observable<UserResponse> {
-        return this.http.get<UserResponse>('/auth/me').pipe(
+        return this.http.get<UserResponse>('/api/users/me').pipe(
             tap(user => {
                 this.session.setUser(user);
 
@@ -75,6 +75,15 @@ export class AuthStateService {
                 void this.push.syncSubscription();
             })
         );
+    }
+
+    /**
+     * Actualiza el usuario en sesión sin una petición nueva: `PUT /me` ya
+     * devuelve el `UserResponse` fresco, así que pedirlo otra vez con
+     * `hydrateUser()` sería redundante.
+     */
+    applyUser(user: UserResponse): void {
+        this.session.setUser(user);
     }
 
     hydrateIfAuthenticated(): void {

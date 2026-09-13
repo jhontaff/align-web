@@ -8,6 +8,7 @@ import { unwrapInterceptor } from '../../../core/interceptors/unwrap-interceptor
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { routes } from '../../../app.routes';
 import { setToken, clearToken } from '../../../core/auth/token-storage';
+import { TourRunnerService } from '../../../core/onboarding/tour-runner.service';
 import { TaskDetail } from './task-detail';
 import { TaskList } from '../task-list/task-list';
 import { TaskResponse } from '../models/task.model';
@@ -42,7 +43,12 @@ describe('TaskDetail (rutas reales de la app)', () => {
           withRouterConfig({ paramsInheritanceStrategy: 'always' })
         ),
         provideHttpClient(),
-        provideHttpClientTesting()
+        provideHttpClientTesting(),
+        // `TaskDetail` arranca su propio tour al cargar la tarea, y el test
+        // C) navega de vuelta a `/tasks`, montando `TaskList` (que arranca el
+        // suyo) — sin esto, `driver.js` correría de verdad y dejaría un
+        // popover suelto en el DOM.
+        { provide: TourRunnerService, useValue: { runOnce: () => {}, stop: () => {} } }
       ]
     });
     http = TestBed.inject(HttpTestingController);
@@ -151,7 +157,10 @@ describe('TaskDetail (cadena completa con interceptores)', () => {
       providers: [
         provideRouter(routes, withComponentInputBinding(), withRouterConfig({ paramsInheritanceStrategy: 'always' })),
         provideHttpClient(withInterceptors([authInterceptor, unwrapInterceptor])),
-        provideHttpClientTesting()
+        provideHttpClientTesting(),
+        // `TaskDetail` arranca su propio tour al cargar la tarea — sin
+        // mockear, `driver.js` correría de verdad durante este test.
+        { provide: TourRunnerService, useValue: { runOnce: () => {}, stop: () => {} } }
       ]
     });
     http = TestBed.inject(HttpTestingController);

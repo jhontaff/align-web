@@ -18,10 +18,14 @@ import { RouterLink } from '@angular/router';
 import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { PushService } from '../../../core/notifications/push.service';
+import { injectTourOnMount } from '../../../core/onboarding/inject-tour-on-mount';
+import { TourRunnerService } from '../../../core/onboarding/tour-runner.service';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { HabitResponse } from '../models/habit.model';
 import { HabitFields } from '../components/habit-fields/habit-fields';
 import { HabitService } from '../habit.service';
+import { buildHabitCardOnboardingSteps } from './habit-card-onboarding-steps';
+import { buildHabitListOnboardingSteps } from './habit-list-onboarding-steps';
 
 /**
  * Listado de habitos: una tarjeta por habito, con alta en linea.
@@ -106,6 +110,7 @@ export class HabitList implements OnInit {
 
   private readonly injector = inject(Injector);
   private readonly zone = inject(NgZone);
+  private readonly tourRunner = inject(TourRunnerService);
 
   /**
    * La rejilla, para medir las tarjetas antes y despues de reordenarlas.
@@ -217,6 +222,10 @@ export class HabitList implements OnInit {
     () => this.all().filter(habit => !habit.isCompletedToday).length
   );
 
+  constructor() {
+    injectTourOnMount('habits', buildHabitListOnboardingSteps());
+  }
+
   ngOnInit(): void {
     this.load();
 
@@ -281,6 +290,15 @@ export class HabitList implements OnInit {
   protected onHabitCreated(habit: HabitResponse): void {
     this.all.update(habits => [...habits, habit]);
     this.statusMessage.set(`Habito "${habit.name}" creado.`);
+
+    // `onHabitCreated` no es un contexto de inyección (no es constructor ni
+    // inicializador de campo), así que `afterNextRender` necesita el
+    // `injector` explícito — mismo patrón que ya usa `reorderAnimated()` más
+    // abajo. Se dispara aquí y no al montar la pantalla porque hasta ahora no
+    // existía ninguna `.habit-card` real que señalar.
+    afterNextRender(() => this.tourRunner.runOnce('habit-card', buildHabitCardOnboardingSteps()), {
+      injector: this.injector
+    });
   }
 
   /**

@@ -2,7 +2,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  Injector,
   OnInit,
+  afterNextRender,
   computed,
   inject,
   signal
@@ -12,9 +14,13 @@ import { RouterLink } from '@angular/router';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog/confirm-dialog';
 import { DataRefreshService } from '../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
+import { injectTourOnMount } from '../../../core/onboarding/inject-tour-on-mount';
+import { TourRunnerService } from '../../../core/onboarding/tour-runner.service';
 import { TaskService } from '../task.service';
 import { TaskResponse } from '../models/task.model';
 import { Icon } from '../../../shared/ui/icon/icon';
+import { buildTaskItemOnboardingSteps } from './task-item-onboarding-steps';
+import { buildTaskListOnboardingSteps } from './task-list-onboarding-steps';
 
 @Component({
   selector: 'app-task-list',
@@ -27,6 +33,8 @@ export class TaskList implements OnInit {
   private readonly taskService = inject(TaskService);
   private readonly dataRefresh = inject(DataRefreshService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
+  private readonly tourRunner = inject(TourRunnerService);
 
   protected readonly tasks = signal<TaskResponse[]>([]);
   protected readonly loading = signal(true);
@@ -71,6 +79,10 @@ export class TaskList implements OnInit {
     HIGH: 'Alta'
   };
 
+  constructor() {
+    injectTourOnMount('tasks', buildTaskListOnboardingSteps());
+  }
+
   ngOnInit(): void {
     this.load();
 
@@ -96,6 +108,17 @@ export class TaskList implements OnInit {
     this.taskService.list().subscribe(page => {
       this.tasks.set(page.content);
       this.loading.set(false);
+
+      // La primera vez que la lista tiene alguna tarea real que señalar — en
+      // la práctica, justo al volver de crear la primera — se explica la
+      // fila. `load()` no es un contexto de inyección (corre desde
+      // `ngOnInit` y desde la revalidación del agente), así que hace falta
+      // el `injector` explícito, igual que en `HabitList.onHabitCreated()`.
+      if (page.content.length > 0) {
+        afterNextRender(() => this.tourRunner.runOnce('task-item', buildTaskItemOnboardingSteps()), {
+          injector: this.injector
+        });
+      }
     });
   }
 

@@ -1,0 +1,164 @@
+@use '../../../../styles/layout';
+
+// Entra como un cajón desde la derecha (der→izq); se repite en cada entrada a
+// la ruta porque el componente se instancia de nuevo cada vez (lazy, sin
+// caché de ruta). `_base.scss` ya achica cualquier `animation-duration` con
+// `prefers-reduced-motion`, así que no hace falta repetirlo aquí.
+.page {
+  animation: profile-enter 0.3s ease-out;
+}
+
+// `.is-closing` la pone `animateOut()`, llamado por `profileExitGuard` ANTES
+// de que el router destruya el componente — sale por donde entró, en
+// dirección contraria (izq→der), como un cajón escondiéndose.
+.page.is-closing {
+  animation: profile-exit 0.25s ease-in forwards;
+}
+
+@keyframes profile-enter {
+  from {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+}
+
+@keyframes profile-exit {
+  to {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+}
+
+// DOM en orden de móvil (identidad → estadísticas → ai → prefs → logout →
+// versión); en escritorio `grid-template-areas` reubica en 2 columnas sin
+// tocar el HTML.
+//
+// **`flex` en móvil, no `grid` sin plantilla.** Los hijos ya llevan
+// `grid-area: <nombre>` (los necesita la rejilla de escritorio), y un
+// `display: grid` en el padre SIN `grid-template-areas` que los defina hace
+// que esos nombres sueltos generen líneas con nombre — probado en el
+// navegador: "logout" y "version" acababan compartiendo la misma fila
+// implícita, estirados (`align-items: stretch` es el default de grid) hasta
+// una caja enorme y solapada. `flex` ignora `grid-area` por completo, así
+// que cada hijo se apila con su alto propio sin ambigüedad.
+.profile-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.profile-grid__identity {
+  grid-area: identity;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.profile-identity__name {
+  margin: 0;
+  font-weight: var(--weight-semibold);
+}
+
+.profile-grid__stats {
+  grid-area: stats;
+}
+
+.profile-grid__logout {
+  grid-area: logout;
+}
+
+.profile-grid__version {
+  grid-area: version;
+  text-align: center;
+  font-size: var(--text-xs);
+}
+
+.profile-grid__ai {
+  grid-area: ai;
+}
+
+.profile-grid__prefs {
+  grid-area: prefs;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+@include layout.desktop {
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'identity ai'
+      'stats    ai'
+      'logout   prefs'
+      'version  prefs';
+    align-items: start;
+  }
+
+  // Sin soporte de push (siempre el caso en `ng serve`) no hay tarjeta "ai":
+  // `prefs` sube a ocupar las cuatro filas de la derecha, o quedaría un
+  // hueco en blanco donde estaba.
+  .profile-grid--no-ai {
+    grid-template-areas:
+      'identity prefs'
+      'stats    prefs'
+      'logout   prefs'
+      'version  prefs';
+  }
+}
+
+.profile-stats {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.profile-stats__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.profile-stats__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-lg);
+}
+
+.profile-stats__icon--warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-soft-text);
+}
+
+.profile-stats__icon--primary {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-soft-text);
+}
+
+.profile-stats__icon--success {
+  background: var(--color-success-soft);
+  color: var(--color-success-soft-text);
+}
+
+// Fila de "Notificaciones inteligentes": mismo .menu-item que las filas con
+// chevron, pero es un <label> (envuelve el switch), no un botón.
+.profile-switch-row {
+  cursor: default;
+  align-items: flex-start;
+}
+
+.profile-switch-row__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.profile-test-btn {
+  margin-top: var(--space-2);
+}
