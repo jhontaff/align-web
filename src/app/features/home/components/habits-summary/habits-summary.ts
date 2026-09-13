@@ -8,6 +8,7 @@ import {
   signal
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { DataRefreshService } from '../../../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../../../core/http/extract-error-message';
 import { Icon } from '../../../../shared/ui/icon/icon';
@@ -32,7 +33,7 @@ const PREVIEW_SIZE = 3;
  */
 @Component({
   selector: 'app-habits-summary',
-  imports: [SummaryCard, Icon],
+  imports: [SummaryCard, Icon, RouterLink],
   templateUrl: './habits-summary.html',
   styleUrl: './habits-summary.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -51,6 +52,23 @@ export class HabitsSummary implements OnInit {
   private readonly all = signal<HabitResponse[]>([]);
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
+
+  /**
+   * Id del habito con una peticion de marcado en vuelo, en cualquiera de los
+   * dos sentidos, o `null`. Igual que `markingId` en `HabitList`: es un id y no
+   * un booleano porque hay un check por fila, y uno global bloquearia las tres.
+   */
+  protected readonly markingId = signal<string | null>(null);
+
+  /**
+   * El fallo al marcar/desmarcar. Separado de `errorMessage`: ese sustituye la
+   * tarjeta entera (ver el `@if` de la plantilla), y un fallo de marcado no
+   * puede hacer desaparecer la lista que el usuario esta mirando.
+   */
+  protected readonly actionError = signal<string | null>(null);
+
+  /** Lo ultimo confirmado, para la region `role="status"`. */
+  protected readonly statusMessage = signal('');
 
   protected readonly count = computed(() => this.all().length);
 
@@ -141,5 +159,43 @@ export class HabitsSummary implements OnInit {
     }
 
     return habit.currentStreak === 1 ? '1 día' : `${habit.currentStreak} días`;
+  }
+
+  /**
+   * Marca o desmarca el habito como hecho hoy, segun su estado actual.
+   *
+   * Sin la pausa/animacion de reordenado de `HabitList`: aqui `top()` ya
+   * reordena por racha en cada `all()` nuevo, y con tres filas un salto
+   * instantaneo no se pierde de vista como en una rejilla de ocho. Traer esa
+   * maquinaria a un widget de resumen seria la abstraccion prematura que este
+   * repo evita.
+   */
+  protected onToggle(habit: HabitResponse): void {
+    if (this.markingId() === habit.id) {
+      return;
+    }
+
+    this.markingId.set(habit.id);
+    this.actionError.set(null);
+
+    const request = habit.isCompletedToday
+      ? this.habits.uncomplete(habit.id)
+      : this.habits.complete(habit.id);
+
+    request.subscribe({
+      next: updated => {
+        this.all.update(habits => habits.map(h => (h.id === updated.id ? updated : h)));
+        this.markingId.set(null);
+        this.statusMessage.set(
+          updated.isCompletedToday
+            ? `${updated.name} marcado como hecho hoy.`
+            : `${updated.name} desmarcado.`
+        );
+      },
+      error: err => {
+        this.markingId.set(null);
+        this.actionError.set(extractErrorMessage(err));
+      }
+    });
   }
 }

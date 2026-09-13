@@ -1,8 +1,10 @@
 // user-response.model.ts
 export interface UserResponse {
-  id: number;
+  id: string;
   email: string;
   firstName: string;
   lastName: string;
   role: 'USER' | 'ADMIN';
+  createdAt: string;
+  hasAvatar: boolean;
 }

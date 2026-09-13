@@ -1,9 +1,74 @@
+// La fila entera es pulsable, mismo patron que `.task-item` en `/tasks` y
+// `.row` en `transaction-row`: un `<a>` real sobre el nombre (accesible,
+// focable, con href) que se estira con `::after` sobre todo `.card-row`, en
+// vez de un `(click)` en el `<li>` que exigiria reimplementar a mano el foco
+// por teclado que un enlace ya trae. `.card-row` es la clase global de
+// `_components.scss`; este bloque vive aqui (encapsulado a `HabitsSummary`) y
+// no la toca, asi que Tareas y Finanzas —los otros dos consumidores— no
+// heredan ninguna capa pulsable que no piden.
+.card-row {
+  position: relative;
+
+  &:has(.card-row__link:hover),
+  &:has(.card-row__link:focus-visible) {
+    background: var(--color-surface);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+  }
+}
+
+.card-row__link {
+  text-decoration: none;
+  color: inherit;
+  overflow-wrap: anywhere;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+
+  // Mismo motivo que en `task-item__link`: el anillo por defecto rodearia solo
+  // el texto del nombre, y en una fila que se percibe entera como el destino
+  // eso se lee como que el foco esta en otro sitio. Se apaga aqui y se
+  // redibuja sobre la capa estirada.
+  &:focus-visible {
+    box-shadow: none;
+
+    &::after {
+      box-shadow: var(--focus-ring);
+    }
+  }
+}
+
+// Paso de icono decorativo a boton real (marca/desmarca hoy sin salir de
+// Inicio), asi que necesita estar POR ENCIMA del enlace estirado de la fila
+// (`.card-row__link`) — mismo motivo y misma solucion que `.task-item__delete`
+// en `/tasks`: sin el `z-index`, el enlace se come el clic y pulsar el check
+// navegaria al detalle en vez de marcar.
+//
 // El tamano del icono se fija con `font-size` y nunca con `width`: el SVG mide
-// `1em`, asi que hereda del texto igual que cualquier glifo.
+// `1em`, asi que hereda del boton igual que cualquier glifo.
 .habits-summary__check {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
   font-size: var(--text-base);
   color: var(--color-text-muted);
+  cursor: pointer;
+
+  &:hover:not([aria-disabled='true']),
+  &:focus-visible {
+    color: var(--color-success);
+  }
+
+  &[aria-disabled='true'] {
+    cursor: progress;
+  }
 }
 
 .habits-summary__check--done {

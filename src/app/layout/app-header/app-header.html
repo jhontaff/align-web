@@ -1,21 +1,22 @@
 <header class="app-header">
   <a class="app-header__brand" routerLink="/">Align</a>
 
-  <!--
-    Sin `<nav>`: aquí no hay enlaces de navegación. Los destinos viven en
-    `sidebar-nav` / `bottom-nav`, alimentados por `NAV_LINKS`. Marcar como `<nav>`
-    un contenedor que solo tiene acciones de sesión le miente al lector de
-    pantalla, que lo ofrece como punto de referencia navegable.
+  <div class="app-header__right">
+    @if (showSettings()) {
+      <a class="app-header__settings-link" routerLink="/profile/edit" aria-label="Editar perfil">
+        <app-icon name="bi:gear" />
+      </a>
+    }
 
-    Las dos formas están siempre en el DOM y es CSS quien elige: en escritorio
-    las acciones en línea, en móvil el desplegable. Alternarlas con `@if` sobre
-    un signal de breakpoint parpadearía en la primera pintura, igual que con
-    las dos navs.
-  -->
-  <div class="app-header__actions">
-    <app-theme-toggle />
-    <button class="btn btn-ghost" type="button" (click)="onLogout()">Cerrar sesión</button>
+    <!-- Único camino a tema/sesión, en todos los tamaños: vía /profile.
+         Botón, no enlace: un segundo clic ya en /profile tiene que cerrar. -->
+    <button
+      type="button"
+      class="app-header__avatar-link"
+      [attr.aria-label]="profileLabel()"
+      (click)="onAvatarClick()"
+    >
+      <app-avatar [seed]="avatarSeed()" [photoUrl]="avatarUrl()" [size]="36" />
+    </button>
   </div>
-
-  <app-session-menu />
 </header>

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { profileExitGuard } from './features/user/profile/profile-exit.guard';
 
 export const routes: Routes = [
   {
@@ -84,6 +85,18 @@ export const routes: Routes = [
     path: 'habits/:id',
     loadComponent: () =>
       import('./features/habits/habit-detail/habit-detail').then(m => m.HabitDetail),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'profile',
+    loadComponent: () => import('./features/user/profile/profile').then(m => m.Profile),
+    canActivate: [authGuard],
+    canDeactivate: [profileExitGuard]
+  },
+  {
+    path: 'profile/edit',
+    loadComponent: () =>
+      import('./features/user/profile-edit/profile-edit').then(m => m.ProfileEdit),
     canActivate: [authGuard]
   },
   {

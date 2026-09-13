@@ -1,12 +1,14 @@
 import { TitleCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { AuthStateService } from '../../core/auth/auth-state.service';
+import { injectTourOnMount } from '../../core/onboarding/inject-tour-on-mount';
 import { Icon } from '../../shared/ui/icon/icon';
 import { CalendarWidget } from './components/calendar-widget/calendar-widget';
 import { FinanceSummary } from './components/finance-summary/finance-summary';
 import { HabitsSummary } from './components/habits-summary/habits-summary';
 import { QuickCreate } from './components/quick-create/quick-create';
 import { TasksSummary } from './components/tasks-summary/tasks-summary';
+import { buildHomeOnboardingSteps } from './home-onboarding-steps';
 /**
  * El panel de Inicio: el saludo, el botón de crear y una tarjeta por dominio.
  *
@@ -52,6 +54,13 @@ export class Home {
    * de pantalla la observe. Mismo motivo que la de `HabitList`.
    */
   protected readonly statusMessage = signal('');
+
+  constructor() {
+    // Encadenado detrás de `shell`: los dos se ven en la misma sesión de un
+    // usuario nuevo, en vez de que `home` pierda el cerrojo y espere a la
+    // próxima visita a Inicio. Ver `injectTourOnMount`.
+    injectTourOnMount('home', buildHomeOnboardingSteps(), 'shell');
+  }
 
   protected onCreated(message: string): void {
     this.statusMessage.set(message);

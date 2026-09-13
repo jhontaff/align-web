@@ -1,0 +1,15 @@
+<!--
+  `[open]`, no `[(open)]`: `hasCurrent()` es un `computed`, no se puede escribir.
+  `ConfirmDialog` se cierra solo al confirmar/rechazar (ver su propio doc); en
+  cuanto el store quita la acción actual de `pendingActions()`, este `computed`
+  recalcula y, si queda otra en cola, vuelve a abrirse solo.
+-->
+<app-confirm-dialog
+  [open]="hasCurrent()"
+  heading="Eliminar"
+  [message]="message()"
+  tone="danger"
+  confirmLabel="Eliminar"
+  (confirm)="onConfirm()"
+  (cancel)="onReject()"
+/>
