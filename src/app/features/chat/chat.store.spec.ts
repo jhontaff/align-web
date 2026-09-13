@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { SessionService } from '../../core/auth/session.service';
 import { DataRefreshService } from '../../core/data/data-refresh.service';
 import { ChatStore } from './chat.store';
 import { PendingActionResponse } from './models/pending-action.model';
@@ -104,5 +105,53 @@ describe('ChatStore — pending actions', () => {
     http.expectOne('/api/agent/pending-actions').flush([ACTION_A]);
 
     expect(store.pendingActions()).toEqual([ACTION_A]);
+  });
+});
+
+describe('ChatStore — reset al cerrar sesión', () => {
+  let store: ChatStore;
+  let session: SessionService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()]
+    });
+
+    store = TestBed.inject(ChatStore);
+    session = TestBed.inject(SessionService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('limpia mensajes y acciones pendientes al terminar la sesión, y deja cargar el historial del siguiente usuario', () => {
+    store.loadHistory();
+    http.expectOne('/api/agent/history').flush({ turns: [{ role: 'user', content: 'hola' }] });
+    http.expectOne('/api/agent/pending-actions').flush([ACTION_A]);
+
+    expect(store.messages().length).toBe(1);
+    expect(store.pendingActions()).toEqual([ACTION_A]);
+
+    session.clear();
+
+    expect(store.messages()).toEqual([]);
+    expect(store.pendingActions()).toEqual([]);
+
+    // loadedOnce volvió a false: el usuario nuevo dispara su propia carga.
+    store.loadHistory();
+    http.expectOne('/api/agent/history').flush({ turns: [] });
+    http.expectOne('/api/agent/pending-actions').flush([]);
+  });
+
+  it('descarta una respuesta de historial que llega después de que la sesión ya terminó', () => {
+    store.loadHistory();
+    const historyReq = http.expectOne('/api/agent/history');
+    http.expectOne('/api/agent/pending-actions').flush([]);
+
+    session.clear();
+    historyReq.flush({ turns: [{ role: 'user', content: 'mensaje del usuario anterior' }] });
+
+    expect(store.messages()).toEqual([]);
   });
 });
