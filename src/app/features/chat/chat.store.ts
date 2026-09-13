@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
+import { SessionService } from '../../core/auth/session.service';
 import { DataRefreshService } from '../../core/data/data-refresh.service';
 import { extractErrorMessage } from '../../core/http/extract-error-message';
 import { ChatService } from './chat.service';
@@ -41,6 +42,7 @@ function randomChatErrorMessage(): string {
 export class ChatStore {
   private readonly chatService = inject(ChatService);
   private readonly dataRefresh = inject(DataRefreshService);
+  private readonly session = inject(SessionService);
 
   private readonly _messages = signal<ChatMessage[]>([]);
   private readonly _loadingHistory = signal(false);
@@ -59,6 +61,20 @@ export class ChatStore {
    */
   private loadedOnce = false;
 
+  /**
+   * Incrementado en `reset()`. `ChatStore` es `providedIn: 'root'` y sobrevive
+   * al logout —a diferencia de `ChatPanel`, que sí se destruye—, así que una
+   * petición en vuelo cuando el usuario cierra sesión puede responder
+   * *después* del reset. Sin este contador, esa respuesta tardía repoblaría
+   * `_messages`/`_pendingActions` con datos del usuario anterior justo cuando
+   * el nuevo ya inició su propia carga.
+   */
+  private sessionToken = 0;
+
+  constructor() {
+    this.session.cleared.subscribe(() => this.reset());
+  }
+
   loadHistory(): void {
     if (this.loadedOnce) {
       return;
@@ -66,13 +82,20 @@ export class ChatStore {
 
     this.loadedOnce = true;
     this._loadingHistory.set(true);
+    const token = this.sessionToken;
 
     this.chatService.history().subscribe({
       next: response => {
+        if (token !== this.sessionToken) {
+          return;
+        }
         this._messages.set(response.turns.map(turn => ({ role: turn.role, text: turn.content })));
         this._loadingHistory.set(false);
       },
       error: () => {
+        if (token !== this.sessionToken) {
+          return;
+        }
         this._loadingHistory.set(false);
       }
     });
@@ -81,6 +104,22 @@ export class ChatStore {
     // junto al historial para que aparezca en cuanto el shell monta el chat,
     // no solo tras el próximo mensaje.
     this.refreshPendingActions();
+  }
+
+  /**
+   * Limpia todo lo que un usuario nuevo no debe heredar del anterior: se
+   * suscribe a `SessionService.cleared`, que cubre tanto el logout explícito
+   * como el 401 automático. `loadedOnce` vuelve a `false` para que el próximo
+   * `loadHistory()` —disparado cuando `ChatPanel` se recrea al volver a
+   * autenticarse— pida de verdad el historial del nuevo usuario.
+   */
+  private reset(): void {
+    this.sessionToken++;
+    this._messages.set([]);
+    this._pendingActions.set([]);
+    this._loadingHistory.set(false);
+    this._sending.set(false);
+    this.loadedOnce = false;
   }
 
   send(text: string): void {
@@ -156,8 +195,15 @@ export class ChatStore {
   }
 
   private refreshPendingActions(): void {
+    const token = this.sessionToken;
+
     this.chatService.pendingActions().subscribe({
-      next: actions => this._pendingActions.set(actions),
+      next: actions => {
+        if (token !== this.sessionToken) {
+          return;
+        }
+        this._pendingActions.set(actions);
+      },
       error: () => {
         // Silencioso a propósito: es un refresco de fondo, no una acción que el
         // usuario disparó. Si falla, la próxima llamada (tras el siguiente
