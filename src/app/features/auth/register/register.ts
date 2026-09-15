@@ -1,47 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { Icon } from '../../../shared/ui/icon/icon';
-
-/**
- * Espejo de la política que el backend declara en `RegisterRequest`:
- * `minLength 8`, `maxLength 25` y un patrón que exige minúscula, mayúscula y dígito.
- *
- * Una sola declaración para las dos cosas que salen de ella —la validez del control
- * y la lista que ve el usuario— porque escribirlas por separado es cómo se acaba
- * exigiendo una mayúscula y anunciando otra cosa.
- */
-interface PasswordRule {
-  readonly id: string;
-  readonly label: string;
-  readonly test: (value: string) => boolean;
-}
-
-const PASSWORD_RULES: readonly PasswordRule[] = [
-  { id: 'length', label: 'Entre 8 y 25 caracteres', test: v => v.length >= 8 && v.length <= 25 },
-  { id: 'lowercase', label: 'Una letra minúscula', test: v => /[a-z]/.test(v) },
-  { id: 'uppercase', label: 'Una letra mayúscula', test: v => /[A-Z]/.test(v) },
-  { id: 'digit', label: 'Un número', test: v => /\d/.test(v) }
-];
-
-function passwordPolicy(control: AbstractControl): ValidationErrors | null {
-  const value: string = control.value ?? '';
-  const failed = PASSWORD_RULES.filter(rule => !rule.test(value)).map(rule => rule.id);
-  return failed.length > 0 ? { passwordPolicy: failed } : null;
-}
-
-/**
- * Va en el grupo y no en el control: un validador de control no ve a su hermano, y
- * colgado de `confirmPassword` no volvería a ejecutarse al cambiar `password` después.
- */
-function passwordsMatch(group: AbstractControl): ValidationErrors | null {
-  const password = group.get('password')?.value;
-  const confirmPassword = group.get('confirmPassword')?.value;
-  return password === confirmPassword ? null : { passwordsMismatch: true };
-}
+import { PASSWORD_RULES, passwordPolicy, passwordsMatch } from '../password-policy';
 
 @Component({
   selector: 'app-register',
@@ -74,7 +38,7 @@ export class Register {
       firstName: ['', [Validators.required]],
       lastName: ['', [Validators.required]]
     },
-    { validators: passwordsMatch }
+    { validators: passwordsMatch('password', 'confirmPassword') }
   );
 
   private readonly passwordValue = toSignal(this.form.controls.password.valueChanges, { initialValue: '' });

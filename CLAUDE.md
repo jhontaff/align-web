@@ -50,6 +50,17 @@ The backend is a separate repo (`align`, Spring Boot 3.5 / Java 21). Everything 
 - **Logout is client-side only.** The JWT is stateless (no server-side session/blacklist); "logging out" means deleting the local token, not invalidating it server-side.
 - Every route except `/auth/**`, `/swagger-ui/**`, `/v3/api-docs/**` requires `Authorization: Bearer <token>`.
 
+## Recuperación de contraseña (`/auth/forgot-password`, `/auth/reset-password`) — 2026-09-14
+
+Dos endpoints nuevos en el backend (commit `84a72d7`, "feature resetPassword"), públicos, bajo `/auth/**`. Contrato verificado por el equipo del backend contra el código real (no solo contra el resumen).
+
+- `POST /auth/forgot-password` — body `{ email }`. Sin auth. Siempre **`200`** con `data: null` y el mensaje fijo *"Si el correo está registrado, vas a recibir un enlace para restablecer tu contraseña."* — igual exista o no el correo, e igual falle el envío del email (anti-enumeración). Ese mensaje se muestra tal cual; nunca "correo enviado" ni "correo no encontrado". Único no-`200`: `400` con `errors: { email: "..." }` si el correo es inválido/vacío. **Sin rate limit** en el backend, pero el frontend no reenvía solo.
+- El enlace del correo apunta a `<frontend>/reset-password?token=<raw>` — 43 caracteres URL-safe, opaco, no se decodifica ni valida en cliente. **Expira a los 30 minutos.** Pedir un enlace nuevo **reemplaza** el anterior (índice único parcial en la BD del backend): solo el más reciente funciona.
+- `POST /auth/reset-password` — body `{ token, newPassword, confirmPassword }`. Sin auth. Éxito: **`200`**, `data: null` — **no devuelve JWT ni inicia sesión**; el flujo correcto es redirigir a `/login` con un aviso y que el usuario entre con la contraseña nueva.
+  - `400` con `errors` = validación de campos: `token` (vacío), `newPassword` (misma política que registro: 8–25 caracteres, una minúscula, una mayúscula, un dígito), `confirmPassword` (vacío), y **`passwordConfirmed`** cuando no coinciden — ese nombre es el del método `@AssertTrue` en el backend, no un campo; mapearlo al input de confirmación.
+  - `400` con `errors: null` y mensaje *"El enlace no es válido o ya expiró."* = token desconocido, ya usado o caducado — deliberadamente indistinguibles entre sí. No reintentar automáticamente; ofrecer volver a `/forgot-password`.
+- Un reset **no invalida sesiones activas en otros dispositivos** (misma regla que `PUT /me/password`).
+
 ## The `ApiResponse<T>` envelope — and its exceptions
 
 Every REST endpoint wraps its body: `{ timestamp, status, success, message, data, errors }`. The actual resource is in `.data`.
@@ -764,6 +775,7 @@ Auth foundation is built and confirmed working end-to-end against the live backe
 2. Finance feature area (`/api/transactions`) — dominio y pantalla de resumen construidos. Falta el **listado** `activity/` (paginado + filtros en query params, con chips de filtro activo y contador de resultados) y el **formulario** `transaction-form/`. En cuanto entre `activity/` como pantalla hermana hace falta `finance.routes.ts` (con `export default`) y un contenedor con su propio `<router-outlet />`; ese contenedor lleva un `<nav>` con `aria-current="page"`, **no un `role="tablist"`** — son rutas con historial propio, no paneles que se intercambian, y `@angular/aria` es v21+ y no está instalado. El selector de rango de fechas vive ahí: hoy `overview` fija el mes en curso al construirse.
 3. Habit feature area (`/api/habits`) — not started. Backend REST is ready (see [Habit](#habit-apihabits) above); no pagination and no `HabitUpdateRequest`, so it's a slightly smaller build than Task/Finance. No AI tools yet, so the habit list/completion UI has no chat equivalent to fall back on.
 4. `assistant-widget` en Home y `sidebar-nav` con marca/usuario — el sidebar hoy es solo la lista de enlaces.
+5. Recuperación de contraseña — backend listo (`/auth/forgot-password`, `/auth/reset-password`, ver [Recuperación de contraseña](#recuperación-de-contraseña-authforgot-password-authreset-password--2026-09-14)), pantallas frontend en construcción. Falta además añadir los 3 env vars de Resend (`ALIGN_RESEND_API_KEY`/`ALIGN_EMAIL_FROM`/`ALIGN_FRONTEND_BASE_URL`) al VPS antes del próximo deploy — sin ellos el backend no arranca en prod.
 
 
 ## Tooling (no forma parte de la app, es para trabajar en el repo)
