@@ -290,6 +290,18 @@
   margin-bottom: var(--space-4);
 }
 
+// Equivalente en positivo de `.form-error` — mismos tokens de nivel 2, pero
+// `success` en vez de `danger`. `role="status"` en el consumidor, no "alert":
+// es una confirmación, no una interrupción.
+.form-success {
+  background: var(--color-success-soft);
+  color: var(--color-success-soft-text);
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
