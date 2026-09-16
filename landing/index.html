@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Align — organiza tu vida con un asistente de IA</title>
+<meta name="description" content="Tareas, finanzas y hábitos en un solo lugar. Pídeselo a tu asistente de IA y Align se encarga del resto.">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --surface-2: #f2f2f6;
+    --text: #16171d;
+    --text-muted: #6b6f80;
+    --border: #e6e6ec;
+    --accent: #4f46e5;
+    --accent-deep: #3c34b8;
+    --accent-ink: #ffffff;
+    --accent-soft: #eef0fd;
+    --success: #0f9d68;
+    --success-soft: #e3f7ee;
+    --warning: #b45f06;
+    --warning-soft: #fdf0e0;
+    --danger: #dc2626;
+    --danger-soft: #fdeaea;
+    --shadow-sm: 0 1px 2px rgba(22,23,29,.06), 0 1px 1px rgba(22,23,29,.04);
+    --shadow-md: 0 8px 24px rgba(22,23,29,.08);
+    --shadow-lg: 0 24px 60px rgba(60,52,184,.16);
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1015;
+      --surface: #171821;
+      --surface-2: #1d1f2a;
+      --text: #f2f2f6;
+      --text-muted: #9a9db0;
+      --border: #2a2c3a;
+      --accent: #7b74f0;
+      --accent-deep: #6058e8;
+      --accent-ink: #0f1015;
+      --accent-soft: rgba(123,116,240,.14);
+      --success: #34d399;
+      --success-soft: rgba(52,211,153,.12);
+      --warning: #f0a94e;
+      --warning-soft: rgba(240,169,78,.12);
+      --danger: #f2867a;
+      --danger-soft: rgba(242,134,122,.12);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+      --shadow-md: 0 8px 24px rgba(0,0,0,.45);
+      --shadow-lg: 0 24px 60px rgba(0,0,0,.5);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0f1015;
+    --surface: #171821;
+    --surface-2: #1d1f2a;
+    --text: #f2f2f6;
+    --text-muted: #9a9db0;
+    --border: #2a2c3a;
+    --accent: #7b74f0;
+    --accent-deep: #6058e8;
+    --accent-ink: #0f1015;
+    --accent-soft: rgba(123,116,240,.14);
+    --success: #34d399;
+    --success-soft: rgba(52,211,153,.12);
+    --warning: #f0a94e;
+    --warning-soft: rgba(240,169,78,.12);
+    --danger: #f2867a;
+    --danger-soft: rgba(242,134,122,.12);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+    --shadow-md: 0 8px 24px rgba(0,0,0,.45);
+    --shadow-lg: 0 24px 60px rgba(0,0,0,.5);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  p { margin: 0; }
+  img { max-width: 100%; }
+  a { color: inherit; }
+  ul { margin: 0; padding: 0; list-style: none; }
+  button { font-family: inherit; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .wrap {
+    max-width: 1180px;
+    margin-inline: auto;
+    padding-inline: 16px;
+  }
+
+  /* ---------- top nav ---------- */
+  .nav {
+    padding-block: 18px;
+  }
+  .nav .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .brand {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 700;
+    font-size: 1.3rem;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .nav-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+    white-space: nowrap;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-solid {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+  }
+  .btn-solid:hover { background: var(--accent-deep); box-shadow: var(--shadow-md); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn-ghost:hover { background: var(--surface-2); }
+  .btn-on-accent {
+    background: #fff;
+    color: var(--accent-deep);
+  }
+  .btn-on-accent:hover { box-shadow: var(--shadow-md); }
+  .btn-sm { padding: 7px 14px; font-size: 0.82rem; border-radius: 8px; }
+
+  /* ---------- top band (nav + hero comparten el mismo degradado, sin costura) ---------- */
+  .top-band {
+    background:
+      radial-gradient(1100px 620px at 12% -18%, var(--accent-soft), transparent 60%),
+      radial-gradient(900px 560px at 105% -6%, var(--accent-soft), transparent 55%),
+      var(--bg);
+  }
+
+  /* ---------- hero ---------- */
+  .hero {
+    padding-block: clamp(28px, 6vw, 56px) clamp(40px, 8vw, 88px);
+    overflow: hidden;
+  }
+  .hero .wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(24px, 4vw, 48px);
+    align-items: center;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-deep);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: clamp(2.15rem, 3.4vw + 1rem, 3.4rem);
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent-deep);
+  }
+  .hero-sub {
+    margin-top: 20px;
+    font-size: 1.08rem;
+    color: var(--text-muted);
+    max-width: 46ch;
+  }
+  .hero-actions {
+    margin-top: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .hero-stats {
+    margin-top: 36px;
+    display: flex;
+    gap: clamp(18px, 4vw, 36px);
+    flex-wrap: wrap;
+  }
+  .hero-stat b {
+    display: block;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  .hero-stat span {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+
+  /* ---------- device mockups: PC (monitor) + móvil ---------- */
+  .device-stage {
+    position: relative;
+    height: clamp(380px, 50vw, 480px);
+  }
+  .device-stage::before {
+    content: "";
+    position: absolute;
+    inset: 6% 4%;
+    background: radial-gradient(closest-side, var(--accent-soft), transparent 72%);
+    border-radius: 50%;
+    z-index: 0;
+  }
+
+  .monitor {
+    position: absolute;
+    inset: 2% 12% 18% 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    z-index: 1;
+  }
+  .monitor-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .monitor-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .monitor-dot--r { background: var(--danger); }
+  .monitor-dot--y { background: var(--warning); }
+  .monitor-dot--g { background: var(--success); }
+  .monitor-url {
+    margin-inline-start: 8px;
+    font-size: 0.66rem;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 10px;
+  }
+  .monitor-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+  .monitor-nav {
+    width: 78px;
+    flex-shrink: 0;
+    border-inline-end: 1px solid var(--border);
+    padding: 12px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+  .monitor-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.56rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 6px 4px;
+    border-radius: 8px;
+    width: 100%;
+  }
+  .monitor-nav-item svg { width: 1.05em; height: 1.05em; }
+  .monitor-nav-item--active { background: var(--accent-soft); color: var(--accent-deep); }
+  .monitor-main {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .monitor-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .monitor-title span {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .phone {
+    position: absolute;
+    width: 168px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 26px;
+    box-shadow: var(--shadow-lg);
+    padding: 10px 9px 10px;
+    z-index: 2;
+  }
+  .phone--floating {
+    right: 0;
+    bottom: -2%;
+    width: 180px;
+    transform: rotate(-6deg);
+  }
+  .phone-notch {
+    width: 44px;
+    height: 5px;
+    border-radius: 4px;
+    background: var(--border);
+    margin: 0 auto 8px;
+  }
+  .phone-screen {
+    background: var(--surface-2);
+    border-radius: 14px;
+    padding: 10px;
+    height: 258px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .phone-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+  }
+  .phone-tabbar {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .phone-tab { display: flex; color: var(--text-muted); }
+  .phone-tab svg { width: 1.05em; height: 1.05em; }
+  .phone-tab--active { color: var(--accent); }
+
+  .mini-task {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 7px 8px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mini-check {
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+  }
+  .mini-check.done { border-color: var(--success); background: var(--success); }
+  .mini-task-title { font-size: 0.68rem; font-weight: 600; flex: 1; }
+  .mini-task-title.done { text-decoration: line-through; color: var(--text-muted); }
+  .mini-badge {
+    font-size: 0.56rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .mini-badge--warning { background: var(--warning-soft); color: var(--warning); }
+  .mini-badge--primary { background: var(--accent-soft); color: var(--accent-deep); }
+  .mini-badge--success { background: var(--success-soft); color: var(--success); }
+
+  .mini-chat-row { display: flex; }
+  .mini-chat-row.user { justify-content: flex-end; }
+  .mini-bubble {
+    max-width: 84%;
+    font-size: 0.66rem;
+    line-height: 1.35;
+    padding: 7px 9px;
+    border-radius: 11px;
+  }
+  .mini-chat-row.user .mini-bubble {
+    background: var(--accent);
+    color: #fff;
+    border-bottom-right-radius: 3px;
+  }
+  .mini-chat-row.bot .mini-bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 3px;
+  }
+  .mini-confirm {
+    background: var(--surface);
+    border: 1px solid var(--danger);
+    border-radius: 10px;
+    padding: 8px;
+    font-size: 0.62rem;
+  }
+  .mini-confirm b { color: var(--danger); }
+  .mini-confirm-actions { display: flex; gap: 6px; margin-top: 6px; }
+  .mini-confirm-actions span {
+    flex: 1;
+    text-align: center;
+    padding: 4px 0;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.6rem;
+  }
+  .mini-confirm-actions .no { background: var(--surface-2); color: var(--text-muted); }
+  .mini-confirm-actions .yes { background: var(--danger); color: #fff; }
+
+  .mini-stat-row { display: flex; gap: 6px; }
+  .mini-stat {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 7px 6px;
+    text-align: center;
+  }
+  .mini-stat span { display: block; font-size: 0.56rem; color: var(--text-muted); font-weight: 600; }
+  .mini-stat b { font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+  .mini-stat b.up { color: var(--success); }
+  .mini-stat b.down { color: var(--danger); }
+  /* mini "monthly-flow": barras de ingreso/gasto desde una línea cero + línea
+     de balance con puntos — el mismo gráfico real de Finanzas, no un genérico. */
+  .mflow {
+    flex: 1;
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 8px;
+  }
+  .mflow-track { position: relative; flex: 1; }
+  .mflow-zero { position: absolute; inset-inline: 0; bottom: 0; height: 1px; background: var(--border); }
+  .mflow-cols { position: absolute; inset: 0; display: flex; }
+  .mflow-col { flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
+  .mflow-bars { display: flex; align-items: flex-end; gap: 2px; height: 100%; }
+  .mflow-bar { width: 5px; border-radius: 2px 2px 0 0; }
+  .mflow-bar--in { background: var(--success); }
+  .mflow-bar--out { background: var(--danger); }
+  .mflow-line { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .mflow-line polyline { fill: none; stroke: var(--text); stroke-width: 2; stroke-linejoin: round; }
+  .mflow-dot {
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text);
+    box-shadow: 0 0 0 2px var(--surface);
+    transform: translate(-50%, -50%);
+  }
+
+  /* ---------- section shells ---------- */
+  section { padding-block: clamp(48px, 7vw, 88px); }
+  .section-head {
+    text-align: center;
+    max-width: 640px;
+    margin: 0 auto clamp(32px, 5vw, 52px);
+  }
+  .section-head h2 { font-size: clamp(1.7rem, 2.2vw + 1rem, 2.4rem); }
+  .section-head p {
+    margin-top: 14px;
+    color: var(--text-muted);
+    font-size: 1.02rem;
+  }
+  .eyebrow-mini {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    margin-bottom: 10px;
+  }
+
+  /* ---------- feature band ---------- */
+  .features {
+    background: linear-gradient(160deg, var(--accent-deep), var(--accent));
+    color: #fff;
+  }
+  .features .eyebrow-mini { color: rgba(255,255,255,.78); }
+  .features .section-head p { color: rgba(255,255,255,.78); }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  .feature-card {
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 16px;
+    padding: 24px 22px;
+    box-shadow: var(--shadow-md);
+  }
+  .feature-icon {
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    background: var(--accent-soft);
+    color: var(--accent-deep);
+    display: grid;
+    place-items: center;
+    font-size: 1.25rem;
+    margin-bottom: 16px;
+  }
+  .feature-icon svg { display: block; }
+  .stat-arrow { display: inline-block; width: 0.8em; height: 0.8em; vertical-align: -0.05em; margin-inline-end: 1px; }
+  .eyebrow svg { display: block; width: 1em; height: 1em; }
+  .feature-card h3 { font-size: 1.05rem; font-weight: 700; font-family: 'Inter', sans-serif; letter-spacing: -0.01em; }
+  .feature-card p { margin-top: 8px; color: var(--text-muted); font-size: 0.92rem; }
+
+  /* ---------- action showcase ---------- */
+  .showcase-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .showcase-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .showcase-frame {
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 190px;
+  }
+  .showcase-card h3 { font-size: 1rem; font-family: 'Inter'; font-weight: 700; }
+  .showcase-card p { font-size: 0.88rem; color: var(--text-muted); }
+
+  /* ---------- steps ---------- */
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+  .step {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .step-num {
+    font-family: 'Fraunces', serif;
+    font-size: 1.7rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .step h3 { font-size: 1.08rem; font-family: 'Inter'; font-weight: 700; }
+  .step p { color: var(--text-muted); font-size: 0.94rem; }
+  .step-line {
+    height: 1px;
+    background: var(--border);
+    margin-top: 4px;
+  }
+
+  /* ---------- final CTA ---------- */
+  .cta-band {
+    background: linear-gradient(135deg, var(--accent-deep), #241f78 120%);
+    color: #fff;
+    border-radius: 24px;
+    padding: clamp(36px, 6vw, 64px);
+    text-align: center;
+    margin-inline: max(16px, calc((100% - 1180px) / 2));
+  }
+  .cta-band h2 { font-size: clamp(1.7rem, 2.4vw + 1rem, 2.5rem); color: #fff; }
+  .cta-band p { margin-top: 12px; color: rgba(255,255,255,.78); }
+  .cta-band .hero-actions { justify-content: center; margin-top: 26px; }
+
+  footer {
+    padding-block: 28px 40px;
+  }
+  footer .wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+  footer .foot-links { display: flex; gap: 18px; }
+  footer a { text-decoration: none; }
+  footer a:hover { color: var(--text); }
+
+  @media (max-width: 860px) {
+    .hero .wrap { grid-template-columns: 1fr; }
+    .device-stage { order: -1; height: clamp(340px, 92vw, 420px); }
+    .feature-grid { grid-template-columns: repeat(2, 1fr); }
+    .showcase-grid { grid-template-columns: 1fr; }
+    .steps-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .feature-grid { grid-template-columns: 1fr; }
+    .monitor { inset: 2% 22% 22% 0; }
+    .monitor-nav { width: 56px; }
+    .monitor-nav-item { font-size: 0.5rem; }
+    .phone--floating { width: 138px; bottom: -4%; }
+    .phone-screen { height: 220px; }
+    .cta-band { margin-inline: 16px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-band">
+<nav class="nav">
+  <div class="wrap">
+    <a class="brand" href="/">Align</a>
+    <div class="nav-cta">
+      <a class="btn btn-ghost btn-sm" href="/login">Iniciar sesión</a>
+      <a class="btn btn-solid btn-sm" href="/register">Empezar gratis</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><g fill="currentColor"><path d="M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5M3 8.062C3 6.76 4.235 5.765 5.53 5.886a26.6 26.6 0 0 0 4.94 0C11.765 5.765 13 6.76 13 8.062v1.157a.93.93 0 0 1-.765.935c-.845.147-2.34.346-4.235.346s-3.39-.2-4.235-.346A.93.93 0 0 1 3 9.219zm4.542-.827a.25.25 0 0 0-.217.068l-.92.9a25 25 0 0 1-1.871-.183a.25.25 0 0 0-.068.495c.55.076 1.232.149 2.02.193a.25.25 0 0 0 .189-.071l.754-.736l.847 1.71a.25.25 0 0 0 .404.062l.932-.97a25 25 0 0 0 1.922-.188a.25.25 0 0 0-.068-.495c-.538.074-1.207.145-1.98.189a.25.25 0 0 0-.166.076l-.754.785l-.842-1.7a.25.25 0 0 0-.182-.135"/><path d="M8.5 1.866a1 1 0 1 0-1 0V3h-2A4.5 4.5 0 0 0 1 7.5V8a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1v-.5A4.5 4.5 0 0 0 10.5 3h-2zM14 7.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7.5A3.5 3.5 0 0 1 5.5 4h5A3.5 3.5 0 0 1 14 7.5"/></g></svg>
+        Asistente de IA · uso personal
+      </span>
+      <h1>Organiza tu vida hablando con un asistente que <em>realmente hace las cosas</em>.</h1>
+      <p class="hero-sub">Tareas, finanzas y hábitos en un solo lugar. Pídeselo a tu asistente en una frase y Align se encarga del resto, sin cambiar de pantalla.</p>
+      <div class="hero-actions">
+        <a class="btn btn-solid" href="/register">Empezar gratis</a>
+        <a class="btn btn-ghost" href="#showcase">Ver cómo funciona</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><b>3</b><span>dominios unificados</span></div>
+        <div class="hero-stat"><b>1</b><span>conversación, no 3 apps</span></div>
+        <div class="hero-stat"><b>0</b><span>borrados sin tu confirmación</span></div>
+      </div>
+    </div>
+
+    <div class="device-stage" aria-hidden="true">
+      <div class="monitor">
+        <div class="monitor-bar">
+          <span class="monitor-dot monitor-dot--r"></span>
+          <span class="monitor-dot monitor-dot--y"></span>
+          <span class="monitor-dot monitor-dot--g"></span>
+          <span class="monitor-url">align.app/finance</span>
+        </div>
+        <div class="monitor-body">
+          <nav class="monitor-nav">
+            <span class="monitor-nav-item">
+              <svg viewBox="0 0 16 16" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4.5a.5.5 0 0 0 .5-.5v-4h2v4a.5.5 0 0 0 .5.5H14a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293zM2.5 14V7.707l5.5-5.5l5.5 5.5V14H10v-4a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5v4z"/></svg>
+              Inicio
+            </span>
+            <span class="monitor-nav-item">
+              <svg viewBox="0 0 16 16" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><g fill="currentColor"><path d="M2.5 8a5.5 5.5 0 0 1 8.25-4.764a.5.5 0 0 0 .5-.866A6.5 6.5 0 1 0 14.5 8a.5.5 0 0 0-1 0a5.5 5.5 0 1 1-11 0"/><path d="M15.354 3.354a.5.5 0 0 0-.708-.708L8 9.293L5.354 6.646a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0z"/></g></svg>
+              Tareas
+            </span>
+            <span class="monitor-nav-item monitor-nav-item--active">
+              <svg viewBox="0 0 16 16" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12.136.326A1.5 1.5 0 0 1 14 1.78V3h.5A1.5 1.5 0 0 1 16 4.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 13.5v-9a1.5 1.5 0 0 1 1.432-1.499zM5.562 3H13V1.78a.5.5 0 0 0-.621-.484zM1.5 4a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5z"/></svg>
+              Finanzas
+            </span>
+          </nav>
+          <div class="monitor-main">
+            <p class="monitor-title">Finanzas<span>Septiembre 2026</span></p>
+            <div class="mini-stat-row">
+              <div class="mini-stat"><span>Ingresos</span><b class="up"><svg class="stat-arrow" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5"/></svg>2.450k</b></div>
+              <div class="mini-stat"><span>Gastos</span><b class="down"><svg class="stat-arrow" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4-4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1"/></svg>1.180k</b></div>
+              <div class="mini-stat"><span>Balance</span><b class="up"><svg class="stat-arrow" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5"/></svg>1.270k</b></div>
+            </div>
+            <div class="mflow">
+              <div class="mflow-track">
+                <span class="mflow-zero"></span>
+                <div class="mflow-cols">
+                  <div class="mflow-col"><span class="mflow-bars"><i class="mflow-bar mflow-bar--in" style="height:28%"></i><i class="mflow-bar mflow-bar--out" style="height:20%"></i></span></div>
+                  <div class="mflow-col"><span class="mflow-bars"><i class="mflow-bar mflow-bar--in" style="height:34%"></i><i class="mflow-bar mflow-bar--out" style="height:22%"></i></span></div>
+                  <div class="mflow-col"><span class="mflow-bars"><i class="mflow-bar mflow-bar--in" style="height:26%"></i><i class="mflow-bar mflow-bar--out" style="height:30%"></i></span></div>
+                  <div class="mflow-col"><span class="mflow-bars"><i class="mflow-bar mflow-bar--in" style="height:42%"></i><i class="mflow-bar mflow-bar--out" style="height:18%"></i></span></div>
+                  <div class="mflow-col"><span class="mflow-bars"><i class="mflow-bar mflow-bar--in" style="height:50%"></i><i class="mflow-bar mflow-bar--out" style="height:24%"></i></span></div>
+                </div>
+                <svg class="mflow-line" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <polyline points="10,60 30,52 50,66 70,40 90,28" vector-effect="non-scaling-stroke" />
+                </svg>
+                <span class="mflow-dot" style="left:10%; top:60%"></span>
+                <span class="mflow-dot" style="left:30%; top:52%"></span>
+                <span class="mflow-dot" style="left:50%; top:66%"></span>
+                <span class="mflow-dot" style="left:70%; top:40%"></span>
+                <span class="mflow-dot" style="left:90%; top:28%"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone phone--floating">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="phone-title">Asistente</div>
+          <div class="mini-chat-row user"><div class="mini-bubble">Crea una tarea: pagar el internet, para mañana</div></div>
+          <div class="mini-chat-row bot"><div class="mini-bubble">Listo, la agregué con prioridad media.</div></div>
+          <div class="mini-chat-row user"><div class="mini-bubble">Borra la tarea de podar el jardín</div></div>
+          <div class="mini-confirm">
+            <b>Confirmar eliminación</b><br>Se eliminará «Podar el jardín» de forma permanente.
+            <div class="mini-confirm-actions"><span class="no">Cancelar</span><span class="yes">Eliminar</span></div>
+          </div>
+        </div>
+        <div class="phone-tabbar">
+          <span class="phone-tab"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4.5a.5.5 0 0 0 .5-.5v-4h2v4a.5.5 0 0 0 .5.5H14a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293zM2.5 14V7.707l5.5-5.5l5.5 5.5V14H10v-4a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5v4z"/></svg></span>
+          <span class="phone-tab"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><g fill="currentColor"><path d="M2.5 8a5.5 5.5 0 0 1 8.25-4.764a.5.5 0 0 0 .5-.866A6.5 6.5 0 1 0 14.5 8a.5.5 0 0 0-1 0a5.5 5.5 0 1 1-11 0"/><path d="M15.354 3.354a.5.5 0 0 0-.708-.708L8 9.293L5.354 6.646a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0z"/></g></svg></span>
+          <span class="phone-tab"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12.136.326A1.5 1.5 0 0 1 14 1.78V3h.5A1.5 1.5 0 0 1 16 4.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 13.5v-9a1.5 1.5 0 0 1 1.432-1.499zM5.562 3H13V1.78a.5.5 0 0 0-.621-.484zM1.5 4a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5z"/></svg></span>
+          <span class="phone-tab phone-tab--active"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><g fill="currentColor"><path d="M5 8a1 1 0 1 1-2 0a1 1 0 0 1 2 0m4 0a1 1 0 1 1-2 0a1 1 0 0 1 2 0m3 1a1 1 0 1 0 0-2a1 1 0 0 0 0 2"/><path d="m2.165 15.803l.02-.004c1.83-.363 2.948-.842 3.468-1.105A9 9 0 0 0 8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7s-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6a10.4 10.4 0 0 1-.524 2.318l-.003.011a11 11 0 0 1-.244.637c-.079.186.074.394.273.362a22 22 0 0 0 .693-.125m.8-3.108a1 1 0 0 0-.287-.801C1.618 10.83 1 9.468 1 8c0-3.192 3.004-6 7-6s7 2.808 7 6s-3.004 6-7 6a8 8 0 0 1-2.088-.272a1 1 0 0 0-.711.074c-.387.196-1.24.57-2.634.893a11 11 0 0 0 .398-2"/></g></svg></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+</div>
+
+<section class="features">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow-mini">Todo en un solo lugar</span>
+      <h2>Un asistente, tres dominios, cero fricción</h2>
+      <p>Cada tarjeta es una pieza real de Align — no una promesa, algo que ya puedes usar hoy.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 16 16" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><g fill="currentColor"><path d="M2.5 8a5.5 5.5 0 0 1 8.25-4.764a.5.5 0 0 0 .5-.866A6.5 6.5 0 1 0 14.5 8a.5.5 0 0 0-1 0a5.5 5.5 0 1 1-11 0"/><path d="M15.354 3.354a.5.5 0 0 0-.708-.708L8 9.293L5.354 6.646a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0z"/></g></svg></div>
+        <h3>Tareas inteligentes</h3>
+        <p>Prioridad, fecha y estado en una lista clara. Marca, edita o reordena en segundos.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 16 16" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><g fill="currentColor"><path d="M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5M3 8.062C3 6.76 4.235 5.765 5.53 5.886a26.6 26.6 0 0 0 4.94 0C11.765 5.765 13 6.76 13 8.062v1.157a.93.93 0 0 1-.765.935c-.845.147-2.34.346-4.235.346s-3.39-.2-4.235-.346A.93.93 0 0 1 3 9.219zm4.542-.827a.25.25 0 0 0-.217.068l-.92.9a25 25 0 0 1-1.871-.183a.25.25 0 0 0-.068.495c.55.076 1.232.149 2.02.193a.25.25 0 0 0 .189-.071l.754-.736l.847 1.71a.25.25 0 0 0 .404.062l.932-.97a25 25 0 0 0 1.922-.188a.25.25 0 0 0-.068-.495c-.538.074-1.207.145-1.98.189a.25.25 0 0 0-.166.076l-.754.785l-.842-1.7a.25.25 0 0 0-.182-.135"/><path d="M8.5 1.866a1 1 0 1 0-1 0V3h-2A4.5 4.5 0 0 0 1 7.5V8a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1v-.5A4.5 4.5 0 0 0 10.5 3h-2zM14 7.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7.5A3.5 3.5 0 0 1 5.5 4h5A3.5 3.5 0 0 1 14 7.5"/></g></svg></div>
+        <h3>Chat con IA</h3>
+        <p>Crea, actualiza o consulta hablando en lenguaje natural, sin formularios de por medio.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 16 16" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12.136.326A1.5 1.5 0 0 1 14 1.78V3h.5A1.5 1.5 0 0 1 16 4.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 13.5v-9a1.5 1.5 0 0 1 1.432-1.499zM5.562 3H13V1.78a.5.5 0 0 0-.621-.484zM1.5 4a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5z"/></svg></div>
+        <h3>Finanzas claras</h3>
+        <p>Ingresos y gastos por categoría, con balance del mes siempre a la vista.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 16 16" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 16c3.314 0 6-2 6-5.5c0-1.5-.5-4-2.5-6c.25 1.5-1.25 2-1.25 2C11 4 9 .5 6 0c.357 2 .5 4-2 6c-1.25 1-2 2.729-2 4.5C2 14 4.686 16 8 16m0-1c-1.657 0-3-1-3-2.75c0-.75.25-2 1.25-3C6.125 10 7 10.5 7 10.5c-.375-1.25.5-3.25 2-3.5c-.179 1-.25 2 1 3c.625.5 1 1.364 1 2.25C11 14 9.657 15 8 15"/></svg></div>
+        <h3>Hábitos con racha</h3>
+        <p>Constancia diaria medida automáticamente — la racha se calcula sola, tú solo marcas.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 16 16" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" d="M4 2v2H2V2zm1 12v-2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1m0-5V7a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1m0-5V2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1m5 10v-2a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1m0-5V7a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1m0-5V2a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1M9 2v2H7V2zm5 0v2h-2V2zM4 7v2H2V7zm5 0v2H7V7zm5 0h-2v2h2zM4 12v2H2v-2zm5 0v2H7v-2zm5 0v2h-2v-2zM12 1a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm-1 6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1zm1 4a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1z"/></svg></div>
+        <h3>Panel a tu medida</h3>
+        <p>Arrastra y redimensiona tus tarjetas de resumen; Align recuerda el orden que elegiste.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 16 16" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><g fill="currentColor"><path d="M5.338 1.59a61 61 0 0 0-2.837.856a.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025a1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453a7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625a11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43A63 63 0 0 1 5.072.56"/><path d="M9.5 6.5a1.5 1.5 0 0 1-1 1.415l.385 1.99a.5.5 0 0 1-.491.595h-.788a.5.5 0 0 1-.49-.595l.384-1.99a1.5 1.5 0 1 1 2-1.415"/></g></svg></div>
+        <h3>Nunca borra a ciegas</h3>
+        <p>Si le pides eliminar algo, el asistente te lo confirma antes — nada desaparece por accidente.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="showcase">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow-mini">Así se ve en acción</span>
+      <h2>Tres pantallas, una sola conversación</h2>
+      <p>Lo que hoy harías en tres apps distintas, aquí es una frase y una confirmación.</p>
+    </div>
+    <div class="showcase-grid">
+      <div class="showcase-card">
+        <div class="showcase-frame">
+          <div class="mini-chat-row bot"><div class="mini-bubble" style="max-width:100%">¿Cómo van mis gastos de este mes?</div></div>
+          <div class="mini-chat-row bot"><div class="mini-bubble" style="max-width:100%">Llevas 1.180k en gastos, sobre todo en Comida y Transporte. Tu balance sigue en verde.</div></div>
+        </div>
+        <h3>Habla, y Align entiende</h3>
+        <p>El asistente responde con tus datos reales, en español y sin jerga técnica.</p>
+      </div>
+      <div class="showcase-card">
+        <div class="showcase-frame">
+          <div class="mini-stat-row">
+            <div class="mini-stat"><span>Ingresos</span><b class="up"><svg class="stat-arrow" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5"/></svg>2.450k</b></div>
+            <div class="mini-stat"><span>Gastos</span><b class="down"><svg class="stat-arrow" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4-4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1"/></svg>1.180k</b></div>
+            <div class="mini-stat"><span>Balance</span><b class="up"><svg class="stat-arrow" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path fill="currentColor" fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5"/></svg>1.270k</b></div>
+          </div>
+          <div class="mflow" style="height:130px">
+            <div class="mflow-track">
+              <span class="mflow-zero"></span>
+              <div class="mflow-cols">
+                <div class="mflow-col"><span class="mflow-bars"><i class="mflow-bar mflow-bar--in" style="height:30%"></i><i class="mflow-bar mflow-bar--out" style="height:20%"></i></span></div>
+                <div class="mflow-col"><span class="mflow-bars"><i class="mflow-bar mflow-bar--in" style="height:36%"></i><i class="mflow-bar mflow-bar--out" style="height:24%"></i></span></div>
+                <div class="mflow-col"><span class="mflow-bars"><i class="mflow-bar mflow-bar--in" style="height:28%"></i><i class="mflow-bar mflow-bar--out" style="height:34%"></i></span></div>
+                <div class="mflow-col"><span class="mflow-bars"><i class="mflow-bar mflow-bar--in" style="height:44%"></i><i class="mflow-bar mflow-bar--out" style="height:20%"></i></span></div>
+                <div class="mflow-col"><span class="mflow-bars"><i class="mflow-bar mflow-bar--in" style="height:50%"></i><i class="mflow-bar mflow-bar--out" style="height:26%"></i></span></div>
+                <div class="mflow-col"><span class="mflow-bars"><i class="mflow-bar mflow-bar--in" style="height:60%"></i><i class="mflow-bar mflow-bar--out" style="height:22%"></i></span></div>
+              </div>
+              <svg class="mflow-line" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <polyline points="8,60 25,54 42,68 58,42 75,34 92,20" vector-effect="non-scaling-stroke" />
+              </svg>
+              <span class="mflow-dot" style="left:8%; top:60%"></span>
+              <span class="mflow-dot" style="left:25%; top:54%"></span>
+              <span class="mflow-dot" style="left:42%; top:68%"></span>
+              <span class="mflow-dot" style="left:58%; top:42%"></span>
+              <span class="mflow-dot" style="left:75%; top:34%"></span>
+              <span class="mflow-dot" style="left:92%; top:20%"></span>
+            </div>
+          </div>
+        </div>
+        <h3>Tus finanzas de un vistazo</h3>
+        <p>Un panel que arrastras y ordenas como quieras, con el balance siempre visible.</p>
+      </div>
+      <div class="showcase-card">
+        <div class="showcase-frame">
+          <div class="mini-task"><span class="mini-check done"></span><span class="mini-task-title done">Meditar 10 minutos</span><span class="mini-badge mini-badge--success">Racha 12</span></div>
+          <div class="mini-task"><span class="mini-check done"></span><span class="mini-task-title done">Leer 20 páginas</span><span class="mini-badge mini-badge--success">Racha 5</span></div>
+          <div class="mini-task"><span class="mini-check"></span><span class="mini-task-title">Salir a correr</span><span class="mini-badge mini-badge--warning">Racha 0</span></div>
+        </div>
+        <h3>Hábitos que se sostienen solos</h3>
+        <p>Marca el día y la racha se actualiza sola — sin cálculos, sin hojas aparte.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="steps">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow-mini">De cero a organizado</span>
+      <h2>Empieza en tres pasos</h2>
+      <p>Así es el primer minuto real dentro de Align, en orden.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step">
+        <span class="step-num">01</span>
+        <h3>Crea tu cuenta</h3>
+        <p>Correo y contraseña — sin tarjeta, sin cuestionario de bienvenida.</p>
+        <div class="step-line"></div>
+      </div>
+      <div class="step">
+        <span class="step-num">02</span>
+        <h3>Agrega lo tuyo</h3>
+        <p>Una tarea, un gasto o un hábito. Con uno solo ya tienes algo que ver.</p>
+        <div class="step-line"></div>
+      </div>
+      <div class="step">
+        <span class="step-num">03</span>
+        <h3>Háblale al asistente</h3>
+        <p>Pídele lo que necesites en una frase; él consulta, crea o actualiza por ti.</p>
+        <div class="step-line"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="cta">
+  <div class="cta-band">
+    <h2>Tu asistente ya está listo. ¿Y tú?</h2>
+    <p>Align es gratis mientras construyes el hábito de usarlo.</p>
+    <div class="hero-actions">
+      <a class="btn btn-on-accent" href="/register">Crear cuenta gratis</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Align — hecho para una sola persona: tú.</span>
+    <div class="foot-links">
+      <a href="/login">Iniciar sesión</a>
+      <a href="/register">Crear cuenta</a>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
