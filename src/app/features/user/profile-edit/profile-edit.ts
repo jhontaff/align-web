@@ -1,17 +1,18 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthStateService } from '../../../core/auth/auth-state.service';
+import { PASSWORD_RULES, passwordPolicy, passwordsMatch } from '../../../core/auth/password-policy';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { Avatar } from '../../../shared/ui/avatar/avatar';
 import { Icon } from '../../../shared/ui/icon/icon';
 import { UserService } from '../user.service';
 
 /**
- * Editar perfil: nombre, foto. Correo y contraseña quedan fuera a propósito
- * (ver CLAUDE.md) — el correo es solo lectura porque cambiarlo pide su propio
- * endpoint con contraseña actual, y la contraseña se configura explícitamente
- * más adelante.
+ * Editar perfil: nombre, foto, contraseña. El correo queda fuera a propósito
+ * (ver CLAUDE.md) — cambiarlo pide su propio endpoint (`PUT /me/email`), sin
+ * consumir aún.
  */
 @Component({
   selector: 'app-profile-edit',
@@ -121,6 +122,82 @@ export class ProfileEdit {
       error: err => {
         this.avatarBusy.set(false);
         this.avatarError.set(extractErrorMessage(err));
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cambiar contraseña — formulario independiente del de arriba: son dos
+  // endpoints distintos (`PUT /me` vs. `PUT /me/password`), con sus propios
+  // estados de envío/error/éxito. Mismos campos y misma política que
+  // `reset-password.ts`, salvo el `currentPassword` adicional que exige aquí
+  // el backend por tratarse de un cambio autenticado, no de un enlace de correo.
+  // ---------------------------------------------------------------------------
+
+  protected readonly passwordForm = this.fb.nonNullable.group(
+    {
+      currentPassword: ['', [Validators.required]],
+      newPassword: ['', [Validators.required, passwordPolicy]],
+      confirmPassword: ['', [Validators.required]]
+    },
+    { validators: passwordsMatch('newPassword', 'confirmPassword') }
+  );
+
+  protected readonly passwordSubmitting = signal(false);
+  protected readonly passwordError = signal<string | null>(null);
+  protected readonly passwordSuccess = signal(false);
+
+  protected readonly newPasswordFocused = signal(false);
+  protected readonly confirmPasswordFocused = signal(false);
+
+  private readonly newPasswordValue = toSignal(this.passwordForm.controls.newPassword.valueChanges, {
+    initialValue: ''
+  });
+
+  protected readonly newPasswordChecks = computed(() => {
+    const value = this.newPasswordValue();
+    return PASSWORD_RULES.map(rule => ({ id: rule.id, label: rule.label, met: rule.test(value) }));
+  });
+
+  private readonly confirmPasswordValue = toSignal(this.passwordForm.controls.confirmPassword.valueChanges, {
+    initialValue: ''
+  });
+
+  protected readonly showPasswordMatch = computed(() => {
+    const confirm = this.confirmPasswordValue();
+    return this.confirmPasswordFocused() && confirm.length > 0 && confirm === this.newPasswordValue();
+  });
+
+  private readonly passwordSubmitAttempted = signal(false);
+
+  protected showPasswordMismatch(): boolean {
+    return this.passwordSubmitAttempted() && this.passwordForm.hasError('passwordsMismatch');
+  }
+
+  protected onChangePassword(): void {
+    this.passwordSubmitAttempted.set(true);
+    this.passwordSuccess.set(false);
+
+    if (this.passwordForm.invalid) {
+      this.passwordForm.markAllAsTouched();
+      return;
+    }
+
+    this.passwordSubmitting.set(true);
+    this.passwordError.set(null);
+
+    this.userService.changePassword(this.passwordForm.getRawValue()).subscribe({
+      next: () => {
+        this.passwordSubmitting.set(false);
+        this.passwordSuccess.set(true);
+        this.passwordSubmitAttempted.set(false);
+        // Nada de contraseñas se queda en el DOM ni en el estado del formulario
+        // más tiempo del necesario, ni siquiera tras un cambio exitoso.
+        this.passwordForm.reset();
+      },
+      error: err => {
+        this.passwordSubmitting.set(false);
+        this.passwordError.set(extractErrorMessage(err));
       }
     });
   }
