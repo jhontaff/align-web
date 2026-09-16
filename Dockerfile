@@ -10,5 +10,6 @@ RUN npm run build
 FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist/align-web/browser /usr/share/nginx/html
+COPY landing/index.html /usr/share/nginx/html/landing.html
 
 EXPOSE 80

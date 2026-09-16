@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { redirectIfAuthenticatedGuard } from './core/auth/redirect-if-authenticated.guard';
 import { profileExitGuard } from './features/user/profile/profile-exit.guard';
 
 export const routes: Routes = [
@@ -10,7 +11,8 @@ export const routes: Routes = [
   },
   {
     path: 'login',
-    loadComponent: () => import('./features/auth/login/login').then(m => m.Login)
+    loadComponent: () => import('./features/auth/login/login').then(m => m.Login),
+    canActivate: [redirectIfAuthenticatedGuard]
   },
   {
     path: 'register',
