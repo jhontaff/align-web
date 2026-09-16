@@ -1,0 +1,14 @@
+// "¿Olvidaste tu contraseña?" en la misma línea que su label, alineado al borde
+// opuesto — el patrón estándar (GitHub, Google) en vez de un párrafo centrado
+// entre el campo y el botón, que competía visualmente con el CTA primario.
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.field-hint-link {
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}

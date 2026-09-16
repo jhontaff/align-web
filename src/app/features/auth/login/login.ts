@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthStateService } from '../../../core/auth/auth-state.service';
@@ -8,12 +8,16 @@ import { extractErrorMessage } from '../../../core/http/extract-error-message';
   selector: 'app-login',
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './login.html',
+  styleUrl: './login.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Login {
   private readonly fb = inject(FormBuilder);
   private readonly authState = inject(AuthStateService);
   private readonly router = inject(Router);
+
+  /** Query param que pone `reset-password` al redirigir tras un cambio de contraseña exitoso. */
+  readonly passwordReset = input<string>();
 
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly submitting = signal(false);

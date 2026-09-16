@@ -60,7 +60,8 @@ const ICON_NAMES = [
   'bi:camera-fill',
   'bi:person-vcard',
   'bi:shield-lock',
-  'bi:lock'
+  'bi:lock',
+  'bi:envelope'
 ];
 
 const OUT = 'src/app/shared/ui/icon/icon-set.ts';
