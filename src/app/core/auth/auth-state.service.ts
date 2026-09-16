@@ -20,6 +20,17 @@ export interface RegisterRequest {
     lastName: string;
 }
 
+export interface ForgotPasswordRequest {
+    email: string;
+}
+
+export interface ResetPasswordRequest {
+    token: string;
+    newPassword: string;
+    /** Igual que en `RegisterRequest`: el backend valida el cruce (error `passwordConfirmed`). */
+    confirmPassword: string;
+}
+
 /**
  * Las operaciones de sesión que hablan con el backend.
  *
@@ -52,6 +63,22 @@ export class AuthStateService {
         return this.http.post<AuthResponse>('/auth/register', request).pipe(
             switchMap(auth => this.applyAuthResponse(auth))
         );
+    }
+
+    /**
+     * Respuesta fija del backend con `data: null` sea cual sea el correo
+     * (anti-enumeración) — no hay sesión que aplicar ni usuario que hidratar.
+     */
+    forgotPassword(request: ForgotPasswordRequest): Observable<void> {
+        return this.http.post<void>('/auth/forgot-password', request);
+    }
+
+    /**
+     * A diferencia de `login`/`register`, el backend NO devuelve un `AuthResponse`
+     * aquí: no hay JWT que aplicar. El llamante redirige a `/login` por su cuenta.
+     */
+    resetPassword(request: ResetPasswordRequest): Observable<void> {
+        return this.http.post<void>('/auth/reset-password', request);
     }
 
     hydrateUser(): Observable<UserResponse> {
