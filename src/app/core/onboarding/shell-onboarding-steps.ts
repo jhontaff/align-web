@@ -25,7 +25,7 @@ export function buildShellOnboardingSteps(isDesktop: boolean): DriveStep[] {
       }
     },
     {
-      element: `${navSelector}[href="/"]`,
+      element: `${navSelector}[href="/home"]`,
       popover: {
         title: 'Inicio',
         description: 'Tu resumen del día: tareas, finanzas y hábitos de un vistazo.'

@@ -37,7 +37,7 @@ export class Login {
     this.errorMessage.set(null);
 
     this.authState.login(this.form.getRawValue()).subscribe({
-      next: () => this.router.navigate(['/']),
+      next: () => this.router.navigate(['/home']),
       error: err => {
         this.submitting.set(false);
         this.errorMessage.set(extractErrorMessage(err));

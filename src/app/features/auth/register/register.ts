@@ -93,7 +93,7 @@ export class Register {
 
     // `confirmPassword` SÍ viaja: el backend la exige y valida el cruce por su cuenta.
     this.authState.register(this.form.getRawValue()).subscribe({
-      next: () => this.router.navigate(['/']),
+      next: () => this.router.navigate(['/home']),
       error: err => {
         this.submitting.set(false);
         this.errorMessage.set(extractErrorMessage(err));

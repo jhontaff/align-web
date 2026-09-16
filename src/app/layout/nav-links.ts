@@ -45,7 +45,7 @@ export interface NavLink {
  */
 export const NAV_LINKS: readonly NavLink[] = [
   {
-    path: '/',
+    path: '/home',
     label: 'Inicio',
     exact: true,
     icon: 'bi:house-door'
