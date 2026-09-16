@@ -8,6 +8,7 @@ import { extractErrorMessage } from '../../../core/http/extract-error-message';
   selector: 'app-login',
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './login.html',
+  styleUrl: './login.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Login {
