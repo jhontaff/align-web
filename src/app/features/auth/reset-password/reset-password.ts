@@ -12,6 +12,7 @@ import { PASSWORD_RULES, passwordPolicy, passwordsMatch } from '../password-poli
   selector: 'app-reset-password',
   imports: [ReactiveFormsModule, RouterLink, Icon],
   templateUrl: './reset-password.html',
+  styleUrl: './reset-password.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ResetPassword {

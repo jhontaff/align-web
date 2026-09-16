@@ -17,11 +17,12 @@
       </div>
 
       <div class="field">
-        <label for="password">Contraseña</label>
+        <div class="field-label-row">
+          <label for="password">Contraseña</label>
+          <a class="field-hint-link" routerLink="/forgot-password">¿Olvidaste tu contraseña?</a>
+        </div>
         <input id="password" type="password" formControlName="password" />
       </div>
-
-      <p class="form-footer"><a routerLink="/forgot-password">¿Olvidaste tu contraseña?</a></p>
 
       <button class="btn btn-primary btn-block" type="submit" [disabled]="submitting()">
         {{ submitting() ? 'Entrando...' : 'Entrar' }}
