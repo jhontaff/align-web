@@ -3,9 +3,89 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Align — organiza tu vida con un asistente de IA</title>
-<meta name="description" content="Tareas, finanzas y hábitos en un solo lugar. Pídeselo a tu asistente de IA y Align se encarga del resto.">
+<title>Align — el asistente de IA que organiza tus tareas, finanzas y hábitos por ti</title>
+<meta name="description" content="Tareas, finanzas y hábitos en un solo lugar. Pídeselo a tu asistente de IA y los organiza por ti — no solo te aconseja, actúa.">
+<link rel="canonical" href="https://alignassistant.com/">
 <link rel="icon" href="/favicon.ico">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://alignassistant.com/">
+<meta property="og:site_name" content="Align">
+<meta property="og:locale" content="es_ES">
+<meta property="og:title" content="Align — el asistente de IA que organiza tus tareas, finanzas y hábitos por ti">
+<meta property="og:description" content="Tareas, finanzas y hábitos en un solo lugar. Pídeselo a tu asistente de IA y los organiza por ti — no solo te aconseja, actúa.">
+<meta property="og:image" content="https://alignassistant.com/icons/icon-512x512.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Align — el asistente de IA que organiza tus tareas, finanzas y hábitos por ti">
+<meta name="twitter:description" content="Tareas, finanzas y hábitos en un solo lugar. Pídeselo a tu asistente de IA y los organiza por ti — no solo te aconseja, actúa.">
+<meta name="twitter:image" content="https://alignassistant.com/icons/icon-512x512.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Align",
+  "description": "Align es un asistente de IA personal que organiza tus tareas, finanzas y hábitos en una sola conversación: crea, actualiza y consulta hablando en lenguaje natural, y confirma contigo antes de eliminar algo.",
+  "url": "https://alignassistant.com/",
+  "applicationCategory": "LifestyleApplication",
+  "operatingSystem": "Web, Android, iOS (PWA)",
+  "inLanguage": "es",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "¿Qué es Align?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Align es un asistente de IA personal que organiza tus tareas, tus finanzas y tus hábitos en un solo lugar. Le hablas en una frase y él crea, actualiza o consulta por ti, sin que tengas que cambiar de pantalla ni llenar formularios."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿En qué se diferencia de otras apps de productividad o finanzas?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "La mayoría de asistentes de IA solo dan consejos: analizan tus gastos o sugieren un plan, pero no ejecutan nada. El asistente de Align sí actúa — crea una tarea, registra un gasto o marca un hábito directamente cuando se lo pides."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Align puede borrar algo sin que yo lo autorice?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Crear y actualizar se ejecutan al instante, pero cualquier eliminación queda pendiente de tu confirmación explícita antes de aplicarse — nunca desaparece nada por accidente."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Align es gratis?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sí, Align es gratis mientras construyes el hábito de usarlo."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Necesito instalar algo?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Align funciona desde el navegador y también se puede instalar como aplicación en tu computador o teléfono, sin pasar por ninguna tienda de aplicaciones."
+      }
+    }
+  ]
+}
+</script>
 <script>
   // Este landing es HTML estático servido por nginx (`location = /`), así que
   // no puede saber del lado del servidor si ya hay sesión — lo único que
@@ -662,6 +742,48 @@
     font-size: 0.85rem;
   }
   footer .foot-links { display: flex; gap: 18px; }
+
+  /* ---------- faq ---------- */
+  .faq-list {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .faq-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding-inline: 20px;
+  }
+  .faq-item summary {
+    cursor: pointer;
+    list-style: none;
+    padding-block: 16px;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after {
+    content: '+';
+    font-size: 1.3rem;
+    line-height: 1;
+    color: var(--accent);
+    flex-shrink: 0;
+    transition: transform .2s;
+  }
+  .faq-item[open] summary::after { transform: rotate(45deg); }
+  .faq-item p {
+    margin: 0 0 18px;
+    color: var(--text-muted);
+    font-size: 0.94rem;
+  }
   footer a { text-decoration: none; }
   footer a:hover { color: var(--text); }
 
@@ -928,6 +1050,38 @@
         <p>Pídele lo que necesites en una frase; él consulta, crea o actualiza por ti.</p>
         <div class="step-line"></div>
       </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow-mini">Preguntas frecuentes</span>
+      <h2>Antes de que preguntes</h2>
+      <p>Lo que la mayoría quiere saber antes de crear una cuenta.</p>
+    </div>
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>¿Qué es Align?</summary>
+        <p>Align es un asistente de IA personal que organiza tus tareas, tus finanzas y tus hábitos en un solo lugar. Le hablas en una frase y él crea, actualiza o consulta por ti, sin que tengas que cambiar de pantalla ni llenar formularios.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿En qué se diferencia de otras apps de productividad o finanzas?</summary>
+        <p>La mayoría de asistentes de IA solo dan consejos: analizan tus gastos o sugieren un plan, pero no ejecutan nada. El asistente de Align sí actúa — crea una tarea, registra un gasto o marca un hábito directamente cuando se lo pides.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Align puede borrar algo sin que yo lo autorice?</summary>
+        <p>No. Crear y actualizar se ejecutan al instante, pero cualquier eliminación queda pendiente de tu confirmación explícita antes de aplicarse — nunca desaparece nada por accidente.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Align es gratis?</summary>
+        <p>Sí, Align es gratis mientras construyes el hábito de usarlo.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Necesito instalar algo?</summary>
+        <p>No. Align funciona desde el navegador y también se puede instalar como aplicación en tu computador o teléfono, sin pasar por ninguna tienda de aplicaciones.</p>
+      </details>
     </div>
   </div>
 </section>

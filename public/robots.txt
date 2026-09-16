@@ -1,0 +1,22 @@
+# Align vive detrás de login: solo la raíz (landing estático) y las pantallas
+# de auth son contenido público real. Todo lo demás exige authGuard y sin
+# sesión redirige a /login — indexarlo sería crawl budget tirado en páginas
+# vacías. Ver src/app/app.routes.ts para la lista de rutas guardadas.
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /forgot-password
+Allow: /reset-password
+Disallow: /home
+Disallow: /tasks
+Disallow: /finance
+Disallow: /habits
+Disallow: /profile
+
+# GPTBot, ClaudeBot, PerplexityBot y Google-Extended no están bloqueados aquí
+# a propósito: la regla de arriba ya los cubre por ser "User-agent: *", pero
+# muchos robots.txt genéricos los bloquean por defecto sin que nadie lo decida.
+# Este comentario deja constancia de que aquí es una decisión, no un olvido.
+
+Sitemap: https://alignassistant.com/sitemap.xml
