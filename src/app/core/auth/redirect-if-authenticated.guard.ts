@@ -13,7 +13,7 @@ export const redirectIfAuthenticatedGuard: CanActivateFn = () => {
   const router = inject(Router);
 
   if (inject(SessionService).isAuthenticated()) {
-    router.navigate(['/']);
+    router.navigate(['/home']);
     return false;
   }
 

@@ -55,7 +55,7 @@ export class AppHeader {
   // segundo clic tiene que volver atrás (y así disparar `profileExitGuard`).
   protected onAvatarClick(): void {
     if (this.currentUrl().startsWith('/profile')) {
-      this.router.navigateByUrl('/');
+      this.router.navigateByUrl('/home');
     } else {
       this.router.navigateByUrl('/profile');
     }

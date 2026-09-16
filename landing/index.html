@@ -6,6 +6,26 @@
 <title>Align — organiza tu vida con un asistente de IA</title>
 <meta name="description" content="Tareas, finanzas y hábitos en un solo lugar. Pídeselo a tu asistente de IA y Align se encarga del resto.">
 <link rel="icon" href="/favicon.ico">
+<script>
+  // Este landing es HTML estático servido por nginx (`location = /`), así que
+  // no puede saber del lado del servidor si ya hay sesión — lo único que
+  // puede mirar es lo que el navegador ya tiene guardado. Un visitante que
+  // llega por buscador o URL sin token se queda viendo el landing; uno que ya
+  // inició sesión antes (typeó la URL de nuevo, volvió por un marcador) entra
+  // directo a la app en vez de ver otra vez la propuesta de valor.
+  // La PWA instalada no pasa por aquí en absoluto: su `start_url` apunta a
+  // `/login` (ver public/manifest.webmanifest), que resuelve con el mismo
+  // guard `redirectIfAuthenticatedGuard` que usa esta misma clave.
+  // La clave está duplicada a propósito, igual que `align_theme` en
+  // `src/index.html`: este script corre antes de que exista ningún bundle de
+  // Angular, así que no puede importarla de `token-storage.ts`. Si cambia la
+  // clave ahí, cambia aquí también.
+  try {
+    if (localStorage.getItem('align_access_token')) {
+      location.replace('/home');
+    }
+  } catch (e) {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">

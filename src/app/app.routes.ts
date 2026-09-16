@@ -5,7 +5,20 @@ import { profileExitGuard } from './features/user/profile/profile-exit.guard';
 
 export const routes: Routes = [
   {
+    // La raíz exacta es territorio exclusivo del landing estático en producción
+    // (nginx.conf `location = /`, ngsw-config.json excluye `/` de
+    // `navigationUrls`) — Angular nunca debe quedarse "viviendo" en esa URL, o
+    // una recarga completa (p. ej. la del aviso de actualización de la PWA) se
+    // encontraría el landing en vez de la app. `pathMatch: 'full'` + redirect
+    // es lo que hace que cualquier navegación a `/` (clic, `router.navigate`,
+    // o `ng serve` en desarrollo, donde este `location =` no existe) aterrice
+    // siempre en `/home`, nunca se quede ahí.
     path: '',
+    pathMatch: 'full',
+    redirectTo: 'home'
+  },
+  {
+    path: 'home',
     loadComponent: () => import('./features/home/home').then(m => m.Home),
     canActivate: [authGuard]
   },
@@ -113,7 +126,7 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: ''
+    redirectTo: 'home'
   }
 ];
 
