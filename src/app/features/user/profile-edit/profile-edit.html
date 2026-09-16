@@ -87,18 +87,78 @@
         <span>Seguridad y Gestión</span>
       </h2>
 
-      <!-- Inerte a propósito: el cambio de contraseña se configura explícitamente
-           en otra iteración (PUT /me/password ya existe, sin consumir aún). -->
-      <div class="menu-item profile-edit-security-row" aria-disabled="true">
-        <span class="menu-item__group">
-          <app-icon class="menu-item__icon" name="bi:lock" />
-          <span class="profile-stack">
-            <span>Cambiar contraseña</span>
-            <span class="card-note">Se configura próximamente</span>
-          </span>
-        </span>
-        <span class="badge">Próximamente</span>
-      </div>
+      <form [formGroup]="passwordForm" (ngSubmit)="onChangePassword()">
+        @if (passwordSuccess()) {
+          <p class="form-success" role="status">Contraseña actualizada.</p>
+        }
+        @if (passwordError()) {
+          <p class="form-error" role="alert">{{ passwordError() }}</p>
+        }
+
+        <div class="field">
+          <label for="currentPassword">Contraseña actual</label>
+          <input
+            id="currentPassword"
+            type="password"
+            formControlName="currentPassword"
+            autocomplete="current-password"
+          />
+        </div>
+
+        <div class="field">
+          <label for="newPassword">Nueva contraseña</label>
+          <input
+            id="newPassword"
+            type="password"
+            formControlName="newPassword"
+            autocomplete="new-password"
+            aria-describedby="newPassword-rules"
+            (focus)="newPasswordFocused.set(true)"
+            (blur)="newPasswordFocused.set(false)"
+          />
+          <ul id="newPassword-rules" class="field-checks" [class.field-checks--open]="newPasswordFocused()">
+            @for (check of newPasswordChecks(); track check.id) {
+              <li class="field-checks__item" [class.field-checks__item--met]="check.met">
+                <app-icon [name]="check.met ? 'bi:check-circle-fill' : 'bi:circle'" />
+                <span>{{ check.label }}</span>
+                <span class="visually-hidden">{{ check.met ? '(cumplido)' : '(pendiente)' }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <div class="field">
+          <label for="confirmPassword">Confirmar nueva contraseña</label>
+          <input
+            id="confirmPassword"
+            type="password"
+            formControlName="confirmPassword"
+            autocomplete="new-password"
+            [attr.aria-invalid]="showPasswordMismatch() ? 'true' : null"
+            [attr.aria-describedby]="
+              showPasswordMismatch() ? 'confirmPassword-match confirmPassword-error' : 'confirmPassword-match'
+            "
+            (focus)="confirmPasswordFocused.set(true)"
+            (blur)="confirmPasswordFocused.set(false)"
+          />
+          <ul id="confirmPassword-match" class="field-checks" [class.field-checks--open]="showPasswordMatch()">
+            @if (showPasswordMatch()) {
+              <li class="field-checks__item field-checks__item--met">
+                <app-icon name="bi:check-circle-fill" />
+                <span>Las contraseñas coinciden</span>
+              </li>
+            }
+          </ul>
+          @if (showPasswordMismatch()) {
+            <p id="confirmPassword-error" class="form-error">Las contraseñas no coinciden.</p>
+          }
+        </div>
+
+        <button class="btn btn-primary" type="submit" [disabled]="passwordSubmitting()">
+          <app-icon name="bi:lock" />
+          <span>{{ passwordSubmitting() ? 'Actualizando...' : 'Actualizar contraseña' }}</span>
+        </button>
+      </form>
     </section>
 
     <button

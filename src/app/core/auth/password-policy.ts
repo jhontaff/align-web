@@ -8,6 +8,11 @@ import { AbstractControl, ValidationErrors } from '@angular/forms';
  * Una sola declaración para las dos cosas que salen de ella —la validez del control
  * y la lista que ve el usuario— porque escribirlas por separado es cómo se acaba
  * exigiendo una mayúscula y anunciando otra cosa.
+ *
+ * Vive en `core/auth/` y no en `features/auth/` porque tiene tres consumidores en
+ * dos features distintas (`register`/`reset-password` en `features/auth/`,
+ * `profile-edit` en `features/user/`) — la regla de [Folder placement]: nada dentro
+ * de una feature se importa desde otra, la pieza compartida sube.
  */
 export interface PasswordRule {
   readonly id: string;
@@ -32,8 +37,9 @@ export function passwordPolicy(control: AbstractControl): ValidationErrors | nul
  * Va en el grupo y no en el control: un validador de control no ve a su hermano, y
  * colgado de `confirmPassword` no volvería a ejecutarse al cambiar `password` después.
  *
- * Los nombres de los controles son parámetros porque `register` los llama
- * `password`/`confirmPassword` y `reset-password` los llama `newPassword`/`confirmPassword`.
+ * Los nombres de los controles son parámetros porque cada consumidor los llama
+ * distinto: `register` usa `password`/`confirmPassword`, `reset-password` y
+ * `profile-edit` usan `newPassword`/`confirmPassword`.
  */
 export function passwordsMatch(passwordControl: string, confirmControl: string) {
   return (group: AbstractControl): ValidationErrors | null => {

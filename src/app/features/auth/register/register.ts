@@ -5,13 +5,12 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { extractErrorMessage } from '../../../core/http/extract-error-message';
 import { Icon } from '../../../shared/ui/icon/icon';
-import { PASSWORD_RULES, passwordPolicy, passwordsMatch } from '../password-policy';
+import { PASSWORD_RULES, passwordPolicy, passwordsMatch } from '../../../core/auth/password-policy';
 
 @Component({
   selector: 'app-register',
   imports: [ReactiveFormsModule, RouterLink, Icon],
   templateUrl: './register.html',
-  styleUrl: './register.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Register {
