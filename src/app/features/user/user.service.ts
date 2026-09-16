@@ -4,6 +4,7 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { Observable, catchError, map, of, switchMap } from 'rxjs';
 import { AuthStateService } from '../../core/auth/auth-state.service';
 import { UserResponse } from '../../core/models/user-response.model';
+import { PasswordUpdateRequest } from './models/password-update.model';
 import { ProfileUpdateRequest } from './models/profile-update.model';
 
 /**
@@ -65,5 +66,13 @@ export class UserService {
 
   deleteAvatar(): Observable<void> {
     return this.http.delete<void>('/api/users/me/avatar');
+  }
+
+  /**
+   * `ApiResponse<Void>` — no hay `UserResponse` que aplicar a la sesión, y el
+   * backend no invalida el JWT actual ni otras sesiones al cambiar la contraseña.
+   */
+  changePassword(request: PasswordUpdateRequest): Observable<void> {
+    return this.http.put<void>('/api/users/me/password', request);
   }
 }
