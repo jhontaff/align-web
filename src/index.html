@@ -5,8 +5,7 @@
   <title>Align</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0c1324" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f8fafc">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <!-- iOS ignora los iconos del manifest al añadir a la pantalla de inicio:
        sin este link se inventa una miniatura de la página. Va con fondo
@@ -20,15 +19,28 @@
   <script>
     // Aplica la elección de tema ANTES del primer pintado, para que no haya un
     // flash del tema contrario al recargar. Con 'system' (o sin nada guardado)
-    // no escribe nada: ahí manda @media (prefers-color-scheme) del CSS.
+    // no escribe data-theme: ahí manda @media (prefers-color-scheme) del CSS.
     //
-    // La clave 'align_theme' está duplicada a propósito respecto de
-    // core/theme/theme.service.ts — este script tiene que correr antes de que
-    // exista cualquier bundle, así que no puede importarla.
+    // La clave 'align_theme' y los hex de THEME_COLORS están duplicados a
+    // propósito respecto de core/theme/theme.service.ts — este script tiene
+    // que correr antes de que exista cualquier bundle, así que no puede
+    // importarlos. La meta theme-color sí se fija siempre (también en
+    // 'system'), porque a diferencia de data-theme no tiene un CSS que la
+    // resuelva sola: es la barra de estado del PWA instalado.
     (function () {
+      var THEME_COLORS = { light: '#f8fafc', dark: '#0c1324' };
       var stored = localStorage.getItem('align_theme');
+      var theme = stored === 'light' || stored === 'dark'
+        ? stored
+        : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
       if (stored === 'light' || stored === 'dark') {
         document.documentElement.dataset.theme = stored;
+      }
+
+      var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+      if (themeColorMeta) {
+        themeColorMeta.setAttribute('content', THEME_COLORS[theme]);
       }
     })();
   </script>

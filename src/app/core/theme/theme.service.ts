@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { Meta } from '@angular/platform-browser';
 
 /** El tema que realmente se pinta. */
 export type Theme = 'light' | 'dark';
@@ -8,6 +9,14 @@ export type Theme = 'light' | 'dark';
 export type ThemePreference = Theme | 'system';
 
 const THEME_KEY = 'align_theme';
+
+/**
+ * Duplicado a propósito respecto del script inline de `index.html` (que fija
+ * el theme-color antes de que exista este bundle, para evitar el flash al
+ * abrir la PWA instalada en frío). No hay forma de compartir una constante
+ * entre HTML puro y TS sin build tooling extra.
+ */
+const THEME_COLORS: Record<Theme, string> = { light: '#f8fafc', dark: '#0c1324' };
 
 /** Orden del ciclo del botón. `system` primero porque es el estado inicial. */
 const CYCLE: readonly ThemePreference[] = ['system', 'light', 'dark'];
@@ -25,6 +34,7 @@ const CYCLE: readonly ThemePreference[] = ['system', 'light', 'dark'];
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly document = inject(DOCUMENT);
+  private readonly meta = inject(Meta);
 
   /** Lo que el sistema operativo pide ahora mismo. */
   private readonly systemTheme = signal<Theme>(this.readSystemTheme());
@@ -56,6 +66,13 @@ export class ThemeService {
     // dejarlo ausente es lo que permite que `@media (prefers-color-scheme)` de
     // _tokens.scss siga mandando. Escribir el valor resuelto clavaría la app al
     // tema que hubiera en el arranque y `system` dejaría de significar nada.
+    //
+    // El theme-color de la barra de estado del PWA instalado va en el mismo
+    // efecto porque depende del mismo `theme()` resuelto: las dos escrituras
+    // siempre cambian juntas. A diferencia de `data-theme`, aquí sí se escribe
+    // también en `system` — no hay un `@media` que resuelva la meta por sí
+    // sola, y sin esto la barra de estado seguiría al SO en vez de al tema
+    // real de la app.
     effect(() => {
       const preference = this.preference();
       const root = this.document.documentElement;
@@ -65,6 +82,8 @@ export class ThemeService {
       } else {
         root.dataset['theme'] = preference;
       }
+
+      this.meta.updateTag({ content: THEME_COLORS[this.theme()] }, 'name="theme-color"');
     });
   }
 
