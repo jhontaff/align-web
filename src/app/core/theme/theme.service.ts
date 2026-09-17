@@ -73,6 +73,13 @@ export class ThemeService {
     // también en `system` — no hay un `@media` que resuelva la meta por sí
     // sola, y sin esto la barra de estado seguiría al SO en vez de al tema
     // real de la app.
+    //
+    // Se quita y se vuelve a crear el nodo (removeTag + addTag), NO
+    // updateTag(). Verificado en un Android real: Chrome ignora un
+    // setAttribute('content', ...) sobre el <meta name="theme-color">
+    // existente cuando la PWA corre instalada (display: standalone) — no
+    // repinta la barra de estado hasta que el elemento en sí cambia. Es un
+    // bug conocido de Chrome/Android, no algo que dependa de esta app.
     effect(() => {
       const preference = this.preference();
       const root = this.document.documentElement;
@@ -83,7 +90,8 @@ export class ThemeService {
         root.dataset['theme'] = preference;
       }
 
-      this.meta.updateTag({ content: THEME_COLORS[this.theme()] }, 'name="theme-color"');
+      this.meta.removeTag('name="theme-color"');
+      this.meta.addTag({ name: 'theme-color', content: THEME_COLORS[this.theme()] });
     });
   }
 
