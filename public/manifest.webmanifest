@@ -1,7 +1,7 @@
 {
   "name": "align",
   "short_name": "Align",
-  "theme_color": "#f8fafc",
+  "theme_color": "#0c1324",
   "background_color": "#f8fafc",
   "display": "standalone",
   "scope": "./",
